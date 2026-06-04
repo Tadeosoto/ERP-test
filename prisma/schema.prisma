@@ -94,7 +94,7 @@ model StoredFile {
   kind             String
   originalFileName String
   storagePath      String
-  /** PDF en BD cuando FILES_STORAGE=database o en Vercel (demo). */
+  // PDF en BD cuando FILES_STORAGE=database o en Vercel (demo).
   fileData         Bytes?
   mimeType         String        @default("application/pdf")
   sizeBytes        Int
