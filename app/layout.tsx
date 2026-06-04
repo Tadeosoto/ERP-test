@@ -14,15 +14,19 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CCP ERP — Demo compras",
-  description: "Flujo OC → ingeniería → pagos → recepción → contabilidad (demo)",
+  title: "CCP ERP — Demo",
+  description:
+    "Flujo OC → ingeniería → pagos → recepción → contabilidad (demo)",
 };
 
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="es" className={`${geistSans.variable} ${geistMono.variable} h-full`}>
+    <html
+      lang="es"
+      className={`${geistSans.variable} ${geistMono.variable} h-full`}
+    >
       <body className="min-h-full antialiased">
         <Providers>{children}</Providers>
       </body>
