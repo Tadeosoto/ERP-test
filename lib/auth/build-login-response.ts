@@ -23,9 +23,12 @@ export function loginErrorMessage(error: unknown): string {
     msg.includes("Unable to open the database") ||
     msg.includes("Error code 14") ||
     msg.includes("SQLite") ||
-    msg.includes("PrismaClientInitializationError")
+    msg.includes("PrismaClientInitializationError") ||
+    msg.includes("Can't reach database") ||
+    msg.includes("P1001") ||
+    msg.includes("P1000")
   ) {
-    return "No hay base de datos disponible. En Vercel hace falta configurar DATABASE_URL y ejecutar migraciones; este ERP está pensado para servidor en la oficina.";
+    return "No hay base de datos disponible. En Vercel configure DATABASE_URL (PostgreSQL en Neon). Ver VERCEL.md en el repositorio.";
   }
   if (process.env.NODE_ENV === "development") {
     return `Error al iniciar sesión: ${msg}`;

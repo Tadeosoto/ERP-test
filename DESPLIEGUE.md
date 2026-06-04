@@ -10,8 +10,8 @@
 
 1. Copiar la carpeta `ccp-erp-app` a la PC servidor (ej. `D:\CCP-ERP\app`).
 2. Crear archivo `.env` basado en `.env.example`:
-   - `DATABASE_URL="file:D:/CCP-ERP/data/prod.db"`
-   - `FILES_ROOT="D:/CCP-ERP/files"`
+   - `DATABASE_URL` = PostgreSQL (recomendado) o consultar versión anterior SQLite si aplica
+   - `FILES_STORAGE="disk"` y `FILES_ROOT="D:/CCP-ERP/files"` para PDFs en carpeta
    - `SESSION_SECRET` = cadena larga aleatoria única
    - `INITIAL_PASSWORD` = contraseña inicial (cámbiela tras el primer acceso)
 3. En PowerShell (como administrador si hace falta):
@@ -58,9 +58,11 @@ Contraseña inicial: la definida en `INITIAL_PASSWORD` (por defecto en desarroll
 
 **Acceso rápido (demo):** en la pantalla de login se puede entrar con un clic en cada usuario, sin contraseña. Desactivar con `ALLOW_QUICK_LOGIN=false` en `.env`.
 
-## Vercel
+## Demo en Vercel (antes de la luz verde)
 
-Este proyecto **no está listo para Vercel solo con SQLite**. Ver [VERCEL.md](./VERCEL.md) (variables de entorno, base de datos y por qué falla el login).
+Para mostrar el flujo en internet: [VERCEL.md](./VERCEL.md) (Neon PostgreSQL + variables en Vercel + acceso rápido).
+
+La instalación en **PC de oficina** sigue siendo la opción de producción con archivos en disco.
 
 ## Respaldo (importante)
 

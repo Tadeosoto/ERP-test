@@ -1,38 +1,103 @@
-# Despliegue en Vercel (limitaciones)
+# Demo en Vercel (luz verde del flujo)
 
-Este ERP fue diseñado para **un PC en la red de la oficina** con SQLite y PDFs en disco. En Vercel el login suele fallar aunque la contraseña sea correcta.
+La app ya puede desplegarse en Vercel para **mostrar el proceso** (Paty → Santiago → Carolina → documentos). Necesitas una base **PostgreSQL gratuita** (Neon) y variables en Vercel.
 
-## Por qué falla el login en Vercel
+## Resumen
 
-1. **La base de datos no viaja en el deploy**  
-   `prisma/dev.db` está en `.gitignore`. En Vercel no hay usuarios ni tablas → error 500 al iniciar sesión.
+| Entorno | Base de datos | PDFs |
+|---------|---------------|------|
+| **Vercel** | PostgreSQL (Neon) | Guardados en la BD (automático) |
+| **PC oficina** | PostgreSQL o ver [DESPLIEGUE.md](./DESPLIEGUE.md) | Carpeta `FILES_ROOT` con `FILES_STORAGE=disk` |
 
-2. **SQLite en serverless no es adecuado**  
-   Aunque subieras un `.db`, el sistema de archivos de Vercel es efímero y no sirve para producción con escrituras (sesiones, órdenes, PDFs).
+---
 
-3. **Variables de entorno**  
-   Sí debes configurarlas en **Vercel → Project → Settings → Environment Variables** (no basta el `.env` local):
+## Paso 1 — Crear base en Neon (gratis)
 
-   | Variable | Obligatoria | Notas |
-   |----------|-------------|--------|
-   | `DATABASE_URL` | Sí | En Vercel use PostgreSQL (Neon, Supabase, Vercel Postgres), no `file:./dev.db` |
-   | `SESSION_SECRET` | Sí | Cadena larga aleatoria (misma en Production) |
-   | `FILES_ROOT` | Sí* | En Vercel los PDFs en disco local **no persisten**; hace falta S3/Blob más adelante |
-   | `INITIAL_PASSWORD` | Solo al seed | Para `npm run db:seed` |
-   | `ALLOW_QUICK_LOGIN` | Opcional | `true` (default) = acceso rápido sin contraseña; `false` para cerrarlo |
+1. Entra a [https://neon.tech](https://neon.tech) y crea cuenta.
+2. **New Project** → nombre `ccp-erp-demo`.
+3. Copia la **connection string** de PostgreSQL (modo *pooled* o *direct*; pooled suele ir bien en Vercel).
+   - Debe verse así:  
+     `postgresql://usuario:password@ep-xxxx.us-east-2.aws.neon.tech/neondb?sslmode=require`
 
-4. **Migraciones y seed en Vercel**  
-   Tras cambiar a PostgreSQL hay que adaptar `schema.prisma` (`provider = "postgresql"`), ejecutar migraciones y seed en el proveedor de BD, no solo en build.
+---
 
-## Acceso rápido sin contraseña (demo)
+## Paso 2 — Variables en Vercel
 
-Con `ALLOW_QUICK_LOGIN` distinto de `false`, los usuarios del seed pueden entrar con un clic en la pantalla de login (`POST /api/auth/quick-login`).
+En tu proyecto: **Settings → Environment Variables** (marca **Production**, **Preview** y **Development**):
 
-Solo funciona si **existe la base de datos con usuarios**. En Vercel sin BD configurada seguirá fallando con un mensaje más claro.
+| Variable | Valor |
+|----------|--------|
+| `DATABASE_URL` | La URL de Neon del paso 1 |
+| `SESSION_SECRET` | Texto largo aleatorio (ej. 64 caracteres) |
+| `INITIAL_PASSWORD` | `ccp2026` (solo para el seed en el build) |
+| `ALLOW_QUICK_LOGIN` | `true` |
+| `FILES_STORAGE` | `database` (opcional en Vercel; por defecto ya usa BD si detecta Vercel) |
 
-## Recomendación
+No hace falta subir el archivo `.env` de tu PC.
 
-- **Producción real:** PC de oficina según [DESPLIEGUE.md](./DESPLIEGUE.md).
-- **Demo en internet:** Vercel + PostgreSQL gestionado + almacenamiento de archivos en la nube (trabajo aparte).
+---
 
-Para probar ya: `npm run dev` en tu PC con `npm run db:sync` y `npm run db:seed`.
+## Paso 3 — Deploy
+
+1. Conecta el repo a Vercel (carpeta raíz del proyecto: `ccp-erp-app` si el repo es el monorepo, o la raíz si solo está la app).
+2. **Build Command:** deja el predeterminado; el script `vercel-build` en `package.json` ejecuta:
+   - migraciones
+   - seed (usuarios + obras de ejemplo)
+   - build de Next.js
+3. **Redeploy** después de guardar las variables.
+
+---
+
+## Paso 4 — Probar la demo
+
+1. Abre la URL de Vercel → `/login`.
+2. Clic en **Paty**, **Santiago**, **Carolina**, etc. (acceso rápido sin contraseña).
+3. Recorre: crear obra/OC → aprobar ingeniero → fecha límite → pago → factura.
+
+Usuarios del seed:
+
+| Clic en login | Rol |
+|---------------|-----|
+| Paty | Compras |
+| Santiago | Ingeniero |
+| Rosa Carolina | Pagos |
+| Recepción / Helena | Solo consulta y avisos |
+
+---
+
+## Desarrollo en tu PC (misma BD que Vercel)
+
+Para probar localmente contra Neon:
+
+```env
+DATABASE_URL="postgresql://...tu-url-de-neon..."
+SESSION_SECRET="local-dev-secret"
+ALLOW_QUICK_LOGIN=true
+FILES_STORAGE=database
+```
+
+```powershell
+cd ccp-erp-app
+npm install
+npx prisma migrate deploy
+npm run db:seed
+npm run dev
+```
+
+Para volver a PDFs en disco en la oficina más adelante: `FILES_STORAGE=disk` y `FILES_ROOT` en una ruta fija (ver DESPLIEGUE.md).
+
+---
+
+## Problemas frecuentes
+
+**“Error al iniciar sesión” / base de datos**  
+- Falta `DATABASE_URL` en Vercel o la URL es de SQLite (`file:./dev.db`). Debe ser `postgresql://...`.
+
+**Build falla en migrate**  
+- Revisa que Neon acepte conexiones y que la URL tenga `?sslmode=require`.
+
+**PDF no se abre en Vercel**  
+- Debe usarse almacenamiento en BD; confirma `VERCEL=1` o `FILES_STORAGE=database`.
+
+**¿Sigue sirviendo solo local?**  
+- No: con Neon + variables en Vercel la demo online funciona. La instalación en PC de oficina sigue siendo la opción recomendada para producción con archivos en disco.
