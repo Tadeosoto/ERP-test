@@ -1,11 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { verifyPassword } from "@/lib/auth/password";
-import {
-  createSession,
-  sessionCookieOptions,
-} from "@/lib/auth/session-server";
-import { asRole } from "@/lib/services/mappers";
+import { jsonLoginSuccess, loginErrorMessage } from "@/lib/auth/build-login-response";
 
 export async function POST(request: Request) {
   try {
@@ -24,18 +20,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Credenciales incorrectas." }, { status: 401 });
     }
 
-    const token = await createSession(user.id);
-    const response = NextResponse.json({
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: asRole(user.role),
-      },
-    });
-    response.cookies.set(sessionCookieOptions(token));
-    return response;
-  } catch {
-    return NextResponse.json({ error: "Error al iniciar sesión." }, { status: 500 });
+    return jsonLoginSuccess(user);
+  } catch (error) {
+    console.error("[login]", error);
+    return NextResponse.json({ error: loginErrorMessage(error) }, { status: 500 });
   }
 }

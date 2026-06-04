@@ -14,6 +14,7 @@ type Ctx = {
   user: SessionUser | null;
   ready: boolean;
   login: (email: string, password: string) => Promise<{ ok: true } | { ok: false; error: string }>;
+  quickLogin: (email: string) => Promise<{ ok: true } | { ok: false; error: string }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
 };
@@ -55,14 +56,27 @@ export function SessionProvider({ children }: { children: React.ReactNode }) {
     return { ok: true as const };
   }, []);
 
+  const quickLogin = useCallback(async (email: string) => {
+    const res = await fetch("/api/auth/quick-login", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ email }),
+    });
+    const data = (await res.json()) as { user?: SessionUser; error?: string };
+    if (!res.ok) return { ok: false as const, error: data.error ?? "Error al entrar." };
+    setUser(data.user ?? null);
+    return { ok: true as const };
+  }, []);
+
   const logout = useCallback(async () => {
     await fetch("/api/auth/logout", { method: "POST", credentials: "include" });
     setUser(null);
   }, []);
 
   const value = useMemo(
-    () => ({ user, ready, login, logout, refreshUser }),
-    [user, ready, login, logout, refreshUser]
+    () => ({ user, ready, login, quickLogin, logout, refreshUser }),
+    [user, ready, login, quickLogin, logout, refreshUser]
   );
 
   return <SessionContext.Provider value={value}>{children}</SessionContext.Provider>;

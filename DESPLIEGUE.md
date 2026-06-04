@@ -56,6 +56,12 @@ pm2 startup
 
 Contraseña inicial: la definida en `INITIAL_PASSWORD` (por defecto en desarrollo `ccp2026`).
 
+**Acceso rápido (demo):** en la pantalla de login se puede entrar con un clic en cada usuario, sin contraseña. Desactivar con `ALLOW_QUICK_LOGIN=false` en `.env`.
+
+## Vercel
+
+Este proyecto **no está listo para Vercel solo con SQLite**. Ver [VERCEL.md](./VERCEL.md) (variables de entorno, base de datos y por qué falla el login).
+
 ## Respaldo (importante)
 
 Programar copia diaria de:
