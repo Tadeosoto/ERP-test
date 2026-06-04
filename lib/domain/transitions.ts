@@ -1,162 +1,114 @@
-import type { PurchaseCase, Role, CaseStatus } from "./types";
+import type { Role, OrderStatus, PaymentType, PaymentLabel } from "./types";
+import { statusAfterEngineerApprove } from "./flow";
 
-export function getPendingRole(status: CaseStatus): Role | null {
-  switch (status) {
-    case "draft":
-      return "costos";
-    case "pendingEngineer":
-      return "ingeniero";
-    case "approved":
-      return "pagos";
-    case "paid":
-      return "costos";
-    case "invoiceRequested":
-      return "costos";
-    case "readyForReception":
-      return "recepcion";
-    case "capturedByReception":
-      return "contabilidad";
-    case "reconciled":
-      return null;
-    default:
-      return null;
+export function createOrderByCompras(input: {
+  totalAmount: number;
+  suggestedPaymentType?: PaymentType | null;
+}): {
+  totalAmount: number;
+  amountPaidSoFar: number;
+  paymentLabel: PaymentLabel;
+  suggestedPaymentType: PaymentType | null;
+  status: OrderStatus;
+} {
+  if (input.totalAmount <= 0) throw new Error("El total de la orden debe ser mayor a cero.");
+  return {
+    totalAmount: input.totalAmount,
+    amountPaidSoFar: 0,
+    paymentLabel: "pendiente",
+    suggestedPaymentType: input.suggestedPaymentType ?? null,
+    status: "awaitingEngineer",
+  };
+}
+
+export function afterEngineerReject(): OrderStatus {
+  return "engineerRejected";
+}
+
+export function afterPatySetsDeadline(): OrderStatus {
+  return "awaitingPayment";
+}
+
+export function afterOcPdfReuploaded(): OrderStatus {
+  return "awaitingEngineer";
+}
+
+export function afterFinalDocsUploaded(): OrderStatus {
+  return "completed";
+}
+
+export function computePaymentLabel(totalAmount: number, amountPaidSoFar: number): PaymentLabel {
+  return amountPaidSoFar >= totalAmount - 0.01 ? "saldada" : "pendiente";
+}
+
+export function registerPaymentAmount(input: {
+  totalAmount: number;
+  currentPaid: number;
+  paymentAmount: number;
+  paymentType: PaymentType;
+}): {
+  amountPaidSoFar: number;
+  paymentLabel: PaymentLabel;
+  status: OrderStatus;
+  fullyPaid: boolean;
+} {
+  if (input.paymentAmount <= 0) throw new Error("El monto del abono debe ser mayor a cero.");
+  const amountPaidSoFar = input.currentPaid + input.paymentAmount;
+  if (amountPaidSoFar > input.totalAmount + 0.01) {
+    throw new Error("El abono supera el total pendiente de la orden.");
   }
-}
+  const fullyPaid = amountPaidSoFar >= input.totalAmount - 0.01;
+  const paymentLabel = computePaymentLabel(input.totalAmount, amountPaidSoFar);
 
-export function canRoleAdvance(role: Role, status: CaseStatus): boolean {
-  return getPendingRole(status) === role;
-}
+  if (input.paymentType === "inmediato" && !fullyPaid) {
+    throw new Error("Pago inmediato: debe saldarse el 100% en un solo registro.");
+  }
+  if (input.paymentType === "programado" && !fullyPaid) {
+    throw new Error("Pago programado: debe registrarse el monto total de la orden.");
+  }
 
-export function amountsRoughlyMatch(c: PurchaseCase): boolean {
-  const pay = c.payment?.amount;
-  const inv = c.invoice?.amount;
-  if (pay == null || inv == null) return false;
-  return Math.abs(pay - inv) < 0.01;
-}
-
-export function submitDraftToEngineer(c: PurchaseCase, now: string): PurchaseCase {
-  if (c.status !== "draft") throw new Error("Estado inválido");
-  if (!c.supplierName.trim() || c.amountOc <= 0)
-    throw new Error("Complete proveedor e importe");
-  return { ...c, status: "pendingEngineer", updatedAt: now };
-}
-
-export function engineerApprove(
-  c: PurchaseCase,
-  userId: string,
-  comment: string | undefined,
-  now: string
-): PurchaseCase {
-  if (c.status !== "pendingEngineer") throw new Error("Estado inválido");
   return {
-    ...c,
-    status: "approved",
-    engineerApprovedAt: now,
-    engineerApprovedByUserId: userId,
-    engineerComment: comment?.trim() || undefined,
-    updatedAt: now,
+    amountPaidSoFar: fullyPaid ? input.totalAmount : amountPaidSoFar,
+    paymentLabel: fullyPaid ? "saldada" : "pendiente",
+    status: fullyPaid ? "awaitingFinalDocs" : "awaitingPayment",
+    fullyPaid,
   };
 }
 
-export function registerPayment(
-  c: PurchaseCase,
-  input: {
-    reference: string;
-    amount: number;
-    paidAt: string;
-    receiptFile?: { name: string; sizeBytes: number };
-  },
-  now: string
-): PurchaseCase {
-  if (c.status !== "approved") throw new Error("Estado inválido");
-  return {
-    ...c,
-    status: "paid",
-    payment: {
-      reference: input.reference.trim(),
-      amount: input.amount,
-      paidAt: input.paidAt,
-      receiptFile: input.receiptFile,
-    },
-    updatedAt: now,
-  };
+export function engineerApproveNextStatus(
+  engineerPaymentType: PaymentType,
+  suggestedPaymentType: PaymentType | null
+): { status: OrderStatus; paymentType: PaymentType } {
+  const paymentType =
+    suggestedPaymentType === "parcialidades" ? "parcialidades" : engineerPaymentType;
+  const status = statusAfterEngineerApprove(paymentType, suggestedPaymentType === "parcialidades");
+  return { status, paymentType };
 }
 
-export function requestInvoice(c: PurchaseCase, now: string): PurchaseCase {
-  if (c.status !== "paid") throw new Error("Estado inválido");
-  return {
-    ...c,
-    status: "invoiceRequested",
-    invoiceRequestedAt: now,
-    updatedAt: now,
-  };
+export function canCreateOrder(role: Role): boolean {
+  return role === "compras";
 }
 
-function hasDigitalPackageReady(c: PurchaseCase): boolean {
-  return Boolean(c.payment && c.invoice);
+export function canUploadOcPdf(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && (status === "engineerRejected" || status === "awaitingEngineer");
 }
 
-export function registerInvoiceAndSendToReception(
-  c: PurchaseCase,
-  input: {
-    folio: string;
-    amount: number;
-    issuedAt: string;
-    file?: { name: string; sizeBytes: number };
-  },
-  now: string
-): PurchaseCase {
-  if (c.status !== "invoiceRequested") throw new Error("Estado inválido");
-  const next: PurchaseCase = {
-    ...c,
-    invoice: {
-      folio: input.folio.trim(),
-      amount: input.amount,
-      issuedAt: input.issuedAt,
-      file: input.file,
-    },
-    updatedAt: now,
-  };
-  if (!hasDigitalPackageReady(next)) throw new Error("Falta comprobante de pago");
-  return { ...next, status: "readyForReception", updatedAt: now };
+export function canEngineerAct(status: OrderStatus, role: Role): boolean {
+  return role === "ingeniero" && status === "awaitingEngineer";
 }
 
-export function receptionCapture(
-  c: PurchaseCase,
-  userId: string,
-  notes: string,
-  now: string
-): PurchaseCase {
-  if (c.status !== "readyForReception") throw new Error("Estado inválido");
-  return {
-    ...c,
-    status: "capturedByReception",
-    receptionCapture: {
-      notes: notes.trim(),
-      capturedAt: now,
-      capturedByUserId: userId,
-    },
-    updatedAt: now,
-  };
+export function canSetPaymentDeadline(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && status === "awaitingPatyDeadline";
 }
 
-export function accountingReconcile(
-  c: PurchaseCase,
-  userId: string,
-  balanced: boolean,
-  notes: string,
-  now: string
-): PurchaseCase {
-  if (c.status !== "capturedByReception") throw new Error("Estado inválido");
-  return {
-    ...c,
-    status: "reconciled",
-    accounting: {
-      balanced,
-      notes: notes.trim(),
-      reconciledAt: now,
-      reconciledByUserId: userId,
-    },
-    updatedAt: now,
-  };
+export function canRegisterPayment(status: OrderStatus, role: Role): boolean {
+  return role === "pagos" && status === "awaitingPayment";
+}
+
+export function canUploadFinalDocs(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && status === "awaitingFinalDocs";
+}
+
+export function amountRemaining(totalAmount: number, amountPaidSoFar: number): number {
+  return Math.max(0, totalAmount - amountPaidSoFar);
 }

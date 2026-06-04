@@ -1,10 +1,10 @@
-import { DashboardShell } from "@/components/dashboard-shell";
 import { SessionGate } from "@/components/session-gate";
+import { AppShell } from "@/components/app-shell";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <SessionGate>
-      <DashboardShell>{children}</DashboardShell>
+      <AppShell>{children}</AppShell>
     </SessionGate>
   );
 }

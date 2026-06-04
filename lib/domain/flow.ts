@@ -1,7 +1,6 @@
-import type { CaseStatus, Role } from "./types";
-import { ROLE_LABEL } from "./labels";
+import type { OrderStatus, Role, PaymentType, PaymentLabel } from "./types";
+import { ROLE_LABEL, PAYMENT_TYPE_TEXT } from "./labels";
 
-/** Etapas numeradas del diagrama (misma lógica que la línea de tiempo del expediente). */
 export const FLOW_STEPS: readonly {
   step: number;
   shortTitle: string;
@@ -11,143 +10,183 @@ export const FLOW_STEPS: readonly {
   {
     step: 1,
     shortTitle: "OC",
-    detail: "Costos crea y envía la orden de compra",
-    primaryRole: "costos",
+    detail: "Paty crea la orden y sube el PDF",
+    primaryRole: "compras",
   },
   {
     step: 2,
     shortTitle: "Ingeniería",
-    detail: "Visto bueno técnico",
+    detail: "Santiago verifica y aprueba (define modalidad de pago)",
     primaryRole: "ingeniero",
   },
   {
     step: 3,
-    shortTitle: "Pagos",
-    detail: "Pago al proveedor",
-    primaryRole: "pagos",
+    shortTitle: "Fecha",
+    detail: "Si es programado, Paty indica la fecha límite a Carolina",
+    primaryRole: "compras",
   },
   {
     step: 4,
-    shortTitle: "Factura",
-    detail: "Costos solicita factura al proveedor",
-    primaryRole: "costos",
+    shortTitle: "Pagos",
+    detail: "Carolina paga (inmediato, programado o abonos)",
+    primaryRole: "pagos",
   },
   {
     step: 5,
-    shortTitle: "Paquete",
-    detail: "Costos registra factura y envía paquete digital a Recepción",
-    primaryRole: "costos",
+    shortTitle: "Documentos",
+    detail: "Paty sube factura y complemento si aplica",
+    primaryRole: "compras",
   },
   {
     step: 6,
-    shortTitle: "Recepción",
-    detail: "Captura en sistema",
-    primaryRole: "recepcion",
-  },
-  {
-    step: 7,
-    shortTitle: "Contabilidad",
-    detail: "Conciliación y cierre",
-    primaryRole: "contabilidad",
+    shortTitle: "Cierre",
+    detail: "Todos consultan y descargan",
+    primaryRole: null,
   },
 ] as const;
 
-/** Número de etapa activa (1–7) o 8 si ya cerró en contabilidad. */
-export function flowPhaseNumber(status: CaseStatus): number {
+export function flowPhaseNumber(status: OrderStatus): number {
   switch (status) {
-    case "draft":
-      return 1;
-    case "pendingEngineer":
+    case "awaitingEngineer":
       return 2;
-    case "approved":
+    case "engineerRejected":
+      return 1;
+    case "awaitingPatyDeadline":
       return 3;
-    case "paid":
+    case "awaitingPayment":
       return 4;
-    case "invoiceRequested":
+    case "awaitingFinalDocs":
       return 5;
-    case "readyForReception":
+    case "completed":
       return 6;
-    case "capturedByReception":
-      return 7;
-    case "reconciled":
-      return 8;
     default:
       return 1;
   }
 }
 
-export function isFlowComplete(status: CaseStatus): boolean {
-  return status === "reconciled";
+export function flowProgressPercent(status: OrderStatus): number {
+  const phase = flowPhaseNumber(status);
+  if (status === "completed") return 100;
+  return Math.round(((phase - 1) / FLOW_STEPS.length) * 100);
 }
 
-/** Texto de qué está esperando el expediente (visible para todos). */
-export function describeGate(status: CaseStatus): string {
+export function isFlowComplete(status: OrderStatus): boolean {
+  return status === "completed";
+}
+
+export function getPendingRole(status: OrderStatus): Role | null {
   switch (status) {
-    case "draft":
-      return "Pendiente: Costos debe enviar la OC a Ingeniería.";
-    case "pendingEngineer":
-      return "Pendiente: Ingeniería debe dar visto bueno.";
-    case "approved":
-      return "Pendiente: Pagos debe registrar el pago al proveedor.";
-    case "paid":
-      return "Pendiente: Costos debe solicitar factura al proveedor.";
-    case "invoiceRequested":
-      return "Pendiente: Costos debe cargar la factura y enviar el paquete digital a Recepción.";
-    case "readyForReception":
-      return "Pendiente: Recepción debe capturar en sistema.";
-    case "capturedByReception":
-      return "Pendiente: Contabilidad debe conciliar y cerrar.";
-    case "reconciled":
-      return "Expediente cerrado.";
+    case "awaitingEngineer":
+      return "ingeniero";
+    case "engineerRejected":
+    case "awaitingPatyDeadline":
+      return "compras";
+    case "awaitingPayment":
+      return "pagos";
+    case "awaitingFinalDocs":
+      return "compras";
+    case "completed":
+      return null;
+    default:
+      return null;
+  }
+}
+
+export function canRoleAdvance(role: Role, status: OrderStatus): boolean {
+  return getPendingRole(status) === role;
+}
+
+export function describeGate(status: OrderStatus, paymentType?: PaymentType | null): string {
+  switch (status) {
+    case "awaitingEngineer":
+      return "Le toca a Santiago revisar la orden de compra.";
+    case "engineerRejected":
+      return "Santiago pidió correcciones. Paty debe actualizar y volver a enviar el PDF.";
+    case "awaitingPatyDeadline":
+      return "Paty debe indicar la fecha límite de pago para Carolina (orden programada).";
+    case "awaitingPayment":
+      if (paymentType === "inmediato") {
+        return "Le toca a Carolina saldar el 100% de la orden (pago inmediato).";
+      }
+      if (paymentType === "programado") {
+        return "Le toca a Carolina realizar el pago completo antes de la fecha límite.";
+      }
+      if (paymentType === "parcialidades") {
+        return "Le toca a Carolina registrar abonos hasta completar el total.";
+      }
+      return "Le toca a Carolina gestionar el pago de la orden.";
+    case "awaitingFinalDocs":
+      return "Le toca a Paty subir la factura (y complemento si aplica).";
+    case "completed":
+      return "Proceso terminado. Todos pueden consultar y descargar.";
     default:
       return "";
   }
 }
 
-/** Guía estática por rol (recordatorio de qué hace cada área en este proceso). */
+export function sessionHintForCase(
+  viewerRole: Role,
+  status: OrderStatus,
+  canAdvance: boolean
+): string {
+  if (isFlowComplete(status)) {
+    return "Esta orden ya está completa. Puedes ver y descargar los documentos.";
+  }
+  if (canAdvance) {
+    return "Te corresponde avanzar: usa los botones de «Tu tarea» más abajo.";
+  }
+  const pending = getPendingRole(status);
+  const area = pending ? ROLE_LABEL[pending] : "otra área";
+  return `Ahora le toca a ${area}. Puedes seguir el avance aquí; solo quien corresponde puede modificar.`;
+}
+
 export function rolePlaybook(role: Role): string[] {
   switch (role) {
-    case "costos":
+    case "compras":
       return [
-        "Crear nuevas órdenes de compra y enviarlas a Ingeniería.",
-        "Después del pago: solicitar factura al proveedor.",
-        "Registrar factura y comprobantes para armar el paquete digital hacia Recepción.",
+        "Crear obras y entrar a cada una para ver sus órdenes y configurar nombre o estado.",
+        "Crear la orden de compra tras negociar con proveedores y subir el PDF.",
+        "Si la orden es por parcialidades, indícalo al crear la OC.",
+        "Si ingeniería la marca como programada, indica la fecha límite de pago a Carolina.",
+        "Al final, subir factura (obligatorio) y complemento de pago si aplica.",
       ];
     case "ingeniero":
       return [
-        "Revisar cada OC que llegue a tu bandeja y dar visto bueno o comentarios.",
+        "Revisar el PDF y los datos de la orden.",
+        "Aprobar indicando si el pago será inmediato o programado (parcialidades si Paty ya lo indicó).",
       ];
     case "pagos":
       return [
-        "Cuando la OC esté aprobada, registrar el pago al proveedor con referencia e importe.",
+        "Tras la aprobación de ingeniería, pagar según la modalidad: inmediato, programado o abonos parciales.",
+        "Llevar el control de cuánto se ha pagado y cuánto falta.",
       ];
     case "recepcion":
-      return [
-        "Cuando llegue el paquete digital, capturar la información en tu sistema.",
-      ];
+      return ["Recibir aviso cuando Paty suba documentos finales y descargarlos."];
     case "contabilidad":
-      return [
-        "Tras la captura en recepción, conciliar montos y cerrar el expediente.",
-      ];
+      return ["Recibir aviso cuando Paty suba documentos finales y descargarlos."];
     default:
       return [];
   }
 }
 
-/** Qué puede hacer el usuario ahora en este expediente (si puede avanzar o solo observar). */
-export function sessionHintForCase(
-  viewerRole: Role,
-  status: CaseStatus,
-  canAdvance: boolean
-): string {
-  if (isFlowComplete(status)) {
-    return "Este expediente ya está cerrado. Puedes revisar la información; no hay más acciones.";
-  }
-  if (canAdvance) {
-    return "Te corresponde avanzar este expediente: usa el formulario en «Tu turno» más abajo.";
-  }
-  const pending = flowPhaseNumber(status);
-  const step = FLOW_STEPS.find((s) => s.step === pending);
-  const area = step?.primaryRole ? ROLE_LABEL[step.primaryRole] : "otra área";
-  return `Ahora le toca a ${area}. Puedes seguir el estado aquí y en el mapa del proceso; las modificaciones solo las puede hacer quien corresponde.`;
+export function paymentTypeDescription(type: PaymentType): string {
+  return PAYMENT_TYPE_TEXT[type];
+}
+
+export function statusAfterEngineerApprove(
+  paymentType: PaymentType,
+  suggestedParcialidades: boolean
+): OrderStatus {
+  const effective =
+    suggestedParcialidades && paymentType !== "programado" ? "parcialidades" : paymentType;
+  if (effective === "programado") return "awaitingPatyDeadline";
+  return "awaitingPayment";
+}
+
+export function resolveEngineerPaymentType(
+  engineerChoice: PaymentType,
+  suggestedPaymentType: PaymentType | null
+): PaymentType {
+  if (suggestedPaymentType === "parcialidades") return "parcialidades";
+  return engineerChoice;
 }

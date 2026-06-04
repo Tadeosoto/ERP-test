@@ -1,11 +1,11 @@
 "use client";
 
+import type { OrderStatus } from "@/lib/domain/types";
 import { FLOW_STEPS, flowPhaseNumber, isFlowComplete } from "@/lib/domain/flow";
-import type { CaseStatus } from "@/lib/domain/types";
 
 function Arrow() {
   return (
-    <span className="flex shrink-0 items-center justify-center text-orange-300" aria-hidden>
+    <span className="flex shrink-0 items-center justify-center text-teal-300" aria-hidden>
       <svg className="h-4 w-6 sm:h-5 sm:w-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
       </svg>
@@ -15,7 +15,7 @@ function Arrow() {
 
 function ArrowDown() {
   return (
-    <span className="flex justify-center py-1 text-orange-300" aria-hidden>
+    <span className="flex justify-center py-1 text-teal-300" aria-hidden>
       <svg className="h-6 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
       </svg>
@@ -44,16 +44,16 @@ function StepNode({
 }) {
   const base =
     state === "done"
-      ? "border-orange-500 bg-orange-600 text-white shadow-md"
+      ? "border-teal-600 bg-teal-600 text-white shadow-md"
       : state === "current"
         ? "border-orange-600 bg-white text-orange-800 ring-2 ring-orange-400 ring-offset-2"
         : state === "legend"
-          ? "border-orange-200 bg-white text-orange-900 shadow-sm"
+          ? "border-teal-200 bg-white text-teal-900 shadow-sm"
           : "border-orange-100 bg-orange-50/80 text-zinc-400";
   return (
     <div className="flex min-w-0 flex-col items-center gap-1">
       <div
-        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 text-xs font-bold transition-colors sm:h-12 sm:w-12 ${base}`}
+        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border-2 text-xs font-bold sm:h-12 sm:w-12 ${base}`}
         title={shortTitle}
       >
         {state === "done" ? (
@@ -75,8 +75,7 @@ export function ProcessFlowDiagram({
   status,
   className = "",
 }: {
-  /** Sin estado: solo muestra el mapa general (misma forma, sin etapa activa). */
-  status?: CaseStatus | null;
+  status?: OrderStatus | null;
   className?: string;
 }) {
   const legend = status == null;
@@ -110,7 +109,7 @@ export function ProcessFlowDiagram({
         ))}
       </div>
       {complete && !legend && (
-        <p className="mt-3 text-center text-sm font-medium text-emerald-700">Expediente cerrado en contabilidad</p>
+        <p className="mt-3 text-center text-base font-medium text-teal-700">Proceso completado</p>
       )}
     </div>
   );

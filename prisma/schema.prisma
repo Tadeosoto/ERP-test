@@ -1,0 +1,114 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id               String          @id @default(cuid())
+  email            String          @unique
+  name             String
+  role             String
+  passwordHash     String
+  createdAt        DateTime        @default(now())
+  sessions         Session[]
+  comments         OrderComment[]
+  notifications    Notification[]
+  uploadedFiles    StoredFile[]
+  createdOrders    PurchaseOrder[] @relation("OrderCreator")
+  paymentRecords   PaymentRecord[]
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  token     String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+}
+
+model Obra {
+  id        String          @id @default(cuid())
+  name      String
+  active    Boolean         @default(true)
+  createdAt DateTime        @default(now())
+  orders    PurchaseOrder[]
+}
+
+model PurchaseOrder {
+  id                   String          @id @default(cuid())
+  obraId               String
+  obra                 Obra            @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  title                String
+  description          String          @default("")
+  supplierName         String
+  totalAmount          Float
+  amountPaidSoFar      Float           @default(0)
+  currency             String          @default("MXN")
+  paymentLabel         String          @default("pendiente")
+  paymentType          String?
+  suggestedPaymentType String?
+  paymentDueDate       DateTime?
+  status               String          @default("awaitingEngineer")
+  createdByUserId      String
+  createdBy            User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
+  createdAt            DateTime        @default(now())
+  updatedAt            DateTime        @updatedAt
+  comments             OrderComment[]
+  files                StoredFile[]
+  notifications        Notification[]
+  paymentRecords       PaymentRecord[]
+}
+
+model PaymentRecord {
+  id               String        @id @default(cuid())
+  orderId          String
+  order            PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount           Float
+  reference        String        @default("")
+  notes            String        @default("")
+  recordedByUserId String
+  recordedBy       User          @relation(fields: [recordedByUserId], references: [id])
+  createdAt        DateTime      @default(now())
+}
+
+model OrderComment {
+  id        String        @id @default(cuid())
+  orderId   String
+  order     PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  authorId  String
+  author    User          @relation(fields: [authorId], references: [id])
+  body      String
+  kind      String
+  createdAt DateTime      @default(now())
+}
+
+model StoredFile {
+  id               String        @id @default(cuid())
+  orderId          String
+  order            PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String
+  mimeType         String        @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User          @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime      @default(now())
+}
+
+model Notification {
+  id        String         @id @default(cuid())
+  userId    String
+  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId   String?
+  order     PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  type      String
+  message   String
+  read      Boolean        @default(false)
+  createdAt DateTime       @default(now())
+}

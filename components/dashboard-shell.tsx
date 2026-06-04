@@ -2,17 +2,23 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { CcpLogo, CcpLogoIcon } from "@/components/ccp-logo";
 import { useSession } from "@/components/session-provider";
+import { useNotifications } from "@/lib/hooks/use-notifications";
 import { ROLE_LABEL } from "@/lib/domain/labels";
+import { IconLogOut, IconRefresh } from "@/components/ui/action-icons";
+
+const SIDEBAR_WIDTH = "w-44";
+const SIDEBAR_PL = "pl-44";
 
 const nav = [
-  { href: "/dashboard", label: "Panel", icon: "grid" },
+  { href: "/obras", label: "Obras", icon: "grid" },
   { href: "/flujo", label: "Mapa", icon: "flow" },
-  { href: "/settings", label: "Ajustes", icon: "gear" },
+  { href: "/notificaciones", label: "Avisos", icon: "bell" },
 ] as const;
 
 function Icon({ name }: { name: string }) {
-  const cls = "h-5 w-5";
+  const cls = "h-6 w-6";
   if (name === "grid")
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -22,102 +28,130 @@ function Icon({ name }: { name: string }) {
   if (name === "flow")
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <path
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M6 8h4M6 12h8M6 16h6M14 8l4 4-4 4"
-        />
+        <path strokeWidth={2} strokeLinecap="round" d="M6 8h4M6 12h8M6 16h6M14 8l4 4-4 4" />
       </svg>
     );
-  if (name === "gear")
+  if (name === "bell")
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
         <path
           strokeWidth={2}
           strokeLinecap="round"
           strokeLinejoin="round"
-          d="M12 15a3 3 0 100-6 3 3 0 000 6z"
-        />
-        <path
-          strokeWidth={2}
-          strokeLinecap="round"
-          strokeLinejoin="round"
-          d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"
+          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 10-12 0v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9"
         />
       </svg>
     );
   return null;
 }
 
-export function DashboardShell({ children }: { children: React.ReactNode }) {
+export function DashboardShell({
+  children,
+  onRefresh,
+}: {
+  children: React.ReactNode;
+  onRefresh?: () => void | Promise<void>;
+}) {
   const pathname = usePathname();
-  const { session, logout } = useSession();
-  if (!session) return null;
+  const { user, logout } = useSession();
+  const { unreadCount, refresh: refreshNotifications } = useNotifications();
+
+  if (!user) return null;
+
+  async function handleRefresh() {
+    await refreshNotifications();
+    await onRefresh?.();
+  }
 
   return (
     <div className="flex min-h-screen bg-orange-50/60">
-      <aside className="fixed inset-y-0 left-0 z-40 flex w-[72px] flex-col bg-orange-700 py-6 text-white shadow-lg">
-        <div className="mb-8 flex justify-center text-lg font-bold tracking-tight">CC</div>
-        <nav className="flex flex-1 flex-col gap-1 px-2">
+      <aside
+        className={`fixed inset-y-0 left-0 z-40 flex ${SIDEBAR_WIDTH} flex-col bg-orange-900 py-4 text-white shadow-lg`}
+      >
+        <Link
+          href="/obras"
+          title="Consorcio Constructor Profesional — inicio"
+          className="mx-3 mb-5 block rounded-xl px-1 py-2 transition hover:bg-orange-800/60"
+        >
+          <CcpLogo size="sm" className="h-auto w-full" />
+        </Link>
+        <nav className="flex flex-1 flex-col gap-1.5 px-2">
           {nav.map((item) => {
             const active =
               pathname === item.href ||
-              (item.href === "/dashboard" && (pathname?.startsWith("/cases") ?? false));
+              pathname?.startsWith(item.href + "/") ||
+              (item.href === "/obras" && pathname?.startsWith("/ordenes"));
             return (
               <Link
-                key={item.label + item.href}
+                key={item.href}
                 href={item.href}
                 title={item.label}
-                className={`flex h-12 items-center justify-center rounded-2xl transition-colors ${
-                  active ? "bg-white text-orange-700" : "text-orange-100 hover:bg-orange-600/80"
+                className={`relative flex flex-col items-center gap-1 rounded-2xl px-2 py-3 text-center text-xs font-medium transition-colors ${
+                  active ? "bg-white text-orange-800" : "text-orange-100 hover:bg-orange-800"
                 }`}
               >
                 <Icon name={item.icon} />
+                <span>{item.label}</span>
+                {item.icon === "bell" && unreadCount > 0 && (
+                  <span className="absolute right-1 top-1 flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-500 px-1 text-[10px] font-bold text-white">
+                    {unreadCount > 9 ? "9+" : unreadCount}
+                  </span>
+                )}
               </Link>
             );
           })}
         </nav>
       </aside>
 
-      <div className="flex min-h-screen flex-1 flex-col pl-[72px]">
-        <header className="sticky top-0 z-30 border-b border-orange-100 bg-white/95 px-6 py-4 backdrop-blur">
+      <div className={`flex min-h-screen flex-1 flex-col ${SIDEBAR_PL}`}>
+        <header className="sticky top-0 z-30 border-b border-orange-100 bg-white/95 px-4 py-4 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4">
+            <div className="flex flex-wrap items-center gap-3">
+              <Link
+                href="/obras"
+                title="Consorcio Constructor Profesional"
+                className="shrink-0 rounded-xl p-1 transition hover:bg-orange-50"
+              >
+                <CcpLogoIcon size="md" />
+              </Link>
             <nav className="flex flex-wrap items-center gap-2" aria-label="Secciones">
               <Link
-                href="/dashboard"
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
-                  pathname === "/dashboard" || (pathname?.startsWith("/cases") ?? false)
+                href="/obras"
+                className={`rounded-full px-5 py-2.5 text-base font-medium transition-colors ${
+                  pathname?.startsWith("/obras") || pathname?.startsWith("/ordenes")
                     ? "bg-orange-600 text-white shadow-sm"
-                    : "bg-orange-50 text-orange-800/80 hover:bg-orange-100"
+                    : "bg-orange-50 text-orange-800 hover:bg-orange-100"
                 }`}
               >
-                Panel
+                Obras
               </Link>
               <Link
                 href="/flujo"
-                className={`rounded-full px-4 py-2 text-sm font-medium transition-colors ${
+                className={`rounded-full px-5 py-2.5 text-base font-medium transition-colors ${
                   pathname?.startsWith("/flujo")
                     ? "bg-orange-600 text-white shadow-sm"
-                    : "bg-orange-50 text-orange-800/80 hover:bg-orange-100"
+                    : "bg-orange-50 text-orange-800 hover:bg-orange-100"
                 }`}
               >
                 Mapa del proceso
               </Link>
-              <span className="rounded-full bg-zinc-100 px-4 py-2 text-sm font-medium text-zinc-400">
-                Reportes (pronto)
-              </span>
             </nav>
-            <div className="flex items-center gap-3">
-              <span className="hidden text-sm text-zinc-600 sm:inline">
-                {session.name}{" "}
-                <span className="text-zinc-400">({ROLE_LABEL[session.role]})</span>
-              </span>
+            </div>
+            <div className="flex flex-wrap items-center gap-3">
               <button
                 type="button"
-                onClick={() => logout()}
-                className="rounded-full border border-orange-200 bg-white px-4 py-2 text-sm font-medium text-orange-800 hover:bg-orange-50"
+                onClick={() => void handleRefresh()}
+                className="btn-ghost min-h-11 text-sm"
               >
+                <IconRefresh />
+                Actualizar
+              </button>
+              <span className="hidden text-base text-zinc-600 sm:inline">
+                {user.name}{" "}
+                <span className="text-zinc-400">({ROLE_LABEL[user.role]})</span>
+              </span>
+              <button type="button" onClick={() => void logout()} className="btn-ghost min-h-11 text-sm">
+                <IconLogOut />
                 Salir
               </button>
             </div>
@@ -126,8 +160,13 @@ export function DashboardShell({ children }: { children: React.ReactNode }) {
 
         <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
 
-        <footer className="border-t border-orange-100 bg-white/80 py-3 text-center text-xs text-orange-900/50">
-          Demo local · datos en navegador
+        <footer className="border-t border-orange-100 bg-white/80 px-4 py-4">
+          <div className="mx-auto flex max-w-6xl flex-col items-center gap-2 sm:flex-row sm:justify-center sm:gap-3">
+            <CcpLogoIcon size="sm" className="opacity-90" />
+            <p className="text-center text-sm text-orange-900/50">
+              CCP ERP · red local · datos en servidor de oficina
+            </p>
+          </div>
         </footer>
       </div>
     </div>
