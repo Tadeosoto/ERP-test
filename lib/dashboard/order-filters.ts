@@ -38,7 +38,10 @@ export function filterOrdersByListFilter(
   role?: Role
 ): PurchaseOrderDto[] {
   if (!filter) return orders;
-  if (filter === "pendientes" && role) {
+  if (filter === "pendientes") {
+    if (!role) {
+      return orders.filter((o) => getPendingRole(o.status) !== null);
+    }
     return orders.filter((o) => getPendingRole(o.status) === role);
   }
   const statuses = STATUS_GROUPS[filter];
