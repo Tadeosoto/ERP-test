@@ -1,7 +1,7 @@
 import type { Role, OrderStatus, PaymentLabel, PaymentType } from "./types";
 
 export const ROLE_LABEL: Record<Role, string> = {
-  pagos: "Pagos",
+  pagos: "Administración",
   compras: "Compras",
   ingeniero: "Ingeniero",
   recepcion: "Recepción",
@@ -12,7 +12,7 @@ export const STATUS_LABEL: Record<OrderStatus, string> = {
   awaitingEngineer: "En revisión de ingeniería",
   engineerRejected: "Correcciones solicitadas",
   awaitingPatyDeadline: "Paty debe indicar fecha límite de pago",
-  awaitingPayment: "Pendiente de pago (Carolina)",
+  awaitingPayment: "Pendiente de pago (Administración)",
   awaitingFinalDocs: "Esperando factura y documentos",
   completed: "Completada",
 };

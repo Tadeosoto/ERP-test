@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { ObraOrderRow } from "@/components/obra-order-row";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDate } from "@/lib/format";
@@ -23,6 +24,8 @@ export default function ObraDetailPage() {
   const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [notFound, setNotFound] = useState(false);
 
   const sortedOrders = useMemo(() => sortByCreatedAtDesc(orders), [orders]);
   const visibleOrders = useMemo(
@@ -41,13 +44,16 @@ export default function ObraDetailPage() {
       setObra(d.obra);
       setEditName(d.obra.name);
       setEditActive(d.obra.active);
+      setNotFound(false);
     } else {
       setObra(null);
+      setNotFound(true);
     }
     if (ordRes.ok) {
       const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
     }
+    setLoading(false);
   }, [obraId]);
 
   useEffect(() => {
@@ -80,7 +86,11 @@ export default function ObraDetailPage() {
 
   if (!obraId) return null;
 
-  if (!obra) {
+  if (loading) {
+    return <LoadingScreen message="Cargando Obra" />;
+  }
+
+  if (notFound || !obra) {
     return (
       <div className="card p-8 text-center">
         <p className="text-base text-zinc-600">Obra no encontrada.</p>

@@ -91,3 +91,36 @@ export interface NotificationDto {
   read: boolean;
   createdAt: string;
 }
+
+export type MovementKind =
+  | "order_created"
+  | "approval"
+  | "rejection"
+  | "payment"
+  | "file_upload";
+
+export interface MovementDto {
+  id: string;
+  kind: MovementKind;
+  role: Role;
+  actorName: string;
+  description: string;
+  context: string;
+  orderId: string;
+  orderTitle: string;
+  obraId: string;
+  obraName: string;
+  createdAt: string;
+}
+
+export interface PendingMovementDto {
+  id: string;
+  role: Role;
+  description: string;
+  orderId: string;
+  orderTitle: string;
+  obraId: string;
+  obraName: string;
+  status: OrderStatus;
+  updatedAt: string;
+}

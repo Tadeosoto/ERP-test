@@ -5,6 +5,7 @@
   "scripts": {
     "dev": "next dev",
     "dev:fresh": "npx prisma generate && next dev",
+    "db:fix-client": "npx prisma generate",
     "build": "prisma generate && next build",
     "vercel-build": "prisma generate && prisma migrate deploy && tsx prisma/seed.ts && next build",
     "start": "next start",

@@ -27,7 +27,7 @@ export const FLOW_STEPS: readonly {
   },
   {
     step: 4,
-    shortTitle: "Pagos",
+    shortTitle: "Administración",
     detail: "Carolina paga (inmediato, programado o abonos)",
     primaryRole: "pagos",
   },

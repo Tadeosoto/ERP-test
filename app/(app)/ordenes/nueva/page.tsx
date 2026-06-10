@@ -5,12 +5,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { useEffect, useState, Suspense } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
 import { IconSend } from "@/components/ui/action-icons";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
 import type { ObraDto } from "@/lib/domain/types";
 
 export default function NuevaOrdenPage() {
   return (
-    <Suspense fallback={<div className="card p-8 text-center">Cargando…</div>}>
+    <Suspense fallback={<LoadingScreen message="Cargando Formulario" />}>
       <NuevaOrdenForm />
     </Suspense>
   );
@@ -31,6 +32,7 @@ function NuevaOrdenForm() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [loadingObras, setLoadingObras] = useState(true);
 
   useEffect(() => {
     fetch("/api/obras", { credentials: "include" })
@@ -43,7 +45,8 @@ function NuevaOrdenForm() {
         } else if (active[0]) {
           setObraId(active[0].id);
         }
-      });
+      })
+      .finally(() => setLoadingObras(false));
   }, [preselectedObra]);
 
   if (user && user.role !== "compras") {
@@ -55,6 +58,10 @@ function NuevaOrdenForm() {
         </Link>
       </div>
     );
+  }
+
+  if (loadingObras) {
+    return <LoadingScreen message="Cargando Obras" />;
   }
 
   async function submit(e: React.FormEvent) {

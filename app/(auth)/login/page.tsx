@@ -6,9 +6,10 @@ import { useEffect, useState } from "react";
 import { CcpLogoIcon } from "@/components/ccp-logo";
 import { useSession } from "@/components/session-provider";
 import { IconLogIn } from "@/components/ui/action-icons";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 const QUICK_USERS = [
-  { email: "carolina@ccp.local", name: "Rosa Carolina", role: "Pagos" },
+  { email: "carolina@ccp.local", name: "Rosa Carolina", role: "Administración" },
   { email: "paty@ccp.local", name: "Paty", role: "Compras" },
   { email: "santiago@ccp.local", name: "Santiago", role: "Ingeniero" },
   { email: "recepcion@ccp.local", name: "Recepción", role: "Recepción" },
@@ -25,7 +26,7 @@ export default function LoginPage() {
 
   useEffect(() => {
     if (!ready) return;
-    if (user) router.replace("/obras");
+    if (user) router.replace("/inicio");
   }, [ready, user, router]);
 
   async function submit(e: React.FormEvent) {
@@ -38,7 +39,7 @@ export default function LoginPage() {
       setError(r.error);
       return;
     }
-    router.replace("/obras");
+    router.replace("/inicio");
   }
 
   async function enterAs(userEmail: string) {
@@ -48,14 +49,17 @@ export default function LoginPage() {
     const r = await quickLogin(userEmail);
     setBusy(false);
     if (!r.ok) setError(r.error);
-    else router.replace("/obras");
+    else router.replace("/inicio");
   }
 
   if (!ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-gradient-to-br from-orange-400 via-orange-500 to-teal-700 text-lg text-white">
-        Cargando…
-      </div>
+      <LoadingScreen
+        message="Cargando Sesión"
+        viewport
+        tone="light"
+        className="bg-gradient-to-br from-orange-400 via-orange-500 to-teal-700"
+      />
     );
   }
 
@@ -136,7 +140,7 @@ export default function LoginPage() {
           </p>
         )}
       </div>
-      <Link href="/obras" className="mt-6 text-base text-white/90 underline-offset-4 hover:underline">
+      <Link href="/inicio" className="mt-6 text-base text-white/90 underline-offset-4 hover:underline">
         Ir a obras (requiere sesión)
       </Link>
     </div>

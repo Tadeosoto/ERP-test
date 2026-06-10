@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { useSession } from "@/components/session-provider";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 export function SessionGate({ children }: { children: React.ReactNode }) {
   const { user, ready } = useSession();
@@ -15,9 +16,11 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
 
   if (!ready || !user) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-orange-50 text-lg text-orange-900/70">
-        Cargando…
-      </div>
+      <LoadingScreen
+        message="Cargando Sesión"
+        viewport
+        className="bg-[#fff7ed]"
+      />
     );
   }
 

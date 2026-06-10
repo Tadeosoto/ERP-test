@@ -1,18 +1,29 @@
 "use client";
 
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
 import { IconBuilding, IconPlus } from "@/components/ui/action-icons";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ObraCard } from "@/components/obra-card";
 import { ObraOrderRow } from "@/components/obra-order-row";
-import { RoleGuidancePanel } from "@/components/role-guidance-panel";
 import { useSession } from "@/components/session-provider";
+import {
+  FILTER_TITLES,
+  filterOrdersByListFilter,
+  parseOrderListFilter,
+} from "@/lib/dashboard/order-filters";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { filterObras, filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils";
 
 export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
   const { user } = useSession();
+  const searchParams = useSearchParams();
+  const listFilter = parseOrderListFilter(
+    searchParams.get("estado"),
+    searchParams.get("pendientes")
+  );
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [newObraName, setNewObraName] = useState("");
@@ -20,6 +31,7 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
   const [obraSearch, setObraSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
   const [err, setErr] = useState<string | null>(null);
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
     const [oRes, ordRes] = await Promise.all([
@@ -34,6 +46,7 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
       const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
     }
+    setInitialLoading(false);
   }, []);
 
   useEffect(() => {
@@ -69,32 +82,52 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
   );
 
   const ordersByObra = useMemo(() => {
-    const base = filterObra === "all" ? orders : orders.filter((o) => o.obraId === filterObra);
+    let base = filterObra === "all" ? orders : orders.filter((o) => o.obraId === filterObra);
+    if (listFilter && user) {
+      base = filterOrdersByListFilter(base, listFilter, user.role);
+    }
     return sortByCreatedAtDesc(base);
-  }, [orders, filterObra]);
+  }, [orders, filterObra, listFilter, user]);
 
   const visibleOrders = useMemo(
     () => filterOrders(ordersByObra, orderSearch),
     [ordersByObra, orderSearch]
   );
 
+  if (initialLoading) {
+    return <LoadingScreen message="Cargando Obras" />;
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight text-zinc-900">Obras</h1>
+          <Link href="/inicio" className="text-sm font-medium text-orange-700 hover:underline">
+            ← Inicio
+          </Link>
+          <h1 className="mt-1 text-3xl font-bold tracking-tight text-zinc-900">Obras</h1>
           <p className="mt-2 text-base text-zinc-600">
-            Cada obra agrupa varias órdenes de compra. Entra a una obra para ver su avance y configurarla.
+            Detalle de obras y órdenes. Usa los filtros o busca por nombre.
           </p>
         </div>
         {user?.role === "compras" && (
           <Link href="/ordenes/nueva" className="btn-primary">
-            + Nueva orden de compra
+            <IconPlus />
+            Nueva orden
           </Link>
         )}
       </div>
 
-      {user && <RoleGuidancePanel role={user.role} />}
+      {listFilter && (
+        <div className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/30 px-4 py-3">
+          <p className="text-sm text-zinc-700">
+            Filtro: <span className="font-semibold">{FILTER_TITLES[listFilter]}</span>
+          </p>
+          <Link href="/obras" className="text-sm font-medium text-orange-700 hover:underline">
+            Quitar filtro
+          </Link>
+        </div>
+      )}
 
       <section className="space-y-4">
         <div className="flex flex-wrap items-end justify-between gap-4">
@@ -163,8 +196,10 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
           <button
             type="button"
             onClick={() => setFilterObra("all")}
-            className={`rounded-full px-5 py-2.5 text-base font-medium ${
-              filterObra === "all" ? "bg-orange-600 text-white" : "bg-orange-50 text-orange-900"
+            className={`rounded-full px-4 py-2 text-sm font-medium ${
+              filterObra === "all"
+                ? "bg-orange-100 text-orange-900 ring-1 ring-orange-200"
+                : "bg-white text-zinc-600 ring-1 ring-orange-100 hover:bg-orange-50"
             }`}
           >
             Todas ({orders.length})
@@ -174,8 +209,10 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
               key={o.id}
               type="button"
               onClick={() => setFilterObra(o.id)}
-              className={`rounded-full px-5 py-2.5 text-base font-medium ${
-                filterObra === o.id ? "bg-teal-600 text-white" : "bg-teal-50 text-teal-900"
+              className={`rounded-full px-4 py-2 text-sm font-medium ${
+                filterObra === o.id
+                  ? "bg-teal-50 text-teal-900 ring-1 ring-teal-200"
+                  : "bg-white text-zinc-600 ring-1 ring-orange-100 hover:bg-teal-50/50"
               } ${!o.active ? "opacity-70" : ""}`}
             >
               {o.name}

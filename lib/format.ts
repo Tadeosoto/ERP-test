@@ -9,6 +9,18 @@ export function formatDate(iso: string): string {
   }
 }
 
+export function formatDateTime(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      dateStyle: "short",
+      timeStyle: "short",
+      timeZone: "America/Mexico_City",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export function formatMoney(amount: number, currency: string): string {
   try {
     return new Intl.NumberFormat("es-MX", {

@@ -2,10 +2,15 @@
 
 import Link from "next/link";
 import { IconCheck, IconRefresh } from "@/components/ui/action-icons";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useNotifications } from "@/lib/hooks/use-notifications";
 
 export default function NotificacionesPage() {
-  const { notifications, unreadCount, refresh, markAllRead } = useNotifications(0);
+  const { notifications, unreadCount, loading, refresh, markAllRead } = useNotifications(0);
+
+  if (loading) {
+    return <LoadingScreen message="Cargando Notificaciones" />;
+  }
 
   return (
     <div className="space-y-6">

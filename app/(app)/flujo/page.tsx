@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { ObraOrderRow } from "@/components/obra-order-row";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 import { FLOW_STEPS } from "@/lib/domain/flow";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
@@ -13,6 +14,7 @@ import { filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils";
 export default function FlujoPage() {
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [orderSearch, setOrderSearch] = useState("");
+  const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/orders", { credentials: "include" });
@@ -20,6 +22,7 @@ export default function FlujoPage() {
       const d = (await res.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
     }
+    setInitialLoading(false);
   }, []);
 
   useEffect(() => {
@@ -31,6 +34,10 @@ export default function FlujoPage() {
     () => filterOrders(sortedOrders, orderSearch),
     [sortedOrders, orderSearch]
   );
+
+  if (initialLoading) {
+    return <LoadingScreen message="Cargando Mapa del Proceso" />;
+  }
 
   return (
     <div className="space-y-10">
