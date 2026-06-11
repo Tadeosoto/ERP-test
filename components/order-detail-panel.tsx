@@ -15,6 +15,7 @@ import {
   IconEdit,
 } from "@/components/ui/action-icons";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
+import { SystemStatusBadge } from "@/components/ui/system-status-badge";
 import { useSession } from "@/components/session-provider";
 import {
   canRoleAdvance,
@@ -22,18 +23,26 @@ import {
   sessionHintForCase,
 } from "@/lib/domain/flow";
 import {
+  canAccountingResolveDifference,
+  canAccountingValidate,
   canEngineerAct,
+  canMarkAwaitingInvoice,
   canRegisterPayment,
   canSetPaymentDeadline,
-  canUploadFinalDocs,
+  canUploadInvoice,
   canUploadOcPdf,
+  canUploadPaymentReceipt,
 } from "@/lib/domain/transitions";
 import {
   FILE_KIND_LABEL,
   PAYMENT_LABEL_TEXT,
   PAYMENT_TYPE_TEXT,
-  STATUS_LABEL,
 } from "@/lib/domain/labels";
+import { useFeedback } from "@/components/ui/feedback-provider";
+import {
+  actionSuccessMessage,
+  fileUploadSuccessMessage,
+} from "@/lib/process-feedback";
 import type { PaymentType, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDate, formatMoney } from "@/lib/format";
 
@@ -46,7 +55,7 @@ export function OrderDetailPanel({
 }) {
   const router = useRouter();
   const { user } = useSession();
-  const [err, setErr] = useState<string | null>(null);
+  const { showSuccess, showError } = useFeedback();
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
   const [engineerPaymentType, setEngineerPaymentType] = useState<PaymentType>("inmediato");
@@ -55,10 +64,12 @@ export function OrderDetailPanel({
   const [payReference, setPayReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
 
+  const [accountingComment, setAccountingComment] = useState("");
+
   const canAct = user ? canRoleAdvance(user.role, order.status) : false;
 
   async function postAction(body: Record<string, unknown>) {
-    setErr(null);
+    const action = typeof body.action === "string" ? body.action : "";
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${order.id}/actions`, {
@@ -68,18 +79,18 @@ export function OrderDetailPanel({
         body: JSON.stringify(body),
       });
       const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Error");
+      if (!res.ok) throw new Error(data.error ?? "No se pudo completar la acción.");
       onUpdated();
       router.refresh();
+      showSuccess(actionSuccessMessage(action));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      showError(e instanceof Error ? e.message : "No se pudo completar la acción.");
     } finally {
       setBusy(false);
     }
   }
 
   async function uploadFile(kind: string, file: File) {
-    setErr(null);
     setBusy(true);
     try {
       const fd = new FormData();
@@ -92,11 +103,12 @@ export function OrderDetailPanel({
         body: fd,
       });
       const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "Error al subir");
+      if (!res.ok) throw new Error(data.error ?? "Error al subir el archivo.");
       onUpdated();
       router.refresh();
+      showSuccess(fileUploadSuccessMessage(kind));
     } catch (e) {
-      setErr(e instanceof Error ? e.message : "Error");
+      showError(e instanceof Error ? e.message : "Error al subir el archivo.");
     } finally {
       setBusy(false);
     }
@@ -119,9 +131,7 @@ export function OrderDetailPanel({
             <p className="mt-2 text-lg text-zinc-600">{order.supplierName}</p>
             <p className="mt-2 text-base text-zinc-500">Orden creada el {formatDate(order.createdAt)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
-              <span className="inline-flex rounded-full bg-orange-100 px-4 py-1.5 text-sm font-semibold text-orange-900">
-                {STATUS_LABEL[order.status]}
-              </span>
+              <SystemStatusBadge status={order.status} />
               <span className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-900">
                 {PAYMENT_LABEL_TEXT[order.paymentLabel]}
               </span>
@@ -248,7 +258,6 @@ export function OrderDetailPanel({
         </div>
       )}
 
-      {err && <p className="rounded-2xl bg-red-50 px-4 py-3 text-base text-red-700">{err}</p>}
 
       <div className="card border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
         <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
@@ -408,10 +417,43 @@ export function OrderDetailPanel({
           </div>
         )}
 
-        {canUploadFinalDocs(order.status, user.role) && (
+        {canUploadPaymentReceipt(order.status, user.role) && (
+          <div className="mt-4 space-y-3">
+            <p className="text-base text-zinc-700">
+              Sube el comprobante bancario del pago (PDF).
+            </p>
+            <FilePickButton
+              disabled={busy}
+              label="Elegir comprobante"
+              hint="busca en tu equipo el PDF del comprobante de pago"
+              onPick={(file) => void uploadFile("comprobante_pago", file)}
+            />
+          </div>
+        )}
+
+        {canMarkAwaitingInvoice(order.status, user.role) && (
+          <div className="mt-4 space-y-3">
+            <p className="text-base text-zinc-700">
+              Tras enviar el comprobante al proveedor y solicitar la factura, marca la orden como
+              «Esperando factura».
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              className="btn-secondary"
+              onClick={() => void postAction({ action: "mark_awaiting_invoice" })}
+            >
+              <IconCalendar />
+              Marcar esperando factura
+            </button>
+          </div>
+        )}
+
+        {canUploadInvoice(order.status, user.role) && (
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
-              Sube la factura (obligatorio) y complemento de pago si aplica.
+              Sube el PDF de la factura del proveedor. Compras, Administración o Recepción pueden
+              hacerlo.
             </p>
             <div>
               <p className="font-medium text-zinc-800">Factura (PDF)</p>
@@ -438,13 +480,75 @@ export function OrderDetailPanel({
           </div>
         )}
 
+        {canAccountingValidate(order.status, user.role) && (
+          <div className="mt-4 space-y-4">
+            <p className="text-base text-zinc-700">
+              Compara la OC, el comprobante de pago y la factura. Cierra el expediente o marca
+              diferencia si algo no cuadra.
+            </p>
+            <textarea
+              value={accountingComment}
+              onChange={(e) => setAccountingComment(e.target.value)}
+              placeholder="Observación (obligatoria si hay diferencia)"
+              rows={3}
+              className="w-full rounded-2xl border border-orange-100 px-4 py-3 text-base"
+            />
+            <div className="flex flex-wrap gap-3">
+              <button
+                type="button"
+                disabled={busy}
+                className="btn-primary"
+                onClick={() => void postAction({ action: "accounting_complete" })}
+              >
+                <IconCheck />
+                Validar y cerrar expediente
+              </button>
+              <button
+                type="button"
+                disabled={busy}
+                className="btn-danger"
+                onClick={() =>
+                  void postAction({
+                    action: "accounting_flag_difference",
+                    comment: accountingComment,
+                  })
+                }
+              >
+                <IconEdit />
+                Marcar diferencia
+              </button>
+            </div>
+          </div>
+        )}
+
+        {canAccountingResolveDifference(order.status, user.role) && (
+          <div className="mt-4 space-y-3">
+            <p className="text-base text-zinc-700">
+              Tras corregir la diferencia, puedes cerrar el expediente.
+            </p>
+            <button
+              type="button"
+              disabled={busy}
+              className="btn-primary"
+              onClick={() => void postAction({ action: "accounting_resolve" })}
+            >
+              <IconCheck />
+              Resolver y cerrar expediente
+            </button>
+          </div>
+        )}
+
         {!canAct &&
           order.status !== "completed" &&
           !canUploadOcPdf(order.status, user.role) &&
           !canEngineerAct(order.status, user.role) &&
           !canRegisterPayment(order.status, user.role) &&
           !canSetPaymentDeadline(order.status, user.role) &&
-          !canUploadFinalDocs(order.status, user.role) && (
+          !canUploadPaymentReceipt(order.status, user.role) &&
+          !canMarkAwaitingInvoice(order.status, user.role) &&
+          !canUploadInvoice(order.status, user.role) &&
+          !canAccountingValidate(order.status, user.role) &&
+          !canAccountingResolveDifference(order.status, user.role) && (
             <p className="mt-4 text-base text-zinc-600">
               Por ahora no hay acciones para tu rol. Puedes consultar documentos arriba.
             </p>

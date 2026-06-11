@@ -1,6 +1,6 @@
 import type { Role } from "@/lib/domain/types";
 
-export type RoleActivityIconName = "document" | "wallet" | "hardhat" | "inbox";
+export type RoleActivityIconName = "document" | "wallet" | "hardhat" | "inbox" | "calculator";
 
 export const ROLE_ACTIVITY_STYLE: Record<
   Role,
@@ -22,7 +22,7 @@ export const ROLE_ACTIVITY_STYLE: Record<
     bg: "bg-emerald-100 text-emerald-800",
     ring: "ring-emerald-200/80",
     icon: "hardhat",
-    label: "Ingeniero",
+    label: "Ingeniería",
   },
   recepcion: {
     bg: "bg-violet-100 text-violet-800",
@@ -33,7 +33,7 @@ export const ROLE_ACTIVITY_STYLE: Record<
   contabilidad: {
     bg: "bg-purple-100 text-purple-800",
     ring: "ring-purple-200/80",
-    icon: "document",
+    icon: "calculator",
     label: "Contabilidad",
   },
 };

@@ -3,33 +3,16 @@
 import Link from "next/link";
 import { useState } from "react";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
-import {
-  describeGate,
-  flowProgressPercent,
-  getPendingRole,
-} from "@/lib/domain/flow";
-import {
-  PAYMENT_LABEL_TEXT,
-  PAYMENT_TYPE_TEXT,
-  ROLE_LABEL,
-  STATUS_LABEL,
-} from "@/lib/domain/labels";
+import { SystemStatusBadge } from "@/components/ui/system-status-badge";
+import { describeGate, flowProgressPercent, formatPendingRoles } from "@/lib/domain/flow";
+import { PAYMENT_LABEL_TEXT, PAYMENT_TYPE_TEXT } from "@/lib/domain/labels";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
 import { IconClipboard } from "@/components/ui/action-icons";
 import { formatDate, formatMoney } from "@/lib/format";
 
-const STATUS_DOT: Record<string, string> = {
-  awaitingEngineer: "bg-orange-500",
-  engineerRejected: "bg-red-500",
-  awaitingPatyDeadline: "bg-amber-500",
-  awaitingPayment: "bg-teal-500",
-  awaitingFinalDocs: "bg-teal-600",
-  completed: "bg-zinc-500",
-};
-
 export function ObraOrderRow({ order }: { order: PurchaseOrderDto }) {
   const [open, setOpen] = useState(false);
-  const pendingRole = getPendingRole(order.status);
+  const pendingLabel = formatPendingRoles(order.status);
   const progress = flowProgressPercent(order.status);
 
   return (
@@ -56,18 +39,13 @@ export function ObraOrderRow({ order }: { order: PurchaseOrderDto }) {
           <div className="grid min-w-0 flex-1 grid-cols-2 gap-x-5 gap-y-4 sm:grid-cols-4">
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">A cargo</p>
-              <p className="mt-1 break-words text-base font-semibold text-zinc-900">
-                {pendingRole ? ROLE_LABEL[pendingRole] : "—"}
-              </p>
+              <p className="mt-1 break-words text-base font-semibold text-zinc-900">{pendingLabel}</p>
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Estado</p>
-              <p className="mt-1 flex items-start gap-2 text-base font-medium leading-snug text-zinc-800">
-                <span
-                  className={`mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full ${STATUS_DOT[order.status] ?? "bg-zinc-300"}`}
-                />
-                <span className="min-w-0 break-words">{STATUS_LABEL[order.status]}</span>
-              </p>
+              <div className="mt-1">
+                <SystemStatusBadge status={order.status} size="sm" />
+              </div>
             </div>
             <div className="min-w-0">
               <p className="text-xs font-semibold uppercase tracking-wide text-zinc-400">Modalidad</p>
@@ -94,14 +72,14 @@ export function ObraOrderRow({ order }: { order: PurchaseOrderDto }) {
             aria-expanded={open}
             aria-label={open ? "Contraer detalle" : "Expandir detalle"}
           >
-          <svg
-            className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`}
-            fill="none"
-            stroke="currentColor"
-            viewBox="0 0 24 24"
-          >
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-          </svg>
+            <svg
+              className={`h-5 w-5 transition-transform ${open ? "rotate-180" : ""}`}
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+            </svg>
           </button>
         </div>
       </div>

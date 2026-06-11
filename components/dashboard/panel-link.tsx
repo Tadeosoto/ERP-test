@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { CalloutBubble } from "@/components/ui/callout-bubble";
+import { FloatingCallout } from "@/components/ui/callout-bubble";
 import {
   PANEL_HOVER_ROW,
   PANEL_SURFACE,
@@ -35,15 +35,17 @@ export function PanelLink({
   surface = "obrasNav",
 }: PanelLinkProps) {
   return (
-    <div className="flex min-h-0 flex-col gap-3">
+    <div className="relative min-h-0 overflow-visible">
       {hint && (
-        <CalloutBubble
+        <FloatingCallout
           title={hint.title}
           message={hint.message}
           actionLabel={hint.actionLabel}
           href={hint.href}
           onDismiss={onDismissHint}
-          tailAlign="right"
+          align="right"
+          placement="above"
+          widthClass="w-[min(16rem,calc(100vw-2rem))]"
         />
       )}
       <Link
@@ -110,18 +112,20 @@ export function MiniListPanel({
   const rowHover = PANEL_HOVER_ROW[surface] ?? "hover:border-orange-100 hover:bg-orange-50/40";
 
   return (
-    <section className={`flex min-h-0 flex-col rounded-2xl border p-4 shadow-sm ${PANEL_SURFACE[surface]}`}>
+    <section
+      className={`relative flex min-h-0 flex-col overflow-visible rounded-2xl border p-4 shadow-sm ${PANEL_SURFACE[surface]}`}
+    >
       {hint && (
-        <div className="mb-3 shrink-0">
-          <CalloutBubble
-            title={hint.title}
-            message={hint.message}
-            actionLabel={hint.actionLabel}
-            href={hint.href}
-            onDismiss={onDismissHint}
-            tailAlign="left"
-          />
-        </div>
+        <FloatingCallout
+          title={hint.title}
+          message={hint.message}
+          actionLabel={hint.actionLabel}
+          href={hint.href}
+          onDismiss={onDismissHint}
+          align="left"
+          placement="above"
+          widthClass="w-[min(16rem,calc(100vw-2rem))]"
+        />
       )}
       <div className="mb-3 flex items-center justify-between gap-2">
         <h2 className="text-base font-semibold text-zinc-800">{title}</h2>

@@ -65,6 +65,36 @@ async function main() {
         createdByUserId: paty.id,
       },
     });
+
+    await prisma.purchaseOrder.create({
+      data: {
+        obraId: obra1.id,
+        title: "Transformador 45 kVA",
+        supplierName: "Energía Total",
+        totalAmount: 156000,
+        amountPaidSoFar: 156000,
+        paymentLabel: "saldada",
+        paymentType: "inmediato",
+        status: "paid",
+        description: "Equipo principal subestación",
+        createdByUserId: paty.id,
+      },
+    });
+
+    await prisma.purchaseOrder.create({
+      data: {
+        obraId: obra2.id,
+        title: "Material de acabados",
+        supplierName: "Proveedora Centro",
+        totalAmount: 48000,
+        amountPaidSoFar: 48000,
+        paymentLabel: "saldada",
+        paymentType: "programado",
+        status: "invoiceReceived",
+        description: "Acabados edificio A",
+        createdByUserId: paty.id,
+      },
+    });
   }
 
   console.log("Seed OK. Contraseña inicial:", INITIAL_PASSWORD);

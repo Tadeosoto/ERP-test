@@ -6,6 +6,7 @@ import { useEffect, useState, Suspense } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
 import { IconSend } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import type { ObraDto } from "@/lib/domain/types";
 
@@ -19,6 +20,7 @@ export default function NuevaOrdenPage() {
 
 function NuevaOrdenForm() {
   const { user } = useSession();
+  const { showSuccess, showError } = useFeedback();
   const router = useRouter();
   const searchParams = useSearchParams();
   const preselectedObra = searchParams.get("obraId");
@@ -30,7 +32,6 @@ function NuevaOrdenForm() {
   const [description, setDescription] = useState("");
   const [parcialidades, setParcialidades] = useState(false);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [err, setErr] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [loadingObras, setLoadingObras] = useState(true);
 
@@ -66,9 +67,8 @@ function NuevaOrdenForm() {
 
   async function submit(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
     if (!pdfFile) {
-      setErr("Debes adjuntar el PDF de la orden de compra.");
+      showError("Debes adjuntar el PDF de la orden de compra.");
       return;
     }
     setBusy(true);
@@ -87,7 +87,7 @@ function NuevaOrdenForm() {
         }),
       });
       const data = (await res.json()) as { order?: { id: string }; error?: string };
-      if (!res.ok || !data.order) throw new Error(data.error ?? "Error al crear");
+      if (!res.ok || !data.order) throw new Error(data.error ?? "Error al crear la orden.");
 
       const fd = new FormData();
       fd.set("orderId", data.order.id);
@@ -95,11 +95,13 @@ function NuevaOrdenForm() {
       fd.set("file", pdfFile);
       const up = await fetch("/api/files/upload", { method: "POST", credentials: "include", body: fd });
       const upData = (await up.json()) as { error?: string };
-      if (!up.ok) throw new Error(upData.error ?? "Error al subir PDF");
+      if (!up.ok) throw new Error(upData.error ?? "Error al subir el PDF.");
 
-      router.push(`/ordenes/${data.order.id}`);
+      showSuccess("La orden de compra se creó correctamente.", () => {
+        router.push(`/ordenes/${data.order!.id}`);
+      });
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "Error");
+      showError(ex instanceof Error ? ex.message : "Error al crear la orden.");
     } finally {
       setBusy(false);
     }
@@ -117,12 +119,6 @@ function NuevaOrdenForm() {
         </p>
       </div>
       <form onSubmit={submit} className="card space-y-4 p-6">
-        {err && (
-          <div className="rounded-2xl border border-red-200 bg-red-50 px-4 py-4" role="alert">
-            <p className="font-semibold text-red-900">No se pudo guardar la orden</p>
-            <p className="mt-2 text-base leading-relaxed text-red-800">{err}</p>
-          </div>
-        )}
         <label className="block">
           <span className="font-medium">Obra</span>
           <select

@@ -30,6 +30,7 @@ export function asOrderStatus(value: string): OrderStatus {
   const legacy: Record<string, OrderStatus> = {
     awaitingOcPdf: "awaitingEngineer",
     awaitingBalancePayment: "awaitingPayment",
+    awaitingFinalDocs: "awaitingInvoice",
     parcial: "awaitingPayment",
   };
   return (legacy[value] ?? value) as OrderStatus;

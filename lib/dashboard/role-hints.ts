@@ -1,4 +1,4 @@
-import { getPendingRole } from "@/lib/domain/flow";
+import { canRoleAdvance, INVOICE_UPLOAD_ROLES } from "@/lib/domain/flow";
 import type { PurchaseOrderDto, Role } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
@@ -12,18 +12,18 @@ export type HomePanelHint = {
   actionLabel: string;
 };
 
-function firstPendingForRole(orders: PurchaseOrderDto[], role: Role): PurchaseOrderDto | undefined {
-  return sortByCreatedAtDesc(orders.filter((o) => getPendingRole(o.status) === role))[0];
+function pendingForRole(orders: PurchaseOrderDto[], role: Role): PurchaseOrderDto | undefined {
+  return sortByCreatedAtDesc(orders.filter((o) => canRoleAdvance(role, o.status)))[0];
 }
 
 export function getHomePanelHint(role: Role, orders: PurchaseOrderDto[]): HomePanelHint | null {
-  const pending = firstPendingForRole(orders, role);
+  const pending = pendingForRole(orders, role);
 
-  if (role === "pagos" && pending) {
+  if (role === "pagos" && pending?.status === "awaitingPayment") {
     return {
       target: "bandeja",
       title: "Tu tarea",
-      message: "Registra el pago aquí",
+      message: "Registra el pago y sube el comprobante aquí",
       href: `/ordenes/${pending.id}`,
       actionLabel: "Ir al pago",
     };
@@ -36,6 +36,26 @@ export function getHomePanelHint(role: Role, orders: PurchaseOrderDto[]): HomePa
       message: "Revisa y aprueba la orden aquí",
       href: `/ordenes/${pending.id}`,
       actionLabel: "Abrir orden",
+    };
+  }
+
+  if (role === "contabilidad" && pending) {
+    return {
+      target: "bandeja",
+      title: "Tu tarea",
+      message: "Valida OC, pago y factura aquí",
+      href: `/ordenes/${pending.id}`,
+      actionLabel: "Validar",
+    };
+  }
+
+  if (INVOICE_UPLOAD_ROLES.includes(role) && pending?.status === "awaitingInvoice") {
+    return {
+      target: "bandeja",
+      title: "Tu tarea",
+      message: "Sube la factura aquí",
+      href: `/ordenes/${pending.id}`,
+      actionLabel: "Subir factura",
     };
   }
 
@@ -58,7 +78,16 @@ export function getHomePanelHint(role: Role, orders: PurchaseOrderDto[]): HomePa
         actionLabel: "Indicar fecha",
       };
     }
-    if (pending?.status === "awaitingFinalDocs") {
+    if (pending?.status === "paid") {
+      return {
+        target: "bandeja",
+        title: "Tu tarea",
+        message: "Marca «Esperando factura» tras contactar al proveedor",
+        href: `/ordenes/${pending.id}`,
+        actionLabel: "Continuar",
+      };
+    }
+    if (pending?.status === "awaitingInvoice") {
       return {
         target: "bandeja",
         title: "Tu tarea",

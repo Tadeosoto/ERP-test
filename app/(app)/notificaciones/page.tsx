@@ -3,10 +3,26 @@
 import Link from "next/link";
 import { IconCheck, IconRefresh } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { useNotifications } from "@/lib/hooks/use-notifications";
 
 export default function NotificacionesPage() {
-  const { notifications, unreadCount, loading, refresh, markAllRead } = useNotifications(0);
+  const { notifications, unreadCount, loading, refresh } = useNotifications(0);
+  const { showSuccess, showError } = useFeedback();
+
+  async function handleMarkAllRead() {
+    try {
+      const res = await fetch("/api/notifications", { method: "POST", credentials: "include" });
+      if (!res.ok) {
+        const data = (await res.json()) as { error?: string };
+        throw new Error(data.error ?? "No se pudieron marcar las notificaciones.");
+      }
+      await refresh();
+      showSuccess("Todas las notificaciones quedaron marcadas como leídas.");
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "No se pudieron marcar las notificaciones.");
+    }
+  }
 
   if (loading) {
     return <LoadingScreen message="Cargando Notificaciones" />;
@@ -27,7 +43,7 @@ export default function NotificacionesPage() {
             Actualizar
           </button>
           {unreadCount > 0 && (
-            <button type="button" onClick={() => void markAllRead()} className="btn-secondary">
+            <button type="button" onClick={() => void handleMarkAllRead()} className="btn-secondary">
               <IconCheck />
               Marcar todas leídas
             </button>

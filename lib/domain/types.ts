@@ -5,8 +5,11 @@ export type OrderStatus =
   | "engineerRejected"
   | "awaitingPatyDeadline"
   | "awaitingPayment"
-  | "awaitingFinalDocs"
-  | "completed";
+  | "paid"
+  | "awaitingInvoice"
+  | "invoiceReceived"
+  | "completed"
+  | "difference";
 
 /** Modalidad acordada tras aprobación de ingeniería (o parcialidades sugerida por Paty). */
 export type PaymentType = "inmediato" | "programado" | "parcialidades";
@@ -14,7 +17,7 @@ export type PaymentType = "inmediato" | "programado" | "parcialidades";
 /** Estado de saldo de la orden. */
 export type PaymentLabel = "pendiente" | "saldada";
 
-export type FileKind = "oc_pdf" | "complemento_pago" | "factura";
+export type FileKind = "oc_pdf" | "comprobante_pago" | "complemento_pago" | "factura";
 
 export type CommentKind = "approval" | "rejection";
 

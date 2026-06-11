@@ -1,3 +1,16 @@
+export function formatDateShort(iso: string): string {
+  try {
+    return new Intl.DateTimeFormat("es-MX", {
+      day: "2-digit",
+      month: "short",
+      year: "2-digit",
+      timeZone: "America/Mexico_City",
+    }).format(new Date(iso));
+  } catch {
+    return iso;
+  }
+}
+
 export function formatDate(iso: string): string {
   try {
     return new Intl.DateTimeFormat("es-MX", {

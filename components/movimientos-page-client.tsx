@@ -6,6 +6,7 @@ import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import { ListSearchInput } from "@/components/list-search-input";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { roleActivityLabel } from "@/lib/dashboard/role-activity-style";
+import { formatPendingRoles } from "@/lib/domain/flow";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto, Role } from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/format";
@@ -203,7 +204,7 @@ export function MovimientosPageClient({ variant, onRegisterRefresh }: Props) {
               <Link href={`/ordenes/${m.orderId}`} className="flex gap-4">
                 <RoleActivityIcon role={m.role} />
                 <div className="min-w-0 flex-1">
-                  <p className="font-semibold text-zinc-900">Pendiente · {ROLE_LABEL[m.role]}</p>
+                  <p className="font-semibold text-zinc-900">Pendiente · {formatPendingRoles(m.status)}</p>
                   <p className="mt-1 text-base text-zinc-700">{m.description}</p>
                   <p className="mt-1 text-sm text-zinc-500">
                     {m.obraName} · {m.orderTitle}

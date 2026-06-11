@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
 import { IconBuilding, IconPlus } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { ObraCard } from "@/components/obra-card";
 import { ObraOrderRow } from "@/components/obra-order-row";
 import { useSession } from "@/components/session-provider";
@@ -19,6 +20,7 @@ import { filterObras, filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils
 
 export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
   const { user } = useSession();
+  const { showSuccess, showError } = useFeedback();
   const searchParams = useSearchParams();
   const listFilter = parseOrderListFilter(
     searchParams.get("estado"),
@@ -30,7 +32,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
   const [filterObra, setFilterObra] = useState<string>("all");
   const [obraSearch, setObraSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
-  const [err, setErr] = useState<string | null>(null);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -56,7 +57,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
 
   async function createObra(e: React.FormEvent) {
     e.preventDefault();
-    setErr(null);
     const res = await fetch("/api/obras", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -65,14 +65,14 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
     });
     const data = (await res.json()) as { error?: string; obra?: ObraDto };
     if (!res.ok) {
-      setErr(data.error ?? "Error");
+      showError(data.error ?? "No se pudo crear la obra.");
       return;
     }
     setNewObraName("");
     await load();
-    if (data.obra) {
-      window.location.href = `/obras/${data.obra.id}`;
-    }
+    showSuccess("La obra se creó correctamente.", () => {
+      if (data.obra) window.location.href = `/obras/${data.obra.id}`;
+    });
   }
 
   const sortedObras = useMemo(() => sortByCreatedAtDesc(obras), [obras]);
@@ -184,9 +184,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
               Crear obra
             </button>
           </form>
-          {err && (
-            <p className="mt-3 rounded-2xl bg-red-50 px-4 py-3 text-base text-red-700">{err}</p>
-          )}
         </section>
       )}
 

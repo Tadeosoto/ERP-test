@@ -39,6 +39,7 @@ export function DocumentDownloadButton({ fileId }: DocumentDownloadButtonProps) 
 
 export const FILE_VIEW_HINT: Record<string, string> = {
   oc_pdf: "abre la orden de compra en el navegador",
+  comprobante_pago: "abre el comprobante de pago en el navegador",
   factura: "abre la factura en el navegador",
   complemento_pago: "abre el complemento de pago en el navegador",
 };

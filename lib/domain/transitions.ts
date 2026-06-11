@@ -1,5 +1,5 @@
 import type { Role, OrderStatus, PaymentType, PaymentLabel } from "./types";
-import { statusAfterEngineerApprove } from "./flow";
+import { INVOICE_UPLOAD_ROLES, statusAfterEngineerApprove } from "./flow";
 
 export function createOrderByCompras(input: {
   totalAmount: number;
@@ -33,8 +33,24 @@ export function afterOcPdfReuploaded(): OrderStatus {
   return "awaitingEngineer";
 }
 
-export function afterFinalDocsUploaded(): OrderStatus {
+export function afterFullPayment(): OrderStatus {
+  return "paid";
+}
+
+export function afterMarkAwaitingInvoice(): OrderStatus {
+  return "awaitingInvoice";
+}
+
+export function afterInvoiceUploaded(): OrderStatus {
+  return "invoiceReceived";
+}
+
+export function afterAccountingComplete(): OrderStatus {
   return "completed";
+}
+
+export function afterAccountingDifference(): OrderStatus {
+  return "difference";
 }
 
 export function computePaymentLabel(totalAmount: number, amountPaidSoFar: number): PaymentLabel {
@@ -70,7 +86,7 @@ export function registerPaymentAmount(input: {
   return {
     amountPaidSoFar: fullyPaid ? input.totalAmount : amountPaidSoFar,
     paymentLabel: fullyPaid ? "saldada" : "pendiente",
-    status: fullyPaid ? "awaitingFinalDocs" : "awaitingPayment",
+    status: fullyPaid ? "paid" : "awaitingPayment",
     fullyPaid,
   };
 }
@@ -105,8 +121,24 @@ export function canRegisterPayment(status: OrderStatus, role: Role): boolean {
   return role === "pagos" && status === "awaitingPayment";
 }
 
-export function canUploadFinalDocs(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && status === "awaitingFinalDocs";
+export function canUploadPaymentReceipt(status: OrderStatus, role: Role): boolean {
+  return role === "pagos" && (status === "awaitingPayment" || status === "paid");
+}
+
+export function canMarkAwaitingInvoice(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && status === "paid";
+}
+
+export function canUploadInvoice(status: OrderStatus, role: Role): boolean {
+  return INVOICE_UPLOAD_ROLES.includes(role) && (status === "paid" || status === "awaitingInvoice");
+}
+
+export function canAccountingValidate(status: OrderStatus, role: Role): boolean {
+  return role === "contabilidad" && status === "invoiceReceived";
+}
+
+export function canAccountingResolveDifference(status: OrderStatus, role: Role): boolean {
+  return role === "contabilidad" && status === "difference";
 }
 
 export function amountRemaining(totalAmount: number, amountPaidSoFar: number): number {

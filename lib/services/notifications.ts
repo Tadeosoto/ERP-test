@@ -1,4 +1,5 @@
 import { prisma } from "@/lib/db";
+import { INVOICE_UPLOAD_ROLES } from "@/lib/domain/flow";
 import type { Role } from "@/lib/domain/types";
 
 type NotifyInput = {
@@ -48,44 +49,59 @@ export async function notifyAllUsers(orderId: string, type: string, message: str
 export const NotificationEvents = {
   orderCreated: (orderTitle: string) => ({
     type: "order_created",
-    message: `Paty registró la orden «${orderTitle}». Santiago: revisa y aprueba.`,
+    message: `Paty registró la orden «${orderTitle}». Ingeniería: revisa y aprueba.`,
     roles: ["ingeniero"] as Role[],
   }),
   ocPdfUpdated: (orderTitle: string) => ({
     type: "oc_pdf_updated",
-    message: `Paty actualizó el PDF de «${orderTitle}». Santiago: vuelve a revisar.`,
+    message: `Paty actualizó el PDF de «${orderTitle}». Ingeniería: vuelve a revisar.`,
     roles: ["ingeniero"] as Role[],
   }),
   engineerApproved: (orderTitle: string) => ({
     type: "engineer_approved",
-    message: `Santiago aprobó «${orderTitle}». Carolina: revisa el pago pendiente.`,
-    roles: ["pagos", "compras"] as Role[],
+    message: `Ingeniería aprobó «${orderTitle}». Administración: registra el pago.`,
+    roles: ["pagos"] as Role[],
   }),
   engineerApprovedProgramado: (orderTitle: string) => ({
     type: "engineer_approved_programado",
-    message: `Santiago aprobó «${orderTitle}» como pago programado. Paty: indica la fecha límite.`,
+    message: `Ingeniería aprobó «${orderTitle}» como pago programado. Paty: indica la fecha límite.`,
     roles: ["compras"] as Role[],
   }),
   engineerRejected: (orderTitle: string) => ({
     type: "engineer_rejected",
-    message: `Santiago solicitó correcciones en «${orderTitle}».`,
+    message: `Ingeniería solicitó correcciones en «${orderTitle}».`,
     roles: ["compras"] as Role[],
   }),
   deadlineSet: (orderTitle: string, dateStr: string) => ({
     type: "deadline_set",
-    message: `Paty fijó fecha límite de pago (${dateStr}) para «${orderTitle}». Carolina: programa el pago.`,
+    message: `Paty fijó fecha límite de pago (${dateStr}) para «${orderTitle}». Administración: programa el pago.`,
     roles: ["pagos"] as Role[],
   }),
   paymentRegistered: (orderTitle: string, fullyPaid: boolean) => ({
     type: "payment_registered",
     message: fullyPaid
-      ? `Carolina saldó «${orderTitle}». Paty: sube factura y documentos.`
-      : `Carolina registró un abono en «${orderTitle}».`,
-    roles: fullyPaid ? (["compras", "ingeniero"] as Role[]) : (["compras"] as Role[]),
+      ? `Administración registró el pago de «${orderTitle}». Compras: coordina con el proveedor.`
+      : `Administración registró un abono en «${orderTitle}».`,
+    roles: fullyPaid ? (["compras"] as Role[]) : (["pagos"] as Role[]),
   }),
-  finalDocsUploaded: (orderTitle: string) => ({
-    type: "final_docs_uploaded",
-    message: `Paty subió documentos finales de «${orderTitle}». Ya pueden consultarlos.`,
+  awaitingInvoice: (orderTitle: string) => ({
+    type: "awaiting_invoice",
+    message: `«${orderTitle}» espera factura. Compras, Administración o Recepción pueden subirla.`,
+    roles: INVOICE_UPLOAD_ROLES,
+  }),
+  invoiceUploaded: (orderTitle: string) => ({
+    type: "invoice_uploaded",
+    message: `Factura recibida en «${orderTitle}». Contabilidad: valida el expediente.`,
+    roles: ["contabilidad"] as Role[],
+  }),
+  orderCompleted: (orderTitle: string) => ({
+    type: "order_completed",
+    message: `«${orderTitle}» completada. Expediente cerrado.`,
     roles: ["pagos", "compras", "ingeniero", "recepcion", "contabilidad"] as Role[],
+  }),
+  orderDifference: (orderTitle: string) => ({
+    type: "order_difference",
+    message: `Diferencia detectada en «${orderTitle}». Contabilidad debe revisar.`,
+    roles: ["contabilidad", "compras", "pagos"] as Role[],
   }),
 };

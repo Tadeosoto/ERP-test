@@ -8,13 +8,16 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   engineer_rejected: ["compras"],
   deadline_set: ["pagos"],
   payment_registered: ["compras"],
+  awaiting_invoice: ["compras", "pagos", "recepcion"],
+  invoice_uploaded: ["contabilidad"],
+  order_difference: ["contabilidad"],
 };
 
 export function isNotificationActionable(n: NotificationDto, role: Role): boolean {
   const roles = ACTIONABLE_BY_TYPE[n.type];
   if (!roles?.includes(role)) return false;
   if (n.type === "payment_registered" && role === "compras") {
-    return n.message.toLowerCase().includes("sube factura");
+    return n.message.toLowerCase().includes("compras");
   }
   return Boolean(n.orderId);
 }
@@ -38,7 +41,12 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
     case "engineer_rejected":
       return "Corregir orden";
     case "payment_registered":
+      return "Coordinar factura";
+    case "awaiting_invoice":
       return "Subir factura";
+    case "invoice_uploaded":
+    case "order_difference":
+      return "Validar expediente";
     default:
       return "Ir a la actividad";
   }

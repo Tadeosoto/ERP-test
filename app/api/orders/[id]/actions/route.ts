@@ -1,9 +1,15 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
+  afterAccountingComplete,
+  afterAccountingDifference,
   afterEngineerReject,
+  afterMarkAwaitingInvoice,
   afterPatySetsDeadline,
+  canAccountingResolveDifference,
+  canAccountingValidate,
   canEngineerAct,
+  canMarkAwaitingInvoice,
   canRegisterPayment,
   canSetPaymentDeadline,
   engineerApproveNextStatus,
@@ -178,6 +184,75 @@ export async function POST(request: Request, ctx: Ctx) {
       });
 
       const evt = NotificationEvents.paymentRegistered(updated.title, result.fullyPaid);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "mark_awaiting_invoice") {
+      if (!canMarkAwaitingInvoice(status, role)) {
+        return NextResponse.json({ error: "No puedes marcar esperando factura ahora." }, { status: 403 });
+      }
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: { status: afterMarkAwaitingInvoice() },
+        include: orderInclude,
+      });
+      const evt = NotificationEvents.awaitingInvoice(updated.title);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "accounting_complete") {
+      if (!canAccountingValidate(status, role)) {
+        return NextResponse.json({ error: "No puedes cerrar el expediente ahora." }, { status: 403 });
+      }
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: { status: afterAccountingComplete() },
+        include: orderInclude,
+      });
+      const evt = NotificationEvents.orderCompleted(updated.title);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "accounting_flag_difference") {
+      if (!canAccountingValidate(status, role)) {
+        return NextResponse.json({ error: "No puedes marcar diferencia ahora." }, { status: 403 });
+      }
+      if (!body.comment?.trim()) {
+        return NextResponse.json({ error: "Indique la observación de la diferencia." }, { status: 400 });
+      }
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.orderComment.create({
+          data: {
+            orderId: id,
+            authorId: user.id,
+            body: body.comment!.trim(),
+            kind: "rejection",
+          },
+        });
+        return tx.purchaseOrder.update({
+          where: { id },
+          data: { status: afterAccountingDifference() },
+          include: orderInclude,
+        });
+      });
+      const evt = NotificationEvents.orderDifference(updated.title);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "accounting_resolve") {
+      if (!canAccountingResolveDifference(status, role)) {
+        return NextResponse.json({ error: "No puedes resolver la diferencia ahora." }, { status: 403 });
+      }
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: { status: afterAccountingComplete() },
+        include: orderInclude,
+      });
+      const evt = NotificationEvents.orderCompleted(updated.title);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
       return NextResponse.json({ order: mapOrder(updated) });
     }

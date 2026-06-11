@@ -1,5 +1,5 @@
-import { describeGate, getPendingRole } from "@/lib/domain/flow";
-import { FILE_KIND_LABEL, ROLE_LABEL } from "@/lib/domain/labels";
+import { canRoleAdvance, describeGate, formatPendingRoles, getPendingRoles } from "@/lib/domain/flow";
+import { FILE_KIND_LABEL } from "@/lib/domain/labels";
 import type { MovementDto, PendingMovementDto, Role } from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
 import { prisma } from "@/lib/db";
@@ -166,11 +166,11 @@ export async function fetchPendingMovements(
   let result: PendingMovementDto[] = orders
     .map((o) => {
       const status = asOrderStatus(o.status);
-      const role = getPendingRole(status);
-      if (!role) return null;
+      const roles = getPendingRoles(status);
+      if (roles.length === 0) return null;
       return {
         id: `pending-${o.id}`,
-        role,
+        role: roles[0],
         description: describeGate(
           status,
           o.paymentType ? asPaymentType(o.paymentType) : null
@@ -186,7 +186,7 @@ export async function fetchPendingMovements(
     .filter((x): x is PendingMovementDto => x !== null);
 
   if (filters.role) {
-    result = result.filter((m) => m.role === filters.role);
+    result = result.filter((m) => canRoleAdvance(filters.role!, m.status));
   }
   if (filters.obraId) {
     result = result.filter((m) => m.obraId === filters.obraId);
@@ -198,7 +198,7 @@ export async function fetchPendingMovements(
     const q = filters.q.trim().toLowerCase();
     result = result.filter((m) => {
       const hay =
-        `${m.description} ${m.orderTitle} ${m.obraName} ${ROLE_LABEL[m.role]}`.toLowerCase();
+        `${m.description} ${m.orderTitle} ${m.obraName} ${formatPendingRoles(m.status)}`.toLowerCase();
       return hay.includes(q);
     });
   }

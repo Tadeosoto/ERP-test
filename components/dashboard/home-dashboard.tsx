@@ -2,8 +2,9 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
+import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { MiniListPanel, PanelLink, StatChip } from "@/components/dashboard/panel-link";
-import { MovementsPanel } from "@/components/dashboard/movements-panel";
 import { usePageRefreshRegister } from "@/components/app-shell";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
@@ -28,6 +29,7 @@ export function HomeDashboard() {
   const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
+    if (!user) return;
     const [oRes, ordRes, recentRes, pendingRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
@@ -51,7 +53,7 @@ export function HomeDashboard() {
       setPendingMovements(d.pending);
     }
     setInitialLoading(false);
-  }, []);
+  }, [user]);
 
   useEffect(() => {
     void load();
@@ -83,10 +85,22 @@ export function HomeDashboard() {
     return <LoadingScreen message="Cargando Inicio" />;
   }
 
+  if (user.role === "compras") {
+    return (
+      <ComprasHomeDashboard
+        userName={user.name}
+        orders={orders}
+        obras={obras}
+        recentMovements={recentMovements}
+        pendingMovements={pendingMovements}
+      />
+    );
+  }
+
   const playbook = rolePlaybook(user.role)[0];
 
   return (
-    <div className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-4 lg:overflow-hidden">
+    <div className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-4">
       <header className="shrink-0">
         <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">¡Hola, {user.name.split(" ")[0]}!</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -104,48 +118,48 @@ export function HomeDashboard() {
         <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
           <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
             <MiniListPanel
-          title="Tu bandeja"
-          surface="bandeja"
-          empty="Nada pendiente con tu rol ahora."
-          href={myQueue.length ? `/ordenes/${myQueue[0].id}` : "/obras?pendientes=1"}
-          linkLabel={myQueue.length ? "Abrir primera" : "Ver obras"}
-          hint={panelHint && !hintDismissed ? panelHint : undefined}
-          onDismissHint={() => setHintDismissed(true)}
-          items={myQueue.map((o) => ({
-            id: o.id,
-            primary: o.title,
-            secondary: `${STATUS_LABEL[o.status]} · ${o.obraName}`,
-            href: `/ordenes/${o.id}`,
-          }))}
-        />
+              title="Tu bandeja"
+              surface="bandeja"
+              empty="Nada pendiente con tu rol ahora."
+              href={myQueue.length ? `/ordenes/${myQueue[0].id}` : "/obras?pendientes=1"}
+              linkLabel={myQueue.length ? "Abrir primera" : "Ver obras"}
+              hint={panelHint && !hintDismissed ? panelHint : undefined}
+              onDismissHint={() => setHintDismissed(true)}
+              items={myQueue.map((o) => ({
+                id: o.id,
+                primary: o.title,
+                secondary: `${STATUS_LABEL[o.status]} · ${o.obraName}`,
+                href: `/ordenes/${o.id}`,
+              }))}
+            />
 
-        <MiniListPanel
-          title="Obras"
-          surface="obras"
-          empty="Sin obras registradas."
-          href="/obras"
-          linkLabel="Ver todas"
-          items={recentObras.map((o) => ({
-            id: o.id,
-            primary: o.name,
-            secondary: `${o.orderCount} orden${o.orderCount === 1 ? "" : "es"} · ${o.active ? "Activa" : "Inactiva"}`,
-            href: `/obras/${o.id}`,
-          }))}
-        />
+            <MiniListPanel
+              title="Obras"
+              surface="obras"
+              empty="Sin obras registradas."
+              href="/obras"
+              linkLabel="Ver todas"
+              items={recentObras.map((o) => ({
+                id: o.id,
+                primary: o.name,
+                secondary: `${o.orderCount} orden${o.orderCount === 1 ? "" : "es"} · ${o.active ? "Activa" : "Inactiva"}`,
+                href: `/obras/${o.id}`,
+              }))}
+            />
 
-        <MiniListPanel
-          title="Órdenes recientes"
-          surface="ordenes"
-          empty="Sin órdenes todavía."
-          href="/obras"
-          linkLabel="Ver todas"
-          items={recentOrders.map((o) => ({
-            id: o.id,
-            primary: formatOrderLine(o),
-            secondary: STATUS_LABEL[o.status],
-            href: `/ordenes/${o.id}`,
-          }))}
-        />
+            <MiniListPanel
+              title="Órdenes recientes"
+              surface="ordenes"
+              empty="Sin órdenes todavía."
+              href="/obras"
+              linkLabel="Ver todas"
+              items={recentOrders.map((o) => ({
+                id: o.id,
+                primary: formatOrderLine(o),
+                secondary: STATUS_LABEL[o.status],
+                href: `/ordenes/${o.id}`,
+              }))}
+            />
           </div>
 
           <div className="hidden shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid">
@@ -163,43 +177,20 @@ export function HomeDashboard() {
               description="Buscar, filtrar y abrir el detalle de cada compra."
               accent="border-l-4 border-l-orange-300/60"
             />
-            {user.role === "compras" ? (
-              <PanelLink
-                href="/ordenes/nueva"
-                surface="accion"
-                title="Nueva orden de compra"
-                description="Registrar OC y PDF tras negociar con proveedor."
-                accent="border-l-4 border-l-orange-400/50"
-                meta="Acción"
-              />
-            ) : (
-              <PanelLink
-                href="/obras?pendientes=1"
-                surface="accion"
-                title="Pendientes del equipo"
-                description="Órdenes que esperan acción de otro rol."
-                accent="border-l-4 border-l-violet-300/50"
-              />
-            )}
+            <PanelLink
+              href="/obras?pendientes=1"
+              surface="accion"
+              title="Pendientes del equipo"
+              description="Órdenes que esperan acción de otro rol."
+              accent="border-l-4 border-l-violet-300/50"
+            />
           </div>
         </div>
 
-        <aside className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-2 xl:flex xl:w-80 xl:flex-col xl:gap-3">
-          <MovementsPanel
-            title="Últimos movimientos"
-            viewAllHref="/movimientos"
-            empty="Sin movimientos recientes."
-            variant="recent"
-            recent={recentMovements}
-          />
-          <MovementsPanel
-            title="Movimientos pendientes"
-            viewAllHref="/movimientos/pendientes"
-            empty="No hay tareas pendientes."
-            variant="pending"
-            pending={pendingMovements}
-          />
-        </aside>
+        <HomeActivitySidebar
+          recentMovements={recentMovements}
+          pendingMovements={pendingMovements}
+        />
       </div>
     </div>
   );

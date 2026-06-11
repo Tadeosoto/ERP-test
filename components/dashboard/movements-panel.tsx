@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
+import { formatPendingRoles } from "@/lib/domain/flow";
 import { roleActivityLabel } from "@/lib/dashboard/role-activity-style";
-import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { MovementDto, PendingMovementDto } from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/format";
 import { PANEL_HOVER_ROW, PANEL_SURFACE } from "@/lib/dashboard/panel-surfaces";
@@ -63,7 +63,7 @@ export function MovementsPanel({
                 <RoleActivityIcon role={m.role} size="sm" />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-semibold text-zinc-800">
-                    Pendiente · {ROLE_LABEL[m.role]}
+                    Pendiente · {formatPendingRoles(m.status)}
                   </p>
                   <p className="mt-0.5 text-sm leading-snug text-zinc-700">{m.description}</p>
                   <p className="mt-0.5 truncate text-xs text-zinc-500">

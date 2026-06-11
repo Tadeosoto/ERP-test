@@ -1,4 +1,4 @@
-import { getPendingRole } from "@/lib/domain/flow";
+import { canRoleAdvance } from "@/lib/domain/flow";
 import type { OrderStatus, PurchaseOrderDto, Role } from "@/lib/domain/types";
 
 export type OrderListFilter =
@@ -11,8 +11,8 @@ export type OrderListFilter =
 
 const STATUS_GROUPS: Record<Exclude<OrderListFilter, "pendientes" | null>, OrderStatus[]> = {
   ingenieria: ["awaitingEngineer", "engineerRejected"],
-  pago: ["awaitingPayment", "awaitingPatyDeadline"],
-  documentos: ["awaitingFinalDocs"],
+  pago: ["awaitingPayment", "awaitingPatyDeadline", "paid"],
+  documentos: ["awaitingInvoice", "invoiceReceived", "difference"],
   completadas: ["completed"],
 };
 
@@ -40,9 +40,9 @@ export function filterOrdersByListFilter(
   if (!filter) return orders;
   if (filter === "pendientes") {
     if (!role) {
-      return orders.filter((o) => getPendingRole(o.status) !== null);
+      return orders.filter((o) => canRoleAdvance("compras", o.status) || canRoleAdvance("pagos", o.status) || canRoleAdvance("ingeniero", o.status) || canRoleAdvance("recepcion", o.status) || canRoleAdvance("contabilidad", o.status));
     }
-    return orders.filter((o) => getPendingRole(o.status) === role);
+    return orders.filter((o) => canRoleAdvance(role, o.status));
   }
   const statuses = STATUS_GROUPS[filter];
   return orders.filter((o) => statuses.includes(o.status));

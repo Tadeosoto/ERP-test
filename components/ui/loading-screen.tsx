@@ -1,3 +1,5 @@
+import { LoadingLogo } from "@/components/ui/loading-logo";
+
 type LoadingScreenProps = {
   message: string;
   /** Ocupa más alto del área de contenido (pantallas principales). */
@@ -32,12 +34,7 @@ export function LoadingScreen({
       aria-busy="true"
       aria-label={message}
     >
-      <div
-        className={`h-14 w-14 animate-spin rounded-full border-4 ${
-          light ? "border-white/30 border-t-white" : "border-orange-100 border-t-orange-600"
-        }`}
-        aria-hidden
-      />
+      <LoadingLogo size={96} />
       <div>
         <p
           className={`text-2xl font-bold tracking-tight sm:text-3xl ${

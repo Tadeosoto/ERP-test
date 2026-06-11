@@ -7,6 +7,7 @@ import { ListSearchInput } from "@/components/list-search-input";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { ObraOrderRow } from "@/components/obra-order-row";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDate } from "@/lib/format";
@@ -16,12 +17,11 @@ export default function ObraDetailPage() {
   const params = useParams();
   const obraId = typeof params?.obraId === "string" ? params.obraId : "";
   const { user } = useSession();
+  const { showSuccess, showError } = useFeedback();
   const [obra, setObra] = useState<ObraDto | null>(null);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [editName, setEditName] = useState("");
   const [editActive, setEditActive] = useState(true);
-  const [err, setErr] = useState<string | null>(null);
-  const [msg, setMsg] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [orderSearch, setOrderSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -63,8 +63,6 @@ export default function ObraDetailPage() {
   async function saveConfig(e: React.FormEvent) {
     e.preventDefault();
     if (!obraId) return;
-    setErr(null);
-    setMsg(null);
     setBusy(true);
     try {
       const res = await fetch(`/api/obras/${obraId}`, {
@@ -74,11 +72,11 @@ export default function ObraDetailPage() {
         body: JSON.stringify({ name: editName, active: editActive }),
       });
       const data = (await res.json()) as { error?: string; obra?: ObraDto };
-      if (!res.ok) throw new Error(data.error ?? "Error al guardar");
+      if (!res.ok) throw new Error(data.error ?? "No se pudieron guardar los cambios.");
       setObra(data.obra ?? null);
-      setMsg("Cambios guardados.");
+      showSuccess("Los cambios de la obra se guardaron correctamente.");
     } catch (ex) {
-      setErr(ex instanceof Error ? ex.message : "Error");
+      showError(ex instanceof Error ? ex.message : "No se pudieron guardar los cambios.");
     } finally {
       setBusy(false);
     }
@@ -150,12 +148,6 @@ export default function ObraDetailPage() {
               />
               Obra activa (visible para nuevas órdenes)
             </label>
-            {err && (
-              <p className="rounded-2xl bg-red-50 px-4 py-3 text-base text-red-700">{err}</p>
-            )}
-            {msg && (
-              <p className="rounded-2xl bg-teal-50 px-4 py-3 text-base text-teal-800">{msg}</p>
-            )}
             <button type="submit" disabled={busy} className="btn-secondary">
               <IconSave />
               Guardar cambios

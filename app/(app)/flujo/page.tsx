@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
+import { SystemStatusLegend } from "@/components/ui/system-status-legend";
+import { RoleLegend } from "@/components/ui/role-legend";
 import { ObraOrderRow } from "@/components/obra-order-row";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { FLOW_STEPS } from "@/lib/domain/flow";
@@ -46,6 +48,11 @@ export default function FlujoPage() {
         <p className="mt-2 max-w-3xl text-base text-zinc-600">
           Todos pueden ver el avance de cada orden. Solo quien corresponde puede avanzar el paso.
         </p>
+      </div>
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <SystemStatusLegend />
+        <RoleLegend />
       </div>
 
       <section className="card p-6">

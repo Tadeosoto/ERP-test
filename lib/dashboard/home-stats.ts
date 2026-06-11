@@ -1,4 +1,4 @@
-import { getPendingRole } from "@/lib/domain/flow";
+import { canRoleAdvance } from "@/lib/domain/flow";
 import { STATUS_LABEL } from "@/lib/domain/labels";
 import type { OrderStatus, PurchaseOrderDto, Role } from "@/lib/domain/types";
 
@@ -16,8 +16,11 @@ export function countByStatus(orders: PurchaseOrderDto[]) {
     engineerRejected: 0,
     awaitingPatyDeadline: 0,
     awaitingPayment: 0,
-    awaitingFinalDocs: 0,
+    paid: 0,
+    awaitingInvoice: 0,
+    invoiceReceived: 0,
     completed: 0,
+    difference: 0,
   };
   for (const o of orders) counts[o.status]++;
   return counts;
@@ -50,7 +53,7 @@ export function dashboardBuckets(orders: PurchaseOrderDto[]): DashboardBucket[] 
     {
       key: "docs",
       label: "Factura pendiente",
-      count: c.awaitingFinalDocs,
+      count: c.paid + c.awaitingInvoice + c.invoiceReceived + c.difference,
       href: "/obras?estado=documentos",
       accent: "border-violet-300/60 bg-violet-50/20",
     },
@@ -65,7 +68,7 @@ export function dashboardBuckets(orders: PurchaseOrderDto[]): DashboardBucket[] 
 }
 
 export function ordersForRole(orders: PurchaseOrderDto[], role: Role): PurchaseOrderDto[] {
-  return orders.filter((o) => getPendingRole(o.status) === role);
+  return orders.filter((o) => canRoleAdvance(role, o.status));
 }
 
 export function formatOrderLine(order: PurchaseOrderDto): string {

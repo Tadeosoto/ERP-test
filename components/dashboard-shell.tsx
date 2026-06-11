@@ -108,7 +108,7 @@ export function DashboardShell({
       </aside>
 
       <div className={`flex min-h-screen flex-1 flex-col ${SIDEBAR_PL}`}>
-        <header className="sticky top-0 z-30 border-b border-orange-100/80 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
+        <header className="sticky top-0 z-30 overflow-visible border-b border-orange-100/80 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
           <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
             <div className="flex min-w-0 items-center gap-3">
               <Link
@@ -138,7 +138,7 @@ export function DashboardShell({
               </nav>
             </div>
 
-            <div className="flex shrink-0 items-end gap-2">
+            <div className="flex shrink-0 items-center gap-2">
               <button
                 type="button"
                 onClick={() => void handleRefresh()}
@@ -166,7 +166,7 @@ export function DashboardShell({
 
         <main
           className={`mx-auto w-full max-w-7xl flex-1 ${
-            isHome ? "min-h-0 overflow-hidden px-4 py-3 sm:px-6" : "px-4 py-8 sm:px-6"
+            isHome ? "min-h-0 overflow-x-hidden px-4 py-3 sm:px-6" : "px-4 py-8 sm:px-6"
           }`}
         >
           {children}

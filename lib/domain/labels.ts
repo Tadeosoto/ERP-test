@@ -1,20 +1,19 @@
 import type { Role, OrderStatus, PaymentLabel, PaymentType } from "./types";
+import { SYSTEM_STATUS } from "./system-status";
+
+/** Etiquetas de compatibilidad; preferir SystemStatusBadge + SYSTEM_STATUS. */
+export const STATUS_LABEL: Record<OrderStatus, string> = Object.fromEntries(
+  (Object.entries(SYSTEM_STATUS) as [OrderStatus, (typeof SYSTEM_STATUS)[OrderStatus]][]).map(
+    ([k, v]) => [k, v.label]
+  )
+) as Record<OrderStatus, string>;
 
 export const ROLE_LABEL: Record<Role, string> = {
   pagos: "Administración",
   compras: "Compras",
-  ingeniero: "Ingeniero",
+  ingeniero: "Ingeniería",
   recepcion: "Recepción",
   contabilidad: "Contabilidad",
-};
-
-export const STATUS_LABEL: Record<OrderStatus, string> = {
-  awaitingEngineer: "En revisión de ingeniería",
-  engineerRejected: "Correcciones solicitadas",
-  awaitingPatyDeadline: "Paty debe indicar fecha límite de pago",
-  awaitingPayment: "Pendiente de pago (Administración)",
-  awaitingFinalDocs: "Esperando factura y documentos",
-  completed: "Completada",
 };
 
 export const PAYMENT_LABEL_TEXT: Record<PaymentLabel, string> = {
@@ -28,8 +27,15 @@ export const PAYMENT_TYPE_TEXT: Record<PaymentType, string> = {
   parcialidades: "Pago por parcialidades",
 };
 
+export const PAYMENT_TYPE_SHORT: Record<PaymentType, string> = {
+  inmediato: "Inmediato",
+  programado: "Programado",
+  parcialidades: "Parcialidades",
+};
+
 export const FILE_KIND_LABEL: Record<string, string> = {
   oc_pdf: "PDF orden de compra",
+  comprobante_pago: "Comprobante de pago",
   complemento_pago: "Complemento de pago",
   factura: "Factura",
 };

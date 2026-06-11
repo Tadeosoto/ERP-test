@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
-import { CalloutBubble } from "@/components/ui/callout-bubble";
+import { FloatingCallout } from "@/components/ui/callout-bubble";
 import { useSession } from "@/components/session-provider";
 import {
   isNotificationActionable,
@@ -19,7 +19,7 @@ export function NotificationHeaderMenu() {
   const ref = useRef<HTMLDivElement>(null);
 
   const latest = notifications[0] ?? null;
-  const showBubble = Boolean(latest && latest.id !== dismissedId);
+  const showBubble = Boolean(latest && latest.id !== dismissedId && !open);
 
   const actionHref = latest && user ? notificationActionHref(latest, user.role) : null;
   const actionable = latest && user ? isNotificationActionable(latest, user.role) : false;
@@ -42,25 +42,7 @@ export function NotificationHeaderMenu() {
   const preview = notifications.slice(0, 5);
 
   return (
-    <div ref={ref} className="relative flex flex-col items-end">
-      {showBubble && latest && (
-        <CalloutBubble
-          title="Aviso reciente"
-          message={latest.message}
-          actionLabel={actionable ? actionLabel : undefined}
-          href={
-            actionable
-              ? actionHref ?? undefined
-              : latest.orderId
-                ? `/ordenes/${latest.orderId}`
-                : "/notificaciones"
-          }
-          onDismiss={() => setDismissedId(latest.id)}
-          tailAlign="right"
-          floatClassName="relative z-50 mb-2 w-[min(17rem,calc(100vw-6rem))]"
-        />
-      )}
-
+    <div ref={ref} className="relative shrink-0 self-center">
       <button
         type="button"
         onClick={() => {
@@ -80,11 +62,30 @@ export function NotificationHeaderMenu() {
           />
         </svg>
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-bold text-white">
+          <span className="absolute -bottom-0.5 -right-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-bold text-white ring-2 ring-white">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}
       </button>
+
+      {showBubble && latest && (
+        <FloatingCallout
+          title="Aviso reciente"
+          message={latest.message}
+          actionLabel={actionable ? actionLabel : undefined}
+          href={
+            actionable
+              ? actionHref ?? undefined
+              : latest.orderId
+                ? `/ordenes/${latest.orderId}`
+                : "/notificaciones"
+          }
+          onDismiss={() => setDismissedId(latest.id)}
+          align="right"
+          placement="below"
+          widthClass="w-[min(16rem,calc(100vw-4rem))]"
+        />
+      )}
 
       {open && (
         <div className="absolute right-0 top-full z-50 mt-2 w-[min(22rem,calc(100vw-2rem))] rounded-2xl border border-orange-100 bg-white py-2 shadow-lg">
