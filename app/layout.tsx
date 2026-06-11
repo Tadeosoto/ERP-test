@@ -19,6 +19,12 @@ export const metadata: Metadata = {
     "Flujo OC → ingeniería → pagos → recepción → contabilidad (demo)",
 };
 
+export const viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
+
 export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {

@@ -34,16 +34,18 @@ export function LoadingScreen({
       aria-busy="true"
       aria-label={message}
     >
-      <LoadingLogo size={96} />
-      <div>
+      <div className="origin-center scale-[0.88] sm:scale-100">
+        <LoadingLogo size={96} />
+      </div>
+      <div className="max-w-sm px-2">
         <p
-          className={`text-2xl font-bold tracking-tight sm:text-3xl ${
+          className={`text-xl font-bold tracking-tight sm:text-2xl md:text-3xl ${
             light ? "text-white" : "text-orange-900"
           }`}
         >
           {message}
         </p>
-        <p className={`mt-2 text-base ${light ? "text-white/80" : "text-zinc-600"}`}>
+        <p className={`mt-2 text-sm sm:text-base ${light ? "text-white/80" : "text-zinc-600"}`}>
           Un momento, por favor…
         </p>
       </div>

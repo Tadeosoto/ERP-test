@@ -122,14 +122,14 @@ export function OrderDetailPanel({
       : payAmount;
 
   return (
-    <div className="space-y-8">
-      <div className="card p-6">
-        <div className="flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-base font-medium text-teal-700">{order.obraName}</p>
-            <h1 className="mt-1 text-3xl font-bold text-zinc-900">{order.title}</h1>
-            <p className="mt-2 text-lg text-zinc-600">{order.supplierName}</p>
-            <p className="mt-2 text-base text-zinc-500">Orden creada el {formatDate(order.createdAt)}</p>
+    <div className="space-y-6 sm:space-y-8">
+      <div className="card p-4 sm:p-6">
+        <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+          <div className="min-w-0">
+            <p className="text-sm font-medium text-teal-700 sm:text-base">{order.obraName}</p>
+            <h1 className="mt-1 break-words text-2xl font-bold text-zinc-900 sm:text-3xl">{order.title}</h1>
+            <p className="mt-2 text-base text-zinc-600 sm:text-lg">{order.supplierName}</p>
+            <p className="mt-2 text-sm text-zinc-500 sm:text-base">Orden creada el {formatDate(order.createdAt)}</p>
             <div className="mt-3 flex flex-wrap gap-2">
               <SystemStatusBadge status={order.status} />
               <span className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-900">
@@ -158,25 +158,31 @@ export function OrderDetailPanel({
               </p>
             )}
           </div>
-          <div className="text-right">
-            <p className="text-sm text-zinc-500">Total orden</p>
-            <p className="text-2xl font-bold tabular-nums text-orange-700">
-              {formatMoney(order.totalAmount, order.currency)}
-            </p>
-            <p className="mt-2 text-sm text-zinc-500">Pagado</p>
-            <p className="text-xl font-bold tabular-nums text-teal-700">
-              {formatMoney(order.amountPaidSoFar, order.currency)}
-            </p>
-            <p className="mt-2 text-sm text-zinc-500">Falta por pagar</p>
-            <p className="text-xl font-bold tabular-nums text-amber-700">
-              {formatMoney(order.amountRemaining, order.currency)}
-            </p>
+          <div className="grid w-full grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:w-auto sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0 sm:text-right">
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
+              <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
+                {formatMoney(order.totalAmount, order.currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
+              <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
+                {formatMoney(order.amountPaidSoFar, order.currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
+              <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
+                {formatMoney(order.amountRemaining, order.currency)}
+              </p>
+            </div>
           </div>
         </div>
       </div>
 
-      <div className="card border-teal-200 bg-gradient-to-br from-white to-teal-50/40 p-6">
-        <p className="text-lg font-semibold text-zinc-900">
+      <div className="card border-teal-200 bg-gradient-to-br from-white to-teal-50/40 p-4 sm:p-6">
+        <p className="text-base font-semibold text-zinc-900 sm:text-lg">
           {describeGate(order.status, order.paymentType)}
         </p>
         <p className="mt-2 text-base text-zinc-700">

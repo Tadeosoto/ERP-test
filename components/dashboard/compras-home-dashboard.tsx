@@ -51,7 +51,7 @@ export function ComprasHomeDashboard({
               {ROLE_ACTIVITY_STYLE.compras.label} · {playbook ?? "Gestiona tus órdenes de compra."}
             </p>
           </div>
-          <Link href="/ordenes/nueva" className="btn-primary shrink-0">
+          <Link href="/ordenes/nueva" className="btn-primary w-full shrink-0 sm:w-auto">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -88,7 +88,7 @@ export function ComprasHomeDashboard({
 
           <Link
             href="/ordenes/nueva"
-            className="flex shrink-0 items-center justify-between gap-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-600 to-orange-700 px-4 py-2.5 text-white shadow-sm transition hover:from-orange-700 hover:to-orange-800"
+            className="flex shrink-0 flex-col gap-3 rounded-xl border border-orange-200 bg-gradient-to-r from-orange-600 to-orange-700 px-4 py-3 text-white shadow-sm transition hover:from-orange-700 hover:to-orange-800 sm:flex-row sm:items-center sm:justify-between sm:py-2.5"
           >
             <div className="flex min-w-0 items-center gap-3">
               <span className="inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/15">
@@ -101,9 +101,9 @@ export function ComprasHomeDashboard({
                   />
                 </svg>
               </span>
-              <p className="text-sm font-semibold">Crear nueva OC · sube el PDF y regístrala</p>
+              <p className="text-sm font-semibold leading-snug">Crear nueva OC · sube el PDF y regístrala</p>
             </div>
-            <span className="shrink-0 rounded-lg bg-white px-3 py-1.5 text-xs font-bold text-orange-700">
+            <span className="w-full shrink-0 rounded-lg bg-white px-3 py-2 text-center text-xs font-bold text-orange-700 sm:w-auto sm:py-1.5">
               + Nueva OC
             </span>
           </Link>

@@ -46,7 +46,7 @@ export function FeedbackModal({ open, variant, message, onClose }: FeedbackModal
 
   return (
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center p-4"
+      className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4"
       role="dialog"
       aria-modal="true"
       aria-labelledby="feedback-modal-title"
@@ -58,25 +58,28 @@ export function FeedbackModal({ open, variant, message, onClose }: FeedbackModal
         onClick={onClose}
         aria-label="Cerrar"
       />
-      <div className="relative w-full max-w-md rounded-3xl border border-orange-100 bg-white p-8 text-center shadow-2xl">
+      <div className="safe-bottom relative max-h-[90dvh] w-full overflow-y-auto rounded-t-3xl border border-orange-100 bg-white p-6 text-center shadow-2xl sm:max-w-md sm:rounded-3xl sm:p-8">
         <div
-          className={`mx-auto flex h-20 w-20 items-center justify-center rounded-full ${
+          className={`mx-auto flex h-16 w-16 items-center justify-center rounded-full sm:h-20 sm:w-20 ${
             isSuccess ? "bg-emerald-100" : "bg-red-100"
           }`}
         >
           {isSuccess ? (
-            <SuccessIcon className="h-10 w-10 text-emerald-600" />
+            <SuccessIcon className="h-9 w-9 text-emerald-600 sm:h-10 sm:w-10" />
           ) : (
-            <ErrorIcon className="h-10 w-10 text-red-600" />
+            <ErrorIcon className="h-9 w-9 text-red-600 sm:h-10 sm:w-10" />
           )}
         </div>
-        <h2 id="feedback-modal-title" className="mt-5 text-xl font-bold text-zinc-900">
+        <h2 id="feedback-modal-title" className="mt-4 text-lg font-bold text-zinc-900 sm:mt-5 sm:text-xl">
           {isSuccess ? "¡Tarea completada!" : "No se pudo completar"}
         </h2>
-        <p id="feedback-modal-message" className="mt-3 text-base leading-relaxed text-zinc-600">
+        <p
+          id="feedback-modal-message"
+          className="mt-2 text-sm leading-relaxed text-zinc-600 sm:mt-3 sm:text-base"
+        >
           {message}
         </p>
-        <button type="button" onClick={onClose} className="btn-primary mt-6 w-full">
+        <button type="button" onClick={onClose} className="btn-primary mt-5 w-full sm:mt-6">
           Entendido
         </button>
       </div>

@@ -106,7 +106,7 @@ function DateRangeFilter({
   onToChange: (v: string) => void;
 }) {
   return (
-    <div className="min-w-0">
+    <div className="min-w-0 sm:col-span-2 xl:col-span-1">
       <FilterLabel>Fecha</FilterLabel>
       <div className="flex h-11 min-w-0 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2 shadow-sm focus-within:border-orange-300 focus-within:ring-1 focus-within:ring-orange-200">
         <input
@@ -134,6 +134,60 @@ function DateRangeFilter({
         </svg>
       </div>
     </div>
+  );
+}
+
+function ComprasOrderMobileCard({
+  order,
+  onOpen,
+}: {
+  order: PurchaseOrderDto;
+  onOpen: (href: string) => void;
+}) {
+  const docs = docFlags(order);
+  const href = `/ordenes/${order.id}`;
+
+  return (
+    <button
+      type="button"
+      onClick={() => onOpen(href)}
+      className="w-full px-4 py-3.5 text-left transition hover:bg-orange-50/60 active:bg-orange-50"
+    >
+      <div className="flex items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <div className="flex items-center gap-2">
+            {hasOcPdf(order) && (
+              <span className="shrink-0 text-red-500" title="PDF adjunto">
+                <svg className="h-4 w-4" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                  <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4z" />
+                </svg>
+              </span>
+            )}
+            <p className="truncate font-semibold text-zinc-900">{orderDisplayCode(order)}</p>
+          </div>
+          <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{order.title}</p>
+          <p className="mt-1 truncate text-xs font-medium text-teal-800">{order.obraName}</p>
+          <p className="truncate text-xs text-zinc-500">{order.supplierName}</p>
+        </div>
+        <svg className="mt-1 h-5 w-5 shrink-0 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+        </svg>
+      </div>
+      <div className="mt-3 flex flex-wrap items-center gap-2">
+        <SystemStatusBadge status={order.status} size="xs" />
+        <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(order.createdAt)}</span>
+      </div>
+      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+        <p className="text-sm font-semibold tabular-nums text-orange-700">
+          {formatMoney(order.totalAmount, order.currency)}
+        </p>
+        <div className="inline-flex items-center gap-1.5" title="OC · Pago · Factura">
+          <DocDot ok={docs.oc} label="OC" />
+          <DocDot ok={docs.pago} label="Comprobante" />
+          <DocDot ok={docs.factura} label="Factura" />
+        </div>
+      </div>
+    </button>
   );
 }
 
@@ -193,14 +247,14 @@ export function ComprasOrdersPanel({
 
   return (
     <section className="card flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-orange-50 px-4 py-4 sm:px-5">
+      <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-zinc-900">Mis órdenes de compra</h2>
+          <h2 className="text-base font-bold text-zinc-900 sm:text-lg">Mis órdenes de compra</h2>
           <p className="text-xs text-zinc-500">{filtered.length} orden{filtered.length === 1 ? "" : "es"}</p>
         </div>
 
-        <div className="mt-4 grid grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.25fr)_auto] items-end gap-2.5">
-          <div className="relative min-w-0">
+        <div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:mt-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.25fr)_auto] xl:gap-2.5">
+          <div className="relative min-w-0 sm:col-span-2 xl:col-span-1">
             <input
               id="compras-oc-search"
               type="search"
@@ -274,7 +328,7 @@ export function ComprasOrdersPanel({
           <button
             type="button"
             onClick={clearFilters}
-            className="inline-flex h-11 items-center justify-center gap-2 self-end whitespace-nowrap rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+            className="inline-flex h-11 w-full items-center justify-center gap-2 self-end whitespace-nowrap rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 sm:col-span-2 xl:col-span-1 xl:w-auto"
           >
             <svg className={`${FILTER_ICON} text-zinc-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path
@@ -289,7 +343,19 @@ export function ComprasOrdersPanel({
         </div>
       </div>
 
-      <div className="min-h-0 flex-1 overflow-auto">
+      <div className="min-h-0 flex-1 overflow-auto lg:hidden">
+        {pageItems.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-zinc-500">No hay órdenes con estos filtros.</p>
+        ) : (
+          <div className="divide-y divide-orange-50">
+            {pageItems.map((order) => (
+              <ComprasOrderMobileCard key={order.id} order={order} onOpen={(href) => router.push(href)} />
+            ))}
+          </div>
+        )}
+      </div>
+
+      <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
         <table className="w-full min-w-[1040px] border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm">
             <tr className="border-b border-orange-100">
@@ -405,7 +471,7 @@ export function ComprasOrdersPanel({
         </table>
       </div>
 
-      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-orange-50 px-3 py-2 sm:px-4">
+      <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-orange-50 px-3 py-2.5 sm:px-4">
         <p className="text-xs text-zinc-500">
           {filtered.length === 0
             ? "0 órdenes"
@@ -418,7 +484,7 @@ export function ComprasOrdersPanel({
               setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]);
               setPage(1);
             }}
-            className="h-8 rounded-lg border border-orange-100 bg-white px-2 text-xs"
+            className="h-10 rounded-lg border border-orange-100 bg-white px-2 text-xs sm:h-8"
             aria-label="Órdenes por página"
           >
             {PAGE_SIZES.map((n) => (
@@ -431,18 +497,20 @@ export function ComprasOrdersPanel({
             type="button"
             disabled={safePage <= 1}
             onClick={() => setPage((p) => Math.max(1, p - 1))}
-            className="h-8 rounded-lg border border-orange-100 px-2 text-xs disabled:opacity-40"
+            className="flex h-10 min-w-10 items-center justify-center rounded-lg border border-orange-100 px-2 text-sm disabled:opacity-40 sm:h-8 sm:text-xs"
+            aria-label="Página anterior"
           >
             ‹
           </button>
-          <span className="min-w-[3rem] text-center text-xs tabular-nums text-zinc-600">
+          <span className="min-w-12 text-center text-xs tabular-nums text-zinc-600">
             {safePage}/{totalPages}
           </span>
           <button
             type="button"
             disabled={safePage >= totalPages}
             onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
-            className="h-8 rounded-lg border border-orange-100 px-2 text-xs disabled:opacity-40"
+            className="flex h-10 min-w-10 items-center justify-center rounded-lg border border-orange-100 px-2 text-sm disabled:opacity-40 sm:h-8 sm:text-xs"
+            aria-label="Página siguiente"
           >
             ›
           </button>

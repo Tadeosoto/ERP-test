@@ -9,7 +9,7 @@ import { ROLE_LABEL } from "@/lib/domain/labels";
 import { IconLogOut, IconRefresh } from "@/components/ui/action-icons";
 
 const SIDEBAR_WIDTH = "w-44";
-const SIDEBAR_PL = "pl-44";
+const SIDEBAR_PL = "lg:pl-44";
 
 const nav = [
   { href: "/inicio", label: "Inicio", icon: "home" },
@@ -78,7 +78,7 @@ export function DashboardShell({
   return (
     <div className="flex min-h-screen bg-[#faf8f6]">
       <aside
-        className={`fixed inset-y-0 left-0 z-40 flex ${SIDEBAR_WIDTH} flex-col bg-orange-900 py-4 text-white shadow-lg`}
+        className={`fixed inset-y-0 left-0 z-40 hidden ${SIDEBAR_WIDTH} flex-col bg-orange-900 py-4 text-white shadow-lg lg:flex`}
       >
         <Link
           href="/inicio"
@@ -107,14 +107,35 @@ export function DashboardShell({
         </nav>
       </aside>
 
-      <div className={`flex min-h-screen flex-1 flex-col ${SIDEBAR_PL}`}>
-        <header className="sticky top-0 z-30 overflow-visible border-b border-orange-100/80 bg-white/90 px-4 py-3 backdrop-blur sm:px-6">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
+      <nav
+        className="safe-bottom fixed inset-x-0 bottom-0 z-40 flex border-t border-orange-200 bg-white/95 px-2 py-1.5 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden"
+        aria-label="Navegación principal"
+      >
+        {nav.map((item) => {
+          const active = navActive(pathname, item.href);
+          return (
+            <Link
+              key={item.href}
+              href={item.href}
+              className={`flex min-h-12 flex-1 flex-col items-center justify-center gap-0.5 rounded-xl px-1 text-[10px] font-semibold transition-colors ${
+                active ? "bg-orange-100 text-orange-800" : "text-zinc-500 hover:bg-orange-50 hover:text-orange-700"
+              }`}
+            >
+              <Icon name={item.icon} />
+              <span>{item.label}</span>
+            </Link>
+          );
+        })}
+      </nav>
+
+      <div className={`flex min-h-screen flex-1 flex-col ${SIDEBAR_PL} pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0`}>
+        <header className="sticky top-0 z-30 overflow-visible border-b border-orange-100/80 bg-white/90 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3">
+          <div className="mx-auto flex max-w-7xl items-center justify-between gap-2 sm:gap-3">
+            <div className="flex min-w-0 items-center gap-2 sm:gap-3">
               <Link
                 href="/inicio"
                 title="Inicio"
-                className="hidden shrink-0 rounded-xl p-1 sm:block"
+                className="shrink-0 rounded-xl p-1 lg:hidden"
               >
                 <CcpLogoIcon size="sm" />
               </Link>
@@ -138,24 +159,26 @@ export function DashboardShell({
               </nav>
             </div>
 
-            <div className="flex shrink-0 items-center gap-2">
+            <div className="flex shrink-0 items-center gap-1.5 sm:gap-2">
               <button
                 type="button"
                 onClick={() => void handleRefresh()}
-                className="hidden h-11 items-center gap-2 rounded-2xl border border-orange-100 bg-white px-3 text-sm font-medium text-zinc-600 hover:bg-orange-50 sm:inline-flex"
+                className="inline-flex h-11 min-w-11 items-center justify-center gap-2 rounded-2xl border border-orange-100 bg-white px-3 text-sm font-medium text-zinc-600 hover:bg-orange-50 sm:min-w-0"
+                aria-label="Actualizar"
               >
                 <IconRefresh className="h-4 w-4" />
-                Actualizar
+                <span className="hidden sm:inline">Actualizar</span>
               </button>
               <NotificationHeaderMenu />
-              <span className="hidden max-w-[8rem] truncate text-sm text-zinc-600 lg:inline">
+              <span className="hidden max-w-[8rem] truncate text-sm text-zinc-600 xl:inline">
                 {user.name}
                 <span className="text-zinc-400"> · {ROLE_LABEL[user.role]}</span>
               </span>
               <button
                 type="button"
                 onClick={() => void logout()}
-                className="inline-flex h-11 items-center gap-1.5 rounded-2xl border border-orange-100 bg-white px-3 text-sm font-medium text-zinc-600 hover:bg-orange-50"
+                className="inline-flex h-11 min-w-11 items-center justify-center gap-1.5 rounded-2xl border border-orange-100 bg-white px-3 text-sm font-medium text-zinc-600 hover:bg-orange-50"
+                aria-label="Salir"
               >
                 <IconLogOut className="h-4 w-4" />
                 <span className="hidden sm:inline">Salir</span>
@@ -166,14 +189,16 @@ export function DashboardShell({
 
         <main
           className={`mx-auto w-full max-w-7xl flex-1 ${
-            isHome ? "min-h-0 overflow-x-hidden px-4 py-3 sm:px-6" : "px-4 py-8 sm:px-6"
+            isHome
+              ? "min-h-0 overflow-x-hidden px-3 py-3 sm:px-6 sm:py-4 lg:py-3"
+              : "px-3 py-5 sm:px-6 sm:py-8"
           }`}
         >
           {children}
         </main>
 
         {!isHome && (
-          <footer className="border-t border-orange-100/80 bg-white/60 px-4 py-3">
+          <footer className="hidden border-t border-orange-100/80 bg-white/60 px-4 py-3 lg:block">
             <p className="text-center text-xs text-orange-900/40">CCP ERP · Control de compras</p>
           </footer>
         )}

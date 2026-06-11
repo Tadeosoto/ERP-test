@@ -23,6 +23,11 @@ body {
   font-family: var(--font-geist-sans), system-ui, sans-serif;
   font-size: var(--text-lg);
   line-height: 1.55;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.safe-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
 /* Accesibilidad: botones táctiles grandes */
