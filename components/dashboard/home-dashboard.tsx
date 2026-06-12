@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { MiniListPanel, PanelLink, StatChip } from "@/components/dashboard/panel-link";
+import { CalloutBubble } from "@/components/ui/callout-bubble";
 import { usePageRefreshRegister } from "@/components/app-shell";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
@@ -100,39 +100,49 @@ export function HomeDashboard() {
   const playbook = rolePlaybook(user.role)[0];
 
   return (
-    <div className="flex min-h-0 flex-col gap-3 overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-4">
+    <div className="flex flex-col gap-4 pb-2">
       <header className="shrink-0">
         <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">¡Hola, {user.name.split(" ")[0]}!</h1>
         <p className="mt-1 text-sm text-zinc-500">
-          {ROLE_LABEL[user.role]} · {playbook ?? "Consulta el avance sin hacer scroll."}
+          {ROLE_LABEL[user.role]} · {playbook ?? "Consulta el avance de tus órdenes."}
         </p>
       </header>
 
-      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
         {buckets.map((b) => (
           <StatChip key={b.key} href={b.href} label={b.label} count={b.count} accent={b.accent} />
         ))}
       </div>
 
-      <div className="flex min-h-0 flex-1 flex-col gap-3 xl:flex-row xl:gap-4">
-        <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3">
-          <div className="grid min-h-0 flex-1 grid-cols-1 gap-3 lg:grid-cols-3 lg:gap-4">
-            <MiniListPanel
-              title="Tu bandeja"
-              surface="bandeja"
-              empty="Nada pendiente con tu rol ahora."
-              href={myQueue.length ? `/ordenes/${myQueue[0].id}` : "/obras?pendientes=1"}
-              linkLabel={myQueue.length ? "Abrir primera" : "Ver obras"}
-              hint={panelHint && !hintDismissed ? panelHint : undefined}
-              onDismissHint={() => setHintDismissed(true)}
-              items={myQueue.map((o) => ({
-                id: o.id,
-                primary: o.title,
-                secondary: `${STATUS_LABEL[o.status]} · ${o.obraName}`,
-                href: `/ordenes/${o.id}`,
-              }))}
-            />
+      {panelHint && !hintDismissed && (
+        <CalloutBubble
+          title={panelHint.title}
+          message={panelHint.message}
+          actionLabel={panelHint.actionLabel}
+          href={panelHint.href}
+          onDismiss={() => setHintDismissed(true)}
+          tailSide="top"
+          tailAlign="left"
+        />
+      )}
 
+      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4 xl:items-start xl:gap-4">
+        <div className="flex flex-col gap-4 xl:col-span-3">
+          <MiniListPanel
+            title="Tu bandeja"
+            surface="bandeja"
+            empty="Nada pendiente con tu rol ahora."
+            href={myQueue.length ? `/ordenes/${myQueue[0].id}` : "/obras?pendientes=1"}
+            linkLabel={myQueue.length ? "Abrir primera" : "Ver obras"}
+            items={myQueue.map((o) => ({
+              id: o.id,
+              primary: o.title,
+              secondary: `${STATUS_LABEL[o.status]} · ${o.obraName}`,
+              href: `/ordenes/${o.id}`,
+            }))}
+          />
+
+          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
             <MiniListPanel
               title="Obras"
               surface="obras"
@@ -162,7 +172,7 @@ export function HomeDashboard() {
             />
           </div>
 
-          <div className="hidden shrink-0 grid-cols-1 gap-2 sm:grid-cols-3 sm:gap-3 lg:grid">
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
             <PanelLink
               href="/flujo"
               surface="flujo"
@@ -187,10 +197,12 @@ export function HomeDashboard() {
           </div>
         </div>
 
-        <HomeActivitySidebar
-          recentMovements={recentMovements}
-          pendingMovements={pendingMovements}
-        />
+        <div className="min-w-0 xl:col-span-1">
+          <HomeActivitySidebar
+            recentMovements={recentMovements}
+            pendingMovements={pendingMovements}
+          />
+        </div>
       </div>
     </div>
   );

@@ -68,12 +68,13 @@ function NavIcon({ name }: { name: string }) {
   return null;
 }
 
-function navActive(pathname: string | null, href: string) {
+function navActive(pathname: string | null, href: string): boolean {
+  if (!pathname) return false;
   if (href === "/inicio") return pathname === "/inicio";
   if (href === "/obras")
-    return pathname?.startsWith("/obras") || pathname?.startsWith("/ordenes");
-  if (href === "/proveedores") return pathname?.startsWith("/proveedores");
-  return pathname === href || pathname?.startsWith(`${href}/`);
+    return pathname.startsWith("/obras") || pathname.startsWith("/ordenes");
+  if (href === "/proveedores") return pathname.startsWith("/proveedores");
+  return pathname === href || pathname.startsWith(`${href}/`);
 }
 
 function SidebarNavLink({

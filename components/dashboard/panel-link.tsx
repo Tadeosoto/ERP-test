@@ -35,7 +35,7 @@ export function PanelLink({
   surface = "obrasNav",
 }: PanelLinkProps) {
   return (
-    <div className="relative min-h-0 overflow-visible">
+    <div className="min-h-0">
       {hint && (
         <FloatingCallout
           title={hint.title}
@@ -113,7 +113,7 @@ export function MiniListPanel({
 
   return (
     <section
-      className={`relative flex min-h-0 flex-col overflow-visible rounded-2xl border p-4 shadow-sm ${PANEL_SURFACE[surface]}`}
+      className={`relative flex flex-col overflow-hidden rounded-2xl border p-4 shadow-sm ${PANEL_SURFACE[surface]}`}
     >
       {hint && (
         <FloatingCallout
