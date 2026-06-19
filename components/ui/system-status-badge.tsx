@@ -64,11 +64,11 @@ export function SystemStatusBadge({
 
   return (
     <span
-      className={`inline-flex max-w-full items-center rounded-full border font-semibold whitespace-nowrap ${tone} ${pad} ${size === "md" ? "flex-col items-start gap-0.5" : "gap-1"}`}
+      className={`inline-flex max-w-full items-center rounded-full border font-semibold ${tone} ${pad} ${size === "md" ? "flex-col items-start gap-0.5 whitespace-nowrap" : "gap-1"}`}
     >
-      <span className="inline-flex items-center gap-1">
+      <span className={`inline-flex min-w-0 items-center gap-1 ${size === "xs" ? "max-w-full" : ""}`}>
         <StatusIcon name={cfg.icon} className={statusIconClass(size)} />
-        <span>{cfg.label}</span>
+        <span className={size === "xs" ? "truncate" : ""}>{cfg.label}</span>
       </span>
       {cfg.subtitle && size === "md" && (
         <span className="pl-6 text-[10px] font-normal opacity-80">{cfg.subtitle}</span>

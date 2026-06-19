@@ -176,6 +176,12 @@ export function DashboardShell({
   const pathname = usePathname();
   const { user, logout } = useSession();
   const isHome = pathname === "/inicio";
+  const isWideLayout =
+    isHome || pathname === "/obras" || (pathname?.startsWith("/obras/") ?? false);
+  const contentWidth = isWideLayout ? "max-w-none" : "max-w-7xl";
+  const contentPad = isWideLayout
+    ? "px-4 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-3 xl:px-8"
+    : "px-3 py-5 sm:px-6 sm:py-8";
 
   if (!user) return null;
 
@@ -186,7 +192,7 @@ export function DashboardShell({
   const mobileNav = [...primaryNav, ...secondaryNav];
 
   return (
-    <div className="flex min-h-screen bg-[#faf8f6]">
+    <div className="flex min-h-screen bg-white">
       <aside
         className={`fixed inset-y-0 left-0 z-40 hidden ${SIDEBAR_W} flex-col border-r border-zinc-200 bg-[#f4f4f5] lg:flex`}
       >
@@ -241,7 +247,7 @@ export function DashboardShell({
         <header
           className={`sticky top-0 z-30 overflow-visible border-b border-zinc-200 bg-white/90 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3 ${TOP_BAR_H} lg:py-0`}
         >
-          <div className="mx-auto flex h-full max-w-7xl items-center justify-between gap-2 sm:gap-3">
+          <div className={`mx-auto flex h-full w-full ${contentWidth} items-center justify-between gap-2 sm:gap-3`}>
             <div className="flex min-w-0 items-center gap-2 sm:gap-3 lg:hidden">
               <Link href="/inicio" title="Inicio" className="shrink-0 rounded-xl p-1">
                 <CcpLogoIcon size="sm" />
@@ -277,10 +283,8 @@ export function DashboardShell({
         </header>
 
         <main
-          className={`mx-auto w-full max-w-7xl flex-1 ${
-            isHome
-              ? "min-h-0 overflow-x-hidden px-3 py-3 sm:px-6 sm:py-4 lg:py-3"
-              : "px-3 py-5 sm:px-6 sm:py-8"
+          className={`mx-auto w-full ${contentWidth} flex-1 ${
+            isWideLayout ? `min-h-0 overflow-x-hidden ${contentPad}` : contentPad
           }`}
         >
           {children}

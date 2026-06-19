@@ -116,7 +116,7 @@ export function ComprasKpiCards({
   hint?: ComprasKpiHint | null;
 }) {
   return (
-    <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5 xl:gap-3">
+    <div className="compras-kpi-grid grid shrink-0 grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5 lg:gap-3">
       {COMPRAS_KPI_CONFIG.map((cfg, index) => {
         const selected = activeTab === cfg.tab;
         const card = (

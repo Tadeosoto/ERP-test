@@ -73,8 +73,8 @@ export function ComprasHomeDashboard({
         }
       />
 
-      <div className="flex min-h-0 flex-1 flex-col gap-2 xl:grid xl:grid-cols-4 xl:items-stretch xl:gap-4">
-        <div className="flex min-h-0 min-w-0 flex-col gap-2 xl:col-span-3">
+      <div className="compras-kpi-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-5 lg:items-stretch lg:gap-3">
+        <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-4 lg:overflow-hidden">
           <ComprasOrdersPanel
             orders={orders}
             obras={obras}
@@ -105,7 +105,7 @@ export function ComprasHomeDashboard({
           </Link>
         </div>
 
-        <div className="min-h-0 xl:col-span-1">
+        <div className="min-h-0 min-w-0 lg:col-span-1">
           <HomeActivitySidebar
             recentMovements={recentMovements}
             pendingMovements={pendingMovements}

@@ -19,7 +19,7 @@ export function SessionGate({ children }: { children: React.ReactNode }) {
       <LoadingScreen
         message="Cargando Sesión"
         viewport
-        className="bg-[#fff7ed]"
+        className="bg-white"
       />
     );
   }

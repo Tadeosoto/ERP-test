@@ -1,6 +1,5 @@
 "use client";
 
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { SystemStatusBadge } from "@/components/ui/system-status-badge";
@@ -20,8 +19,14 @@ const FILTER_ICON = "h-5 w-5";
 
 function paymentTypeShort(order: PurchaseOrderDto): string {
   if (order.paymentType) return PAYMENT_TYPE_SHORT[order.paymentType];
-  if (order.suggestedPaymentType === "parcialidades") return "Parcial. prop.";
+  if (order.suggestedPaymentType === "parcialidades") return "Parc.";
   return "—";
+}
+
+function paymentTypeTitle(order: PurchaseOrderDto): string {
+  if (order.paymentType) return PAYMENT_TYPE_SHORT[order.paymentType];
+  if (order.suggestedPaymentType === "parcialidades") return "Parcialidades propuestas";
+  return "Sin modalidad";
 }
 
 function docFlags(order: PurchaseOrderDto) {
@@ -80,7 +85,7 @@ function FilterSelect({
           id={id}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full appearance-none rounded-xl border border-zinc-200 bg-white pl-3 pr-10 text-sm font-semibold text-zinc-900 shadow-sm focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-200"
+          className="h-9 w-full appearance-none rounded-lg border border-zinc-200 bg-white pl-2.5 pr-8 text-xs font-medium text-zinc-900 shadow-sm focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-200"
         >
           {children}
         </select>
@@ -104,25 +109,25 @@ function DateRangeFilter({
   onToChange: (v: string) => void;
 }) {
   return (
-    <div className="min-w-0 sm:col-span-2 xl:col-span-1">
+    <div className="min-w-0">
       <FilterLabel>Fecha</FilterLabel>
-      <div className="flex h-11 min-w-0 items-center gap-1 rounded-xl border border-zinc-200 bg-white px-2 shadow-sm focus-within:border-orange-300 focus-within:ring-1 focus-within:ring-orange-200">
+      <div className="flex h-9 min-w-0 items-center gap-0.5 rounded-lg border border-zinc-200 bg-white px-1.5 shadow-sm focus-within:border-orange-300 focus-within:ring-1 focus-within:ring-orange-200">
         <input
           type="date"
           value={dateFrom}
           onChange={(e) => onFromChange(e.target.value)}
           aria-label="Fecha desde"
-          className="min-w-0 flex-1 border-0 bg-transparent px-0.5 text-sm font-semibold text-zinc-900 focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-0 text-[11px] font-medium text-zinc-900 focus:outline-none"
         />
-        <span className="shrink-0 text-sm font-medium text-zinc-400">-</span>
+        <span className="shrink-0 text-[10px] font-medium text-zinc-400">–</span>
         <input
           type="date"
           value={dateTo}
           onChange={(e) => onToChange(e.target.value)}
           aria-label="Fecha hasta"
-          className="min-w-0 flex-1 border-0 bg-transparent px-0.5 text-sm font-semibold text-zinc-900 focus:outline-none"
+          className="min-w-0 flex-1 border-0 bg-transparent px-0 text-[11px] font-medium text-zinc-900 focus:outline-none"
         />
-        <svg className={`${FILTER_ICON} shrink-0 text-zinc-400`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <svg className="h-4 w-4 shrink-0 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
           <path
             strokeLinecap="round"
             strokeLinejoin="round"
@@ -240,19 +245,21 @@ export function ComprasOrdersPanel({
     setPage(1);
   }
 
-  const th = "px-2 py-1.5 text-[10px] font-semibold uppercase tracking-wide text-zinc-500";
-  const td = "px-2 py-1.5 align-middle text-xs leading-snug";
+  const th =
+    "px-1.5 py-1.5 text-[9px] font-semibold uppercase leading-tight tracking-wide text-zinc-500 2xl:text-[10px]";
+  const td = "px-1.5 py-1.5 align-middle text-[11px] leading-tight 2xl:text-xs";
+  const money = "tabular-nums whitespace-nowrap";
 
   return (
-    <section className="card flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4 sm:py-4 lg:px-5">
+    <section className="card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+      <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-base font-bold text-zinc-900 sm:text-lg">Mis órdenes de compra</h2>
           <p className="text-xs text-zinc-500">{filtered.length} orden{filtered.length === 1 ? "" : "es"}</p>
         </div>
 
-        <div className="mt-3 grid grid-cols-1 items-end gap-3 sm:grid-cols-2 xl:mt-4 xl:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)_minmax(0,1fr)_minmax(0,1.25fr)_auto] xl:gap-2.5">
-          <div className="relative min-w-0 sm:col-span-2 xl:col-span-1">
+        <div className="mt-3 space-y-2">
+          <div className="relative min-w-0">
             <input
               id="compras-oc-search"
               type="search"
@@ -261,11 +268,11 @@ export function ComprasOrdersPanel({
                 setSearch(e.target.value);
                 setPage(1);
               }}
-              placeholder="Buscar por OC, proveedor u obra…"
-              className="h-11 w-full rounded-xl border border-zinc-200 bg-white py-2 pl-4 pr-11 text-sm shadow-sm placeholder:font-normal placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-200"
+              placeholder="Buscar OC, proveedor u obra…"
+              className="h-9 w-full rounded-lg border border-zinc-200 bg-white py-2 pl-3 pr-10 text-xs shadow-sm placeholder:font-normal placeholder:text-zinc-400 focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-200"
             />
             <svg
-              className={`pointer-events-none absolute right-3 top-1/2 ${FILTER_ICON} -translate-y-1/2 text-zinc-400`}
+              className="pointer-events-none absolute right-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400"
               fill="none"
               stroke="currentColor"
               viewBox="0 0 24 24"
@@ -280,64 +287,66 @@ export function ComprasOrdersPanel({
             </svg>
           </div>
 
-          <FilterSelect
-            id="compras-estado-filter"
-            label="Estado"
-            value={activeTab}
-            onChange={handleEstadoChange}
-          >
-            {COMPRAS_ESTADO_OPTIONS.map((opt) => (
-              <option key={opt.value} value={opt.value}>
-                {opt.label}
-              </option>
-            ))}
-          </FilterSelect>
+          <div className="grid grid-cols-2 gap-2 min-[900px]:grid-cols-4">
+            <FilterSelect
+              id="compras-estado-filter"
+              label="Estado"
+              value={activeTab}
+              onChange={handleEstadoChange}
+            >
+              {COMPRAS_ESTADO_OPTIONS.map((opt) => (
+                <option key={opt.value} value={opt.value}>
+                  {opt.label}
+                </option>
+              ))}
+            </FilterSelect>
 
-          <FilterSelect
-            id="compras-obra-filter"
-            label="Obra"
-            value={obraId}
-            onChange={(v) => {
-              setObraId(v);
-              setPage(1);
-            }}
-          >
-            <option value="all">Todas las obras</option>
-            {obras.map((o) => (
-              <option key={o.id} value={o.id}>
-                {o.name}
-              </option>
-            ))}
-          </FilterSelect>
+            <FilterSelect
+              id="compras-obra-filter"
+              label="Obra"
+              value={obraId}
+              onChange={(v) => {
+                setObraId(v);
+                setPage(1);
+              }}
+            >
+              <option value="all">Todas las obras</option>
+              {obras.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </FilterSelect>
 
-          <DateRangeFilter
-            dateFrom={dateFrom}
-            dateTo={dateTo}
-            onFromChange={(v) => {
-              setDateFrom(v);
-              setPage(1);
-            }}
-            onToChange={(v) => {
-              setDateTo(v);
-              setPage(1);
-            }}
-          />
+            <DateRangeFilter
+              dateFrom={dateFrom}
+              dateTo={dateTo}
+              onFromChange={(v) => {
+                setDateFrom(v);
+                setPage(1);
+              }}
+              onToChange={(v) => {
+                setDateTo(v);
+                setPage(1);
+              }}
+            />
 
-          <button
-            type="button"
-            onClick={clearFilters}
-            className="inline-flex h-11 w-full items-center justify-center gap-2 self-end whitespace-nowrap rounded-xl border border-zinc-200 bg-white px-4 text-sm font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50 sm:col-span-2 xl:col-span-1 xl:w-auto"
-          >
-            <svg className={`${FILTER_ICON} text-zinc-500`} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                strokeWidth={2}
-                d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
-              />
-            </svg>
-            Limpiar filtros
-          </button>
+            <button
+              type="button"
+              onClick={clearFilters}
+              className="inline-flex h-9 w-full items-center justify-center gap-1.5 self-end rounded-lg border border-zinc-200 bg-white px-2 text-xs font-medium text-zinc-700 shadow-sm transition hover:bg-zinc-50"
+            >
+              <svg className="h-4 w-4 shrink-0 text-zinc-500" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"
+                />
+              </svg>
+              <span className="truncate">Limpiar</span>
+            </button>
+          </div>
         </div>
       </div>
 
@@ -353,100 +362,108 @@ export function ComprasOrdersPanel({
         )}
       </div>
 
-      <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
-        <table className="w-full min-w-[1040px] border-collapse text-left">
-          <thead className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm">
+      <div className="hidden min-h-0 min-w-0 flex-1 overflow-hidden lg:block">
+        <table className="w-full table-fixed border-collapse text-left">
+          <colgroup>
+            <col className="w-[14%]" />
+            <col className="w-[14%]" />
+            <col className="w-[12%]" />
+            <col className="w-[11%]" />
+            <col className="w-[10%]" />
+            <col className="w-[9%]" />
+            <col className="w-[11%]" />
+            <col className="w-[9%]" />
+            <col className="w-[10%]" />
+          </colgroup>
+          <thead className="bg-orange-50/95">
             <tr className="border-b border-orange-100">
-              <th className={th}>OC / Título</th>
+              <th className={th}>OC</th>
               <th className={th}>Obra</th>
               <th className={th}>Proveedor</th>
               <th className={`${th} text-right`}>Total</th>
               <th className={`${th} text-right`}>Pagado</th>
-              <th className={th}>Modalidad</th>
-              <th className={`${th} text-right`}>Saldo pendiente</th>
+              <th className={`${th} text-right`}>Saldo</th>
+              <th className={`${th} hidden xl:table-cell`}>Mod.</th>
               <th className={th}>Fecha</th>
               <th className={th}>Estado</th>
-              <th className={`${th} w-10`} aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={11} className="px-4 py-10 text-center text-sm text-zinc-500">
+                <td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-500">
                   No hay órdenes con estos filtros.
                 </td>
               </tr>
             ) : (
               pageItems.map((order, i) => {
-                const docs = docFlags(order);
                 const href = `/ordenes/${order.id}`;
+                const modTitle = paymentTypeTitle(order);
                 return (
                   <tr
                     key={order.id}
                     onClick={() => router.push(href)}
+                    title={modTitle !== "Sin modalidad" ? `Modalidad: ${modTitle}` : undefined}
                     className={`cursor-pointer border-b border-orange-50/80 transition hover:bg-orange-50/60 ${
                       i % 2 === 1 ? "bg-zinc-50/50" : "bg-white"
                     }`}
                   >
                     <td className={td}>
-                      <div className="flex min-w-[9rem] items-center gap-1.5">
+                      <div className="flex min-w-0 items-center gap-1">
                         {hasOcPdf(order) && (
                           <span className="shrink-0 text-red-500" title="PDF adjunto">
-                            <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
+                            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
                               <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4z" />
                             </svg>
                           </span>
                         )}
                         <div className="min-w-0">
-                          <p className="truncate font-semibold text-zinc-900">{orderDisplayCode(order)}</p>
-                          <p className="truncate text-[11px] text-zinc-500">{order.title}</p>
+                          <p className="truncate font-semibold text-zinc-900" title={orderDisplayCode(order)}>
+                            {orderDisplayCode(order)}
+                          </p>
+                          <p className="truncate text-[10px] text-zinc-500" title={order.title}>
+                            {order.title}
+                          </p>
                         </div>
                       </div>
                     </td>
-                    <td className={`${td} max-w-[7rem] truncate font-medium text-teal-800`}>
+                    <td className={`${td} truncate font-medium text-teal-800`} title={order.obraName}>
                       {order.obraName}
                     </td>
-                    <td className={`${td} max-w-[8rem] truncate text-zinc-700`}>{order.supplierName}</td>
-                    <td className={`${td} text-right font-semibold tabular-nums text-zinc-900`}>
+                    <td className={`${td} truncate text-zinc-700`} title={order.supplierName}>
+                      {order.supplierName}
+                    </td>
+                    <td className={`${td} text-right font-semibold ${money} text-zinc-900`}>
                       {formatMoney(order.totalAmount, order.currency)}
                     </td>
-                    <td className={`${td} text-right tabular-nums text-zinc-700`}>
+                    <td className={`${td} text-right ${money} text-zinc-600`}>
                       {formatMoney(order.amountPaidSoFar, order.currency)}
                     </td>
-                    <td className={`${td} whitespace-nowrap text-zinc-600`}>{paymentTypeShort(order)}</td>
-                    <td className={`${td} text-right`}>
+                    <td className={`${td} text-right ${money}`}>
                       <span
                         className={
                           order.amountRemaining <= 0.01
-                            ? "font-semibold tabular-nums text-emerald-700"
-                            : "font-bold tabular-nums text-orange-600"
+                            ? "font-semibold text-emerald-700"
+                            : "font-bold text-orange-600"
                         }
+                        title={order.amountRemaining > 0.01 ? "Saldo pendiente" : "Saldada"}
                       >
                         {formatMoney(order.amountRemaining, order.currency)}
                       </span>
-                      {order.amountRemaining > 0.01 && (
-                        <p className="text-[10px] font-medium text-orange-500">pendiente</p>
-                      )}
                     </td>
-                    <td className={`${td} whitespace-nowrap tabular-nums text-zinc-600`}>
+                    <td
+                      className={`${td} hidden truncate text-zinc-600 xl:table-cell`}
+                      title={modTitle}
+                    >
+                      {paymentTypeShort(order)}
+                    </td>
+                    <td className={`${td} ${money} text-zinc-600`}>
                       {formatDateShort(order.createdAt)}
                     </td>
-                    <td className={td}>
-                      <SystemStatusBadge status={order.status} size="xs" />
-                    </td>
-                    <td className={`${td} text-zinc-400`}>
-                      <Link
-                        href={href}
-                        onClick={(e) => e.stopPropagation()}
-                        className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-orange-100 hover:text-orange-700"
-                        aria-label="Ver expediente"
-                      >
-                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
-                          <circle cx="12" cy="5" r="2" />
-                          <circle cx="12" cy="12" r="2" />
-                          <circle cx="12" cy="19" r="2" />
-                        </svg>
-                      </Link>
+                    <td className={`${td} max-w-0`}>
+                      <div className="min-w-0 overflow-hidden">
+                        <SystemStatusBadge status={order.status} size="xs" />
+                      </div>
                     </td>
                   </tr>
                 );

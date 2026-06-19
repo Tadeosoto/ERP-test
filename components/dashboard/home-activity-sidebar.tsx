@@ -11,7 +11,7 @@ export function HomeActivitySidebar({
   pendingMovements: PendingMovementDto[];
 }) {
   return (
-    <aside className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-1 xl:gap-3">
+    <aside className="grid grid-cols-1 gap-3">
       <MovementsPanel
         title="Últimos movimientos"
         viewAllHref="/movimientos"
