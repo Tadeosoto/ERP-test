@@ -8,7 +8,7 @@ import {
 } from "@/lib/dashboard/compras-dashboard";
 
 function KpiIcon({ kind }: { kind: (typeof COMPRAS_KPI_CONFIG)[number]["icon"] }) {
-  const cls = "h-5 w-5";
+  const cls = "h-4 w-4 lg:h-5 lg:w-5";
   if (kind === "banknote") {
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -87,19 +87,19 @@ function KpiCardButton({
     <button
       type="button"
       onClick={onSelect}
-      className={`flex h-full w-full flex-col rounded-2xl border border-orange-100/80 border-l-4 p-4 text-left shadow-sm transition hover:shadow-md ${cfg.accent} ${selected ? "ring-2 ring-orange-300/60" : ""}`}
+      className={`flex h-full w-full min-w-0 flex-col rounded-2xl border border-orange-100/80 border-l-4 p-3 text-left shadow-sm transition hover:shadow-md lg:p-3 xl:p-4 ${cfg.accent} ${selected ? "ring-2 ring-orange-300/60" : ""}`}
     >
-      <div className="flex items-start justify-between gap-3">
+      <div className="flex items-start justify-between gap-2">
         <span
-          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.iconBg}`}
+          className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl lg:h-10 lg:w-10 ${cfg.iconBg}`}
         >
           <KpiIcon kind={cfg.icon} />
         </span>
-        <span className="text-3xl font-bold tabular-nums text-zinc-900">{count}</span>
+        <span className="text-2xl font-bold tabular-nums text-zinc-900 xl:text-3xl">{count}</span>
       </div>
-      <p className="mt-3 text-sm font-semibold text-zinc-800">{cfg.label}</p>
-      <p className="text-xs text-zinc-500">{cfg.sublabel}</p>
-      <span className={`mt-2 text-sm font-medium ${cfg.linkClass}`}>Ver órdenes →</span>
+      <p className="mt-2 text-xs font-semibold leading-snug text-zinc-800 lg:text-sm">{cfg.label}</p>
+      <p className="mt-0.5 line-clamp-2 text-[11px] text-zinc-500 lg:text-xs">{cfg.sublabel}</p>
+      <span className={`mt-1.5 text-xs font-medium lg:text-sm ${cfg.linkClass}`}>Ver órdenes →</span>
     </button>
   );
 }
@@ -109,60 +109,64 @@ export function ComprasKpiCards({
   activeTab,
   onSelectTab,
   hint,
+  layout = "standalone",
 }: {
   counts: ComprasKpiCounts;
   activeTab: ComprasOrderTab;
   onSelectTab: (tab: ComprasOrderTab) => void;
   hint?: ComprasKpiHint | null;
+  layout?: "standalone" | "embedded";
 }) {
-  return (
-    <div className="compras-kpi-grid grid shrink-0 grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-5 lg:gap-3">
-      {COMPRAS_KPI_CONFIG.map((cfg, index) => {
-        const selected = activeTab === cfg.tab;
-        const card = (
-          <KpiCardButton
-            cfg={cfg}
-            selected={selected}
-            count={counts[cfg.key]}
-            onSelect={() => onSelectTab(cfg.tab)}
+  const items = COMPRAS_KPI_CONFIG.map((cfg, index) => {
+    const selected = activeTab === cfg.tab;
+    const card = (
+      <KpiCardButton
+        cfg={cfg}
+        selected={selected}
+        count={counts[cfg.key]}
+        onSelect={() => onSelectTab(cfg.tab)}
+      />
+    );
+
+    if (index === 0 && hint) {
+      return (
+        <div key={cfg.key} className="relative min-h-0 min-w-0 overflow-visible">
+          <FloatingCallout
+            title={hint.title}
+            message={hint.message}
+            actionLabel={hint.actionLabel}
+            href={hint.href}
+            onDismiss={hint.onDismiss}
+            placement="left"
+            widthClass="w-[min(14rem,calc(100vw-3rem))]"
+            className="max-md:hidden"
           />
-        );
+          <FloatingCallout
+            title={hint.title}
+            message={hint.message}
+            actionLabel={hint.actionLabel}
+            href={hint.href}
+            onDismiss={hint.onDismiss}
+            placement="below"
+            align="left"
+            widthClass="w-full max-w-sm"
+            className="md:hidden"
+          />
+          {card}
+        </div>
+      );
+    }
 
-        if (index === 0 && hint) {
-          return (
-            <div key={cfg.key} className="relative overflow-visible">
-              <FloatingCallout
-                title={hint.title}
-                message={hint.message}
-                actionLabel={hint.actionLabel}
-                href={hint.href}
-                onDismiss={hint.onDismiss}
-                placement="left"
-                widthClass="w-[min(14rem,calc(100vw-3rem))]"
-                className="max-md:hidden"
-              />
-              <FloatingCallout
-                title={hint.title}
-                message={hint.message}
-                actionLabel={hint.actionLabel}
-                href={hint.href}
-                onDismiss={hint.onDismiss}
-                placement="below"
-                align="left"
-                widthClass="w-full max-w-sm"
-                className="md:hidden"
-              />
-              {card}
-            </div>
-          );
-        }
+    return (
+      <div key={cfg.key} className="min-h-0 min-w-0">
+        {card}
+      </div>
+    );
+  });
 
-        return (
-          <div key={cfg.key} className="min-h-0">
-            {card}
-          </div>
-        );
-      })}
-    </div>
-  );
+  if (layout === "embedded") {
+    return <>{items}</>;
+  }
+
+  return <div className="compras-dashboard-grid shrink-0">{items}</div>;
 }

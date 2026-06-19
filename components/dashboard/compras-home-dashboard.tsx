@@ -35,10 +35,10 @@ export function ComprasHomeDashboard({
   }, [hintKey]);
 
   return (
-    <div className="flex min-h-0 flex-col gap-3 overflow-x-visible overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-4">
+    <div className="flex min-h-0 flex-col gap-3 overflow-x-hidden overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-3">
       <header className="shrink-0">
         <div className="flex flex-wrap items-center justify-between gap-3">
-          <div>
+          <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
               ¡Hola, {userName.split(" ")[0]}!
             </h1>
@@ -56,25 +56,27 @@ export function ComprasHomeDashboard({
         </div>
       </header>
 
-      <ComprasKpiCards
-        counts={kpiCounts}
-        activeTab={activeTab}
-        onSelectTab={setActiveTab}
-        hint={
-          panelHint && !hintDismissed
-            ? {
-                title: panelHint.title,
-                message: panelHint.message,
-                actionLabel: panelHint.actionLabel,
-                href: panelHint.href,
-                onDismiss: () => setHintDismissed(true),
-              }
-            : null
-        }
-      />
+      {/* Una sola grilla: KPIs fila 1, órdenes cols 1-4, sidebar col 5 */}
+      <div className="compras-dashboard-grid min-h-0 min-w-0 flex-1">
+        <ComprasKpiCards
+          layout="embedded"
+          counts={kpiCounts}
+          activeTab={activeTab}
+          onSelectTab={setActiveTab}
+          hint={
+            panelHint && !hintDismissed
+              ? {
+                  title: panelHint.title,
+                  message: panelHint.message,
+                  actionLabel: panelHint.actionLabel,
+                  href: panelHint.href,
+                  onDismiss: () => setHintDismissed(true),
+                }
+              : null
+          }
+        />
 
-      <div className="compras-kpi-grid grid min-h-0 min-w-0 flex-1 grid-cols-1 gap-2 lg:grid-cols-5 lg:items-stretch lg:gap-3">
-        <div className="flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-4 lg:overflow-hidden">
+        <div className="col-span-2 flex min-h-0 min-w-0 flex-col gap-2 lg:col-span-4 lg:row-start-2 lg:overflow-hidden">
           <ComprasOrdersPanel
             orders={orders}
             obras={obras}
@@ -105,8 +107,9 @@ export function ComprasHomeDashboard({
           </Link>
         </div>
 
-        <div className="min-h-0 min-w-0 lg:col-span-1">
+        <div className="col-span-2 flex min-h-0 min-w-0 flex-col lg:col-span-1 lg:row-start-2 lg:self-stretch">
           <HomeActivitySidebar
+            className="h-full min-h-0 flex-1"
             recentMovements={recentMovements}
             pendingMovements={pendingMovements}
           />

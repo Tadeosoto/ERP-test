@@ -28,10 +28,10 @@ export function MovementsPanel({
   const rowHover = PANEL_HOVER_ROW[surface] ?? "";
 
   return (
-    <section className={`flex min-h-0 flex-col rounded-2xl border p-4 shadow-sm ${PANEL_SURFACE[surface]}`}>
+    <section className={`flex min-h-0 flex-col rounded-2xl border p-3 shadow-sm lg:p-4 ${PANEL_SURFACE[surface]}`}>
       <h2 className="text-base font-semibold text-zinc-800">{title}</h2>
 
-      <ul className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto lg:max-h-52">
+      <ul className="mt-3 min-h-0 flex-1 space-y-3 overflow-y-auto lg:max-h-none">
         {!hasItems ? (
           <li className="py-6 text-center text-sm text-zinc-400">{empty}</li>
         ) : variant === "recent" ? (

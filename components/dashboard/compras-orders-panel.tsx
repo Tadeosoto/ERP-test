@@ -365,15 +365,15 @@ export function ComprasOrdersPanel({
       <div className="hidden min-h-0 min-w-0 flex-1 overflow-hidden lg:block">
         <table className="w-full table-fixed border-collapse text-left">
           <colgroup>
-            <col className="w-[14%]" />
-            <col className="w-[14%]" />
-            <col className="w-[12%]" />
+            <col className="w-[13%]" />
+            <col className="w-[16%] xl:w-[14%]" />
+            <col className="w-[14%] xl:w-[12%]" />
             <col className="w-[11%]" />
             <col className="w-[10%]" />
-            <col className="w-[9%]" />
-            <col className="w-[11%]" />
-            <col className="w-[9%]" />
             <col className="w-[10%]" />
+            <col className="w-0 xl:w-[11%]" />
+            <col className="w-[9%]" />
+            <col className="w-[17%] xl:w-[10%]" />
           </colgroup>
           <thead className="bg-orange-50/95">
             <tr className="border-b border-orange-100">
