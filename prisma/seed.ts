@@ -27,13 +27,51 @@ async function main() {
   const paty = await prisma.user.findUnique({ where: { email: "paty@ccp.local" } });
   if (!paty) throw new Error("Usuario Paty no creado");
 
+  const supplierCount = await prisma.supplier.count();
+  if (supplierCount === 0) {
+    await prisma.supplier.createMany({
+      data: [
+        {
+          legalName: "Inalum S.A. de C.V.",
+          rfc: "INA123456B12",
+          commercialName: "Inalum",
+          city: "Ciudad de México",
+          state: "Ciudad de México",
+        },
+        {
+          legalName: "Electro Mayorista SA de CV",
+          rfc: "EMA987654X01",
+          commercialName: "Electro Mayorista",
+          city: "Monterrey",
+          state: "Nuevo León",
+        },
+      ],
+    });
+  }
+
   const obraCount = await prisma.obra.count();
   if (obraCount === 0) {
     const obra1 = await prisma.obra.create({
-      data: { name: "Subestación Norte", active: true },
+      data: {
+        name: "Torre Residencial Aurora",
+        code: "OBR-2026-001",
+        client: "Desarrollos del Norte SA",
+        managerName: "Ing. Roberto Vega",
+        startDate: new Date("2026-01-15"),
+        estimatedEndDate: new Date("2027-06-30"),
+        active: true,
+      },
     });
     const obra2 = await prisma.obra.create({
-      data: { name: "Obra Centro — Edificio A", active: true },
+      data: {
+        name: "14023 - San Martín",
+        code: "OBR-2026-002",
+        client: "Consorcio Interno",
+        managerName: "Ing. Santiago Mendoza",
+        startDate: new Date("2026-03-01"),
+        estimatedEndDate: new Date("2026-12-15"),
+        active: true,
+      },
     });
 
     await prisma.purchaseOrder.create({

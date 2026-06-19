@@ -6,10 +6,8 @@ import { ComprasKpiCards } from "@/components/dashboard/compras-kpi-cards";
 import { ComprasOrdersPanel } from "@/components/dashboard/compras-orders-panel";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
-import { ROLE_ACTIVITY_STYLE } from "@/lib/dashboard/role-activity-style";
 import { comprasKpiCounts, type ComprasOrderTab } from "@/lib/dashboard/compras-dashboard";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
-import { rolePlaybook } from "@/lib/domain/flow";
 import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
 
 export function ComprasHomeDashboard({
@@ -36,8 +34,6 @@ export function ComprasHomeDashboard({
     setHintDismissed(false);
   }, [hintKey]);
 
-  const playbook = rolePlaybook("compras")[0];
-
   return (
     <div className="flex min-h-0 flex-col gap-3 overflow-x-visible overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-4">
       <header className="shrink-0">
@@ -48,7 +44,7 @@ export function ComprasHomeDashboard({
             </h1>
             <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
               <RoleActivityIcon role="compras" size="sm" />
-              {ROLE_ACTIVITY_STYLE.compras.label} · {playbook ?? "Gestiona tus órdenes de compra."}
+              Compras — Crear obras y registrar la OC con PDF tras negociar con proveedores.
             </p>
           </div>
           <Link href="/ordenes/nueva" className="btn-primary w-full shrink-0 sm:w-auto">

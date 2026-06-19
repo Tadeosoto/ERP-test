@@ -7,13 +7,18 @@ export const SYSTEM_STATUS: Record<
   OrderStatus,
   { label: string; subtitle?: string; tone: SystemStatusTone; icon: SystemStatusIcon }
 > = {
+  draft: {
+    label: "Borrador",
+    tone: "orange",
+    icon: "clock",
+  },
   awaitingEngineer: {
     label: "Pendiente aprobación",
     tone: "orange",
     icon: "clock",
   },
   engineerRejected: {
-    label: "Rechazada",
+    label: "Corrección solicitada",
     tone: "red",
     icon: "x",
   },

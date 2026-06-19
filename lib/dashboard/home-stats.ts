@@ -12,6 +12,7 @@ export type DashboardBucket = {
 
 export function countByStatus(orders: PurchaseOrderDto[]) {
   const counts: Record<OrderStatus, number> = {
+    draft: 0,
     awaitingEngineer: 0,
     engineerRejected: 0,
     awaitingPatyDeadline: 0,

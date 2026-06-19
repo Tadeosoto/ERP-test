@@ -6,17 +6,19 @@ import {
   afterEngineerReject,
   afterMarkAwaitingInvoice,
   afterPatySetsDeadline,
+  afterSendToEngineer,
   canAccountingResolveDifference,
   canAccountingValidate,
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
+  canSendToEngineer,
   canSetPaymentDeadline,
   engineerApproveNextStatus,
   registerPaymentAmount,
 } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
-import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications";
+import { NotificationEvents, notifyByRoles, notifyUsers } from "@/lib/services/notifications";
 import {
   asOrderStatus,
   asPaymentType,
@@ -41,6 +43,7 @@ export async function POST(request: Request, ctx: Ctx) {
       notes?: string;
       paymentType?: PaymentType;
       paymentDueDate?: string;
+      assignedEngineerUserId?: string;
     };
 
     const order = await prisma.purchaseOrder.findUnique({ where: { id } });
@@ -254,6 +257,54 @@ export async function POST(request: Request, ctx: Ctx) {
       });
       const evt = NotificationEvents.orderCompleted(updated.title);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "send_to_engineer") {
+      if (!canSendToEngineer(status, role)) {
+        return NextResponse.json({ error: "No puedes enviar esta orden en el estado actual." }, { status: 403 });
+      }
+
+      const engineerId = body.assignedEngineerUserId ?? order.assignedEngineerUserId;
+      if (!engineerId) {
+        return NextResponse.json({ error: "Selecciona un ingeniero responsable." }, { status: 400 });
+      }
+
+      const hasPdf = await prisma.storedFile.findFirst({
+        where: { orderId: id, kind: "oc_pdf" },
+      });
+      if (!hasPdf) {
+        return NextResponse.json({ error: "Debes adjuntar el PDF de la OC antes de enviar." }, { status: 400 });
+      }
+
+      if (order.totalAmount <= 0) {
+        return NextResponse.json({ error: "El monto total de la OC debe ser mayor a cero." }, { status: 400 });
+      }
+
+      const engineer = await prisma.user.findUnique({ where: { id: engineerId } });
+      if (!engineer || engineer.role !== "ingeniero") {
+        return NextResponse.json({ error: "Ingeniero no válido." }, { status: 400 });
+      }
+
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: {
+          status: afterSendToEngineer(),
+          assignedEngineerUserId: engineerId,
+          sentToEngineerAt: new Date(),
+        },
+        include: orderInclude,
+      });
+
+      const evt = NotificationEvents.orderCreated(updated.title);
+      await notifyUsers({
+        orderId: id,
+        type: evt.type,
+        message: `Paty envió «${updated.title}» a ${engineer.name} para aprobación.`,
+        userIds: [engineerId],
+      });
+      await notifyByRoles(id, "order_sent_engineer", `OC «${updated.title}» pendiente de aprobación.`, ["ingeniero"]);
+
       return NextResponse.json({ order: mapOrder(updated) });
     }
 

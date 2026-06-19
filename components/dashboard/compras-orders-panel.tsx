@@ -6,14 +6,12 @@ import { useMemo, useState, type ReactNode } from "react";
 import { SystemStatusBadge } from "@/components/ui/system-status-badge";
 import {
   COMPRAS_ESTADO_OPTIONS,
-  daysInStage,
   filterComprasOrders,
   hasOcPdf,
   orderDisplayCode,
   type ComprasOrderTab,
 } from "@/lib/dashboard/compras-dashboard";
-import { formatPendingRoles } from "@/lib/domain/flow";
-import { PAYMENT_LABEL_TEXT, PAYMENT_TYPE_SHORT } from "@/lib/domain/labels";
+import { PAYMENT_TYPE_SHORT } from "@/lib/domain/labels";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
@@ -365,21 +363,16 @@ export function ComprasOrdersPanel({
               <th className={`${th} text-right`}>Total</th>
               <th className={`${th} text-right`}>Pagado</th>
               <th className={th}>Modalidad</th>
-              <th className={th}>Saldo</th>
+              <th className={`${th} text-right`}>Saldo pendiente</th>
               <th className={th}>Fecha</th>
               <th className={th}>Estado</th>
-              <th className={th}>A cargo</th>
-              <th className={`${th} text-center`}>Días</th>
-              <th className={`${th} text-center`} title="OC · Pago · Factura">
-                Docs
-              </th>
-              <th className={`${th} w-8`} aria-label="Abrir" />
+              <th className={`${th} w-10`} aria-label="Acciones" />
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={13} className="px-4 py-10 text-center text-sm text-zinc-500">
+                <td colSpan={11} className="px-4 py-10 text-center text-sm text-zinc-500">
                   No hay órdenes con estos filtros.
                 </td>
               </tr>
@@ -421,35 +414,25 @@ export function ComprasOrdersPanel({
                       {formatMoney(order.amountPaidSoFar, order.currency)}
                     </td>
                     <td className={`${td} whitespace-nowrap text-zinc-600`}>{paymentTypeShort(order)}</td>
-                    <td className={td}>
+                    <td className={`${td} text-right`}>
                       <span
                         className={
-                          order.paymentLabel === "saldada"
-                            ? "font-medium text-emerald-700"
-                            : "font-medium text-amber-700"
+                          order.amountRemaining <= 0.01
+                            ? "font-semibold tabular-nums text-emerald-700"
+                            : "font-bold tabular-nums text-orange-600"
                         }
                       >
-                        {PAYMENT_LABEL_TEXT[order.paymentLabel]}
+                        {formatMoney(order.amountRemaining, order.currency)}
                       </span>
+                      {order.amountRemaining > 0.01 && (
+                        <p className="text-[10px] font-medium text-orange-500">pendiente</p>
+                      )}
                     </td>
                     <td className={`${td} whitespace-nowrap tabular-nums text-zinc-600`}>
                       {formatDateShort(order.createdAt)}
                     </td>
                     <td className={td}>
                       <SystemStatusBadge status={order.status} size="xs" />
-                    </td>
-                    <td className={`${td} max-w-[6.5rem] truncate text-[11px] text-zinc-600`}>
-                      {formatPendingRoles(order.status)}
-                    </td>
-                    <td className={`${td} text-center tabular-nums text-zinc-600`}>
-                      {daysInStage(order.updatedAt)}
-                    </td>
-                    <td className={`${td} text-center`}>
-                      <div className="inline-flex items-center gap-1" title="OC · Pago · Factura">
-                        <DocDot ok={docs.oc} label="OC" />
-                        <DocDot ok={docs.pago} label="Comprobante" />
-                        <DocDot ok={docs.factura} label="Factura" />
-                      </div>
                     </td>
                     <td className={`${td} text-zinc-400`}>
                       <Link
@@ -458,8 +441,10 @@ export function ComprasOrdersPanel({
                         className="inline-flex h-8 w-8 items-center justify-center rounded-lg hover:bg-orange-100 hover:text-orange-700"
                         aria-label="Ver expediente"
                       >
-                        <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+                        <svg className="h-5 w-5" fill="currentColor" viewBox="0 0 24 24">
+                          <circle cx="12" cy="5" r="2" />
+                          <circle cx="12" cy="12" r="2" />
+                          <circle cx="12" cy="19" r="2" />
                         </svg>
                       </Link>
                     </td>

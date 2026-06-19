@@ -1,6 +1,7 @@
 export type Role = "pagos" | "compras" | "ingeniero" | "recepcion" | "contabilidad";
 
 export type OrderStatus =
+  | "draft"
   | "awaitingEngineer"
   | "engineerRejected"
   | "awaitingPatyDeadline"
@@ -61,6 +62,14 @@ export interface PurchaseOrderDto {
   title: string;
   description: string;
   supplierName: string;
+  supplierId: string | null;
+  ocFolio: string;
+  ocDate: string | null;
+  paymentTerms: string;
+  internalReference: string;
+  documentDate: string | null;
+  assignedEngineerUserId: string | null;
+  assignedEngineerName: string | null;
   totalAmount: number;
   amountPaidSoFar: number;
   amountRemaining: number;
@@ -70,6 +79,7 @@ export interface PurchaseOrderDto {
   suggestedPaymentType: PaymentType | null;
   paymentDueDate: string | null;
   status: OrderStatus;
+  sentToEngineerAt: string | null;
   createdAt: string;
   updatedAt: string;
   createdByName: string;
@@ -78,9 +88,35 @@ export interface PurchaseOrderDto {
   paymentRecords: PaymentRecordDto[];
 }
 
+export interface SupplierDto {
+  id: string;
+  legalName: string;
+  rfc: string;
+  commercialName: string;
+  taxRegime: string;
+  phone: string;
+  email: string;
+  website: string;
+  street: string;
+  neighborhood: string;
+  zipCode: string;
+  city: string;
+  state: string;
+  country: string;
+  primaryContact: string;
+  notes: string;
+  displayName: string;
+  createdAt: string;
+}
+
 export interface ObraDto {
   id: string;
   name: string;
+  code: string;
+  client: string;
+  managerName: string;
+  startDate: string | null;
+  estimatedEndDate: string | null;
   active: boolean;
   createdAt: string;
   orderCount: number;

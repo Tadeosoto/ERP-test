@@ -18,8 +18,9 @@ model User {
   comments         OrderComment[]
   notifications    Notification[]
   uploadedFiles    StoredFile[]
-  createdOrders    PurchaseOrder[] @relation("OrderCreator")
-  paymentRecords   PaymentRecord[]
+  createdOrders       PurchaseOrder[] @relation("OrderCreator")
+  assignedOrders      PurchaseOrder[] @relation("AssignedEngineer")
+  paymentRecords      PaymentRecord[]
 }
 
 model Session {
@@ -31,37 +32,73 @@ model Session {
   createdAt DateTime @default(now())
 }
 
+model Supplier {
+  id              String          @id @default(cuid())
+  legalName       String
+  rfc             String
+  commercialName  String          @default("")
+  taxRegime       String          @default("")
+  phone           String          @default("")
+  email           String          @default("")
+  website         String          @default("")
+  street          String          @default("")
+  neighborhood    String          @default("")
+  zipCode         String          @default("")
+  city            String          @default("")
+  state           String          @default("")
+  country         String          @default("México")
+  primaryContact  String          @default("")
+  notes           String          @default("")
+  createdAt       DateTime        @default(now())
+  orders          PurchaseOrder[]
+}
+
 model Obra {
-  id        String          @id @default(cuid())
-  name      String
-  active    Boolean         @default(true)
-  createdAt DateTime        @default(now())
-  orders    PurchaseOrder[]
+  id               String          @id @default(cuid())
+  name             String
+  code             String          @default("")
+  client           String          @default("")
+  managerName      String          @default("")
+  startDate        DateTime?
+  estimatedEndDate DateTime?
+  active           Boolean         @default(true)
+  createdAt        DateTime        @default(now())
+  orders           PurchaseOrder[]
 }
 
 model PurchaseOrder {
-  id                   String          @id @default(cuid())
-  obraId               String
-  obra                 Obra            @relation(fields: [obraId], references: [id], onDelete: Cascade)
-  title                String
-  description          String          @default("")
-  supplierName         String
-  totalAmount          Float
-  amountPaidSoFar      Float           @default(0)
-  currency             String          @default("MXN")
-  paymentLabel         String          @default("pendiente")
-  paymentType          String?
-  suggestedPaymentType String?
-  paymentDueDate       DateTime?
-  status               String          @default("awaitingEngineer")
-  createdByUserId      String
-  createdBy            User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
-  createdAt            DateTime        @default(now())
-  updatedAt            DateTime        @updatedAt
-  comments             OrderComment[]
-  files                StoredFile[]
-  notifications        Notification[]
-  paymentRecords       PaymentRecord[]
+  id                     String          @id @default(cuid())
+  obraId                 String
+  obra                   Obra            @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  title                  String
+  description            String          @default("")
+  supplierName           String
+  supplierId             String?
+  supplier               Supplier?       @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  ocFolio                String          @default("")
+  ocDate                 DateTime?
+  paymentTerms           String          @default("")
+  internalReference      String          @default("")
+  documentDate           DateTime?
+  assignedEngineerUserId String?
+  assignedEngineer       User?           @relation("AssignedEngineer", fields: [assignedEngineerUserId], references: [id], onDelete: SetNull)
+  totalAmount            Float
+  amountPaidSoFar        Float           @default(0)
+  currency               String          @default("MXN")
+  paymentLabel           String          @default("pendiente")
+  paymentType            String?
+  suggestedPaymentType   String?
+  paymentDueDate         DateTime?
+  status                 String          @default("draft")
+  createdByUserId        String
+  createdBy              User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
+  sentToEngineerAt       DateTime?
+  createdAt              DateTime        @default(now())
+  updatedAt              DateTime        @updatedAt
+  comments               OrderComment[]
+  files                  StoredFile[]
+  notifications          Notification[]
+  paymentRecords         PaymentRecord[]
 }
 
 model PaymentRecord {

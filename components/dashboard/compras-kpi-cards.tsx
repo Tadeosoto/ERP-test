@@ -7,7 +7,7 @@ import {
   type ComprasOrderTab,
 } from "@/lib/dashboard/compras-dashboard";
 
-function KpiIcon({ kind }: { kind: "clock" | "banknote" | "document" | "check" }) {
+function KpiIcon({ kind }: { kind: (typeof COMPRAS_KPI_CONFIG)[number]["icon"] }) {
   const cls = "h-5 w-5";
   if (kind === "banknote") {
     return (
@@ -40,6 +40,18 @@ function KpiIcon({ kind }: { kind: "clock" | "banknote" | "document" | "check" }
       </svg>
     );
   }
+  if (kind === "alert") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z"
+        />
+      </svg>
+    );
+  }
   return (
     <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
       <path
@@ -51,13 +63,6 @@ function KpiIcon({ kind }: { kind: "clock" | "banknote" | "document" | "check" }
     </svg>
   );
 }
-
-const KPI_ICONS: Record<(typeof COMPRAS_KPI_CONFIG)[number]["key"], "clock" | "banknote" | "document" | "check"> = {
-  aprobar: "clock",
-  pago: "banknote",
-  factura: "document",
-  completadas: "check",
-};
 
 export type ComprasKpiHint = {
   title: string;
@@ -88,7 +93,7 @@ function KpiCardButton({
         <span
           className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${cfg.iconBg}`}
         >
-          <KpiIcon kind={KPI_ICONS[cfg.key]} />
+          <KpiIcon kind={cfg.icon} />
         </span>
         <span className="text-3xl font-bold tabular-nums text-zinc-900">{count}</span>
       </div>
@@ -111,7 +116,7 @@ export function ComprasKpiCards({
   hint?: ComprasKpiHint | null;
 }) {
   return (
-    <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3 xl:grid-cols-4 xl:gap-4">
+    <div className="grid shrink-0 grid-cols-2 gap-2 sm:gap-3 lg:grid-cols-3 xl:grid-cols-5 xl:gap-3">
       {COMPRAS_KPI_CONFIG.map((cfg, index) => {
         const selected = activeTab === cfg.tab;
         const card = (

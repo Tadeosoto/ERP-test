@@ -36,6 +36,9 @@ export function apiErrorMessage(error: unknown): string {
   }
 
   if (error instanceof Error) {
+    if (error.message.includes("Cannot read properties of undefined") && error.message.includes("'create'")) {
+      return "La base de datos no está sincronizada con la app. En la carpeta ccp-erp-app ejecute: npm run db:fix-client y reinicie el servidor (npm run dev).";
+    }
     // Errores de negocio (throws desde transitions, etc.)
     if (error.message.length < 200 && !error.message.includes("invocation")) {
       return error.message;

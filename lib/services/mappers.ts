@@ -57,6 +57,7 @@ export function asCommentKind(value: string): CommentKind {
 type OrderWithRelations = PurchaseOrder & {
   obra: Obra;
   createdBy: User;
+  assignedEngineer?: User | null;
   comments: (OrderComment & { author: User })[];
   files: StoredFile[];
   paymentRecords: (PaymentRecord & { recordedBy: User })[];
@@ -83,6 +84,14 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     title: order.title,
     description: order.description,
     supplierName: order.supplierName,
+    supplierId: order.supplierId,
+    ocFolio: order.ocFolio,
+    ocDate: order.ocDate?.toISOString() ?? null,
+    paymentTerms: order.paymentTerms,
+    internalReference: order.internalReference,
+    documentDate: order.documentDate?.toISOString() ?? null,
+    assignedEngineerUserId: order.assignedEngineerUserId,
+    assignedEngineerName: order.assignedEngineer?.name ?? null,
     totalAmount: total,
     amountPaidSoFar: paid,
     amountRemaining: amountRemaining(total, paid),
@@ -92,6 +101,7 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     suggestedPaymentType: asPaymentType(order.suggestedPaymentType),
     paymentDueDate: order.paymentDueDate?.toISOString() ?? null,
     status: asOrderStatus(order.status),
+    sentToEngineerAt: order.sentToEngineerAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
     updatedAt: order.updatedAt.toISOString(),
     createdByName: order.createdBy.name,
@@ -126,9 +136,56 @@ export function mapObra(obra: Obra & { _count?: { orders: number } }): ObraDto {
   return {
     id: obra.id,
     name: obra.name,
+    code: obra.code,
+    client: obra.client,
+    managerName: obra.managerName,
+    startDate: obra.startDate?.toISOString() ?? null,
+    estimatedEndDate: obra.estimatedEndDate?.toISOString() ?? null,
     active: obra.active,
     createdAt: obra.createdAt.toISOString(),
     orderCount: obra._count?.orders ?? 0,
+  };
+}
+
+export function mapSupplier(s: {
+  id: string;
+  legalName: string;
+  rfc: string;
+  commercialName: string;
+  taxRegime: string;
+  phone: string;
+  email: string;
+  website: string;
+  street: string;
+  neighborhood: string;
+  zipCode: string;
+  city: string;
+  state: string;
+  country: string;
+  primaryContact: string;
+  notes: string;
+  createdAt: Date;
+}): import("@/lib/domain/types").SupplierDto {
+  const displayName = s.commercialName.trim() || s.legalName;
+  return {
+    id: s.id,
+    legalName: s.legalName,
+    rfc: s.rfc,
+    commercialName: s.commercialName,
+    taxRegime: s.taxRegime,
+    phone: s.phone,
+    email: s.email,
+    website: s.website,
+    street: s.street,
+    neighborhood: s.neighborhood,
+    zipCode: s.zipCode,
+    city: s.city,
+    state: s.state,
+    country: s.country,
+    primaryContact: s.primaryContact,
+    notes: s.notes,
+    displayName,
+    createdAt: s.createdAt.toISOString(),
   };
 }
 
@@ -153,6 +210,7 @@ export function mapNotification(n: {
 export const orderInclude = {
   obra: true,
   createdBy: true,
+  assignedEngineer: true,
   comments: { include: { author: true }, orderBy: { createdAt: "desc" as const } },
   files: { orderBy: { createdAt: "desc" as const } },
   paymentRecords: {

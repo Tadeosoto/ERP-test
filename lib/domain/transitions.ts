@@ -1,6 +1,22 @@
 import type { Role, OrderStatus, PaymentType, PaymentLabel } from "./types";
 import { INVOICE_UPLOAD_ROLES, statusAfterEngineerApprove } from "./flow";
 
+export function createDraftOrder(): {
+  totalAmount: number;
+  amountPaidSoFar: number;
+  paymentLabel: PaymentLabel;
+  suggestedPaymentType: PaymentType | null;
+  status: OrderStatus;
+} {
+  return {
+    totalAmount: 0,
+    amountPaidSoFar: 0,
+    paymentLabel: "pendiente",
+    suggestedPaymentType: null,
+    status: "draft",
+  };
+}
+
 export function createOrderByCompras(input: {
   totalAmount: number;
   suggestedPaymentType?: PaymentType | null;
@@ -19,6 +35,10 @@ export function createOrderByCompras(input: {
     suggestedPaymentType: input.suggestedPaymentType ?? null,
     status: "awaitingEngineer",
   };
+}
+
+export function afterSendToEngineer(): OrderStatus {
+  return "awaitingEngineer";
 }
 
 export function afterEngineerReject(): OrderStatus {
@@ -105,8 +125,16 @@ export function canCreateOrder(role: Role): boolean {
   return role === "compras";
 }
 
+export function canUpdateDraftOrder(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && status === "draft";
+}
+
+export function canSendToEngineer(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && status === "draft";
+}
+
 export function canUploadOcPdf(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && (status === "engineerRejected" || status === "awaitingEngineer");
+  return role === "compras" && (status === "draft" || status === "engineerRejected" || status === "awaitingEngineer");
 }
 
 export function canEngineerAct(status: OrderStatus, role: Role): boolean {

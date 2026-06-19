@@ -1,11 +1,17 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { createOrderByCompras } from "@/lib/domain/transitions";
+import { createDraftOrder } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications";
 import { mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType } from "@/lib/domain/types";
+
+function buildTitle(ocFolio: string, supplierName: string): string {
+  if (ocFolio.trim()) return ocFolio.trim();
+  return supplierName.trim() || "Orden de compra";
+}
+
 export async function GET(request: Request) {
   try {
     await requireSessionUser();
@@ -31,43 +37,62 @@ export async function POST(request: Request) {
 
     const body = (await request.json()) as {
       obraId?: string;
-      title?: string;
       supplierName?: string;
-      totalAmount?: number;
+      supplierId?: string | null;
+      ocFolio?: string;
+      ocDate?: string;
+      paymentTerms?: string;
       description?: string;
+      internalReference?: string;
+      documentDate?: string;
+      totalAmount?: number;
+      currency?: string;
       suggestedPaymentType?: PaymentType | null;
+      asDraft?: boolean;
     };
 
-    if (!body.obraId || !body.title?.trim() || !body.supplierName?.trim()) {
-      return NextResponse.json({ error: "Obra, título y proveedor son requeridos." }, { status: 400 });
+    if (!body.obraId || !body.supplierName?.trim()) {
+      return NextResponse.json({ error: "Obra y proveedor son requeridos." }, { status: 400 });
     }
 
-    const suggested =
-      body.suggestedPaymentType === "parcialidades" ? "parcialidades" : null;
+    const asDraft = body.asDraft !== false;
+    const draft = createDraftOrder();
+    const totalAmount = asDraft ? (body.totalAmount ?? 0) : Number(body.totalAmount);
+    if (!asDraft && totalAmount <= 0) {
+      return NextResponse.json({ error: "El monto total debe ser mayor a cero." }, { status: 400 });
+    }
 
-    const computed = createOrderByCompras({
-      totalAmount: Number(body.totalAmount),
-      suggestedPaymentType: suggested,
-    });
+    const supplierName = body.supplierName.trim();
+    const ocFolio = body.ocFolio?.trim() ?? "";
 
     const order = await prisma.purchaseOrder.create({
       data: {
         obraId: body.obraId,
-        title: body.title.trim(),
-        supplierName: body.supplierName.trim(),
+        title: buildTitle(ocFolio, supplierName),
+        supplierName,
+        supplierId: body.supplierId ?? null,
+        ocFolio,
+        ocDate: body.ocDate ? new Date(body.ocDate) : null,
+        paymentTerms: body.paymentTerms?.trim() ?? "",
         description: body.description?.trim() ?? "",
-        totalAmount: computed.totalAmount,
-        amountPaidSoFar: computed.amountPaidSoFar,
-        paymentLabel: computed.paymentLabel,
-        suggestedPaymentType: computed.suggestedPaymentType,
-        status: computed.status,
+        internalReference: body.internalReference?.trim() ?? "",
+        documentDate: body.documentDate ? new Date(body.documentDate) : null,
+        totalAmount: asDraft ? totalAmount : totalAmount,
+        amountPaidSoFar: draft.amountPaidSoFar,
+        paymentLabel: draft.paymentLabel,
+        currency: body.currency?.trim() || "MXN",
+        suggestedPaymentType:
+          body.suggestedPaymentType === "parcialidades" ? "parcialidades" : null,
+        status: asDraft ? "draft" : "awaitingEngineer",
         createdByUserId: user.id,
       },
       include: orderInclude,
     });
 
-    const evt = NotificationEvents.orderCreated(order.title);
-    await notifyByRoles(order.id, evt.type, evt.message, evt.roles);
+    if (!asDraft) {
+      const evt = NotificationEvents.orderCreated(order.title);
+      await notifyByRoles(order.id, evt.type, evt.message, evt.roles);
+    }
 
     return NextResponse.json({ order: mapOrder(order) });
   } catch (e) {
