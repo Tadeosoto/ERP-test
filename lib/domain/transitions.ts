@@ -112,12 +112,9 @@ export function registerPaymentAmount(input: {
 }
 
 export function engineerApproveNextStatus(
-  engineerPaymentType: PaymentType,
-  suggestedPaymentType: PaymentType | null
+  paymentType: PaymentType
 ): { status: OrderStatus; paymentType: PaymentType } {
-  const paymentType =
-    suggestedPaymentType === "parcialidades" ? "parcialidades" : engineerPaymentType;
-  const status = statusAfterEngineerApprove(paymentType, suggestedPaymentType === "parcialidades");
+  const status = statusAfterEngineerApprove(paymentType, paymentType === "parcialidades");
   return { status, paymentType };
 }
 
@@ -125,8 +122,27 @@ export function canCreateOrder(role: Role): boolean {
   return role === "compras";
 }
 
+export function canCreateObra(role: Role): boolean {
+  return role === "ingeniero";
+}
+
+export function canConfigureObra(role: Role): boolean {
+  return role === "ingeniero" || role === "compras";
+}
+
 export function canUpdateDraftOrder(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && status === "draft";
+  return canComprasEditOrder(status, role);
+}
+
+/** Compras puede editar borradores y OCs devueltas por corrección de Ingeniería. */
+export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
+  return role === "compras" && (status === "draft" || status === "engineerRejected");
+}
+
+export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar: number): boolean {
+  if (role !== "compras") return false;
+  if (amountPaidSoFar > 0.01) return false;
+  return status === "draft" || status === "engineerRejected";
 }
 
 export function canSendToEngineer(status: OrderStatus, role: Role): boolean {

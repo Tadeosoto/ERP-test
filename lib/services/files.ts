@@ -31,6 +31,11 @@ export async function saveOrderFile(input: {
   if (!isPdf(input.file)) throw new Error("Solo se permiten archivos PDF.");
   if (input.file.size > MAX_BYTES) throw new Error("El archivo supera el límite de 15 MB.");
 
+  // Reemplazar PDF del mismo tipo (p. ej. nueva versión de la OC).
+  await prisma.storedFile.deleteMany({
+    where: { orderId: input.orderId, kind: input.kind },
+  });
+
   const buffer = Buffer.from(await input.file.arrayBuffer());
 
   if (useDatabaseFileStorage()) {

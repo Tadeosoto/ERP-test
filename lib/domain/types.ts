@@ -1,3 +1,5 @@
+import type { DirectExpenseStatus, MaterialRequestStatus } from "./solicitudes";
+
 export type Role = "pagos" | "compras" | "ingeniero" | "recepcion" | "contabilidad";
 
 export type OrderStatus =
@@ -70,6 +72,7 @@ export interface PurchaseOrderDto {
   documentDate: string | null;
   assignedEngineerUserId: string | null;
   assignedEngineerName: string | null;
+  materialRequestId: string | null;
   totalAmount: number;
   amountPaidSoFar: number;
   amountRemaining: number;
@@ -162,4 +165,72 @@ export interface PendingMovementDto {
   obraName: string;
   status: OrderStatus;
   updatedAt: string;
+}
+
+export interface SolicitudAttachmentDto {
+  id: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface MaterialRequestDto {
+  id: string;
+  obraId: string;
+  obraName: string;
+  costCenter: string;
+  materials: string;
+  quantities: string;
+  justification: string;
+  status: MaterialRequestStatus;
+  createdByUserId: string;
+  createdByName: string;
+  sentAt: string | null;
+  purchaseOrderId: string | null;
+  createdAt: string;
+  updatedAt: string;
+  attachments: SolicitudAttachmentDto[];
+}
+
+export interface DirectExpensePaymentDto {
+  id: string;
+  amount: number;
+  reference: string;
+  notes: string;
+  recordedByName: string;
+  createdAt: string;
+}
+
+export interface DirectExpenseFileDto {
+  id: string;
+  kind: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface DirectExpenseDto {
+  id: string;
+  obraId: string;
+  obraName: string;
+  costCenter: string;
+  category: string;
+  supplierName: string;
+  estimatedAmount: number;
+  amountPaidSoFar: number;
+  amountRemaining: number;
+  currency: string;
+  justification: string;
+  paymentLabel: PaymentLabel;
+  status: DirectExpenseStatus;
+  createdByUserId: string;
+  createdByName: string;
+  sentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  attachments: SolicitudAttachmentDto[];
+  files: DirectExpenseFileDto[];
+  paymentRecords: DirectExpensePaymentDto[];
 }

@@ -17,6 +17,7 @@ import {
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { SystemStatusBadge } from "@/components/ui/system-status-badge";
 import { useSession } from "@/components/session-provider";
+import Link from "next/link";
 import {
   canRoleAdvance,
   describeGate,
@@ -25,6 +26,8 @@ import {
 import {
   canAccountingResolveDifference,
   canAccountingValidate,
+  canComprasEditOrder,
+  canDeleteOrder,
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
@@ -58,7 +61,6 @@ export function OrderDetailPanel({
   const { showSuccess, showError } = useFeedback();
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
-  const [engineerPaymentType, setEngineerPaymentType] = useState<PaymentType>("inmediato");
   const [paymentDueDate, setPaymentDueDate] = useState("");
   const [payAmount, setPayAmount] = useState("");
   const [payReference, setPayReference] = useState("");
@@ -114,6 +116,26 @@ export function OrderDetailPanel({
     }
   }
 
+  async function deleteOrder() {
+    if (!window.confirm("¿Eliminar esta orden de compra? Esta acción no se puede deshacer.")) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar.");
+      showSuccess("Orden eliminada.");
+      router.push("/inicio");
+      router.refresh();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "No se pudo eliminar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (!user) return null;
 
   const defaultPayAmount =
@@ -137,10 +159,10 @@ export function OrderDetailPanel({
               </span>
               {order.paymentType && (
                 <span className="inline-flex rounded-full bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-800">
-                  {PAYMENT_TYPE_TEXT[order.paymentType]}
+                  Pago: {PAYMENT_TYPE_TEXT[order.paymentType]}
                 </span>
               )}
-              {order.suggestedPaymentType === "parcialidades" && !order.paymentType && (
+              {!order.paymentType && order.suggestedPaymentType === "parcialidades" && (
                 <span className="inline-flex rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900">
                   Paty indicó parcialidades
                 </span>
@@ -268,13 +290,35 @@ export function OrderDetailPanel({
       <div className="card border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
         <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
 
-        {canUploadOcPdf(order.status, user.role) && order.status === "engineerRejected" && (
+        {user.role === "compras" && (canComprasEditOrder(order.status, user.role) || canDeleteOrder(order.status, user.role, order.amountPaidSoFar)) && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            {canComprasEditOrder(order.status, user.role) && (
+              <Link href={`/ordenes/nueva?orderId=${order.id}`} className="btn-secondary">
+                <IconEdit />
+                Editar OC
+              </Link>
+            )}
+            {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) && (
+              <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
+                Eliminar OC
+              </button>
+            )}
+          </div>
+        )}
+
+        {canUploadOcPdf(order.status, user.role) && user.role === "compras" && (
           <div className="mt-4 space-y-3">
-            <p className="text-base text-zinc-700">Sube el PDF corregido de la orden.</p>
+            <p className="text-base text-zinc-700">
+              {order.status === "engineerRejected"
+                ? "Ingeniería solicitó corrección. Sube el PDF actualizado de la OC."
+                : order.status === "awaitingEngineer"
+                  ? "Puedes reemplazar el PDF antes de que Ingeniería apruebe."
+                  : "Sube o reemplaza el PDF de la orden de compra."}
+            </p>
             <FilePickButton
               disabled={busy}
-              label="Elegir PDF"
-              hint="busca en tu equipo el archivo corregido de la orden"
+              label={order.files.some((f) => f.kind === "oc_pdf") ? "Reemplazar PDF" : "Subir PDF"}
+              hint="archivo PDF generado en CONTPAQi"
               onPick={(file) => void uploadFile("oc_pdf", file)}
             />
           </div>
@@ -282,32 +326,19 @@ export function OrderDetailPanel({
 
         {canEngineerAct(order.status, user.role) && (
           <div className="mt-4 space-y-4">
-            {order.suggestedPaymentType === "parcialidades" ? (
-              <p className="rounded-2xl bg-amber-50 px-4 py-3 text-base text-amber-900">
-                Paty indicó que esta orden será por <strong>parcialidades</strong>.
+            {(order.paymentType || order.suggestedPaymentType) && (
+              <p className="rounded-2xl bg-teal-50 px-4 py-3 text-base text-teal-900">
+                Compras definió la modalidad de pago:{" "}
+                <strong>
+                  {PAYMENT_TYPE_TEXT[order.paymentType ?? order.suggestedPaymentType ?? "inmediato"]}
+                </strong>
+                . Solo revisa el PDF y aprueba o solicita corrección.
               </p>
-            ) : (
-              <fieldset className="space-y-2">
-                <legend className="text-base font-medium text-zinc-800">Modalidad de pago</legend>
-                <label className="flex items-center gap-3 text-base">
-                  <input
-                    type="radio"
-                    name="payType"
-                    checked={engineerPaymentType === "inmediato"}
-                    onChange={() => setEngineerPaymentType("inmediato")}
-                  />
-                  Pago inmediato (Carolina salda el 100%)
-                </label>
-                <label className="flex items-center gap-3 text-base">
-                  <input
-                    type="radio"
-                    name="payType"
-                    checked={engineerPaymentType === "programado"}
-                    onChange={() => setEngineerPaymentType("programado")}
-                  />
-                  Pago programado (Paty indicará fecha límite)
-                </label>
-              </fieldset>
+            )}
+            {!order.paymentType && !order.suggestedPaymentType && (
+              <p className="rounded-2xl bg-amber-50 px-4 py-3 text-base text-amber-900">
+                Compras aún no indicó la modalidad de pago en esta OC. Solicita corrección si falta ese dato.
+              </p>
             )}
             <textarea
               value={comment}
@@ -325,10 +356,6 @@ export function OrderDetailPanel({
                   void postAction({
                     action: "engineer_approve",
                     comment,
-                    paymentType:
-                      order.suggestedPaymentType === "parcialidades"
-                        ? "parcialidades"
-                        : engineerPaymentType,
                   })
                 }
               >

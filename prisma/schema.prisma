@@ -8,19 +8,24 @@ datasource db {
 }
 
 model User {
-  id               String          @id @default(cuid())
-  email            String          @unique
-  name             String
-  role             String
-  passwordHash     String
-  createdAt        DateTime        @default(now())
-  sessions         Session[]
-  comments         OrderComment[]
-  notifications    Notification[]
-  uploadedFiles    StoredFile[]
-  createdOrders       PurchaseOrder[] @relation("OrderCreator")
-  assignedOrders      PurchaseOrder[] @relation("AssignedEngineer")
-  paymentRecords      PaymentRecord[]
+  id                    String                   @id @default(cuid())
+  email                 String                   @unique
+  name                  String
+  role                  String
+  passwordHash          String
+  createdAt             DateTime                 @default(now())
+  sessions              Session[]
+  comments              OrderComment[]
+  notifications         Notification[]
+  uploadedFiles         StoredFile[]
+  createdOrders         PurchaseOrder[]          @relation("OrderCreator")
+  assignedOrders        PurchaseOrder[]          @relation("AssignedEngineer")
+  paymentRecords        PaymentRecord[]
+  materialRequests      MaterialRequest[]        @relation("MaterialRequestsCreated")
+  directExpenses        DirectExpenseRequest[]   @relation("DirectExpensesCreated")
+  solicitudAttachments  SolicitudAttachment[]
+  directExpenseFiles    DirectExpenseFile[]
+  directExpensePayments DirectExpensePayment[]
 }
 
 model Session {
@@ -64,6 +69,8 @@ model Obra {
   active           Boolean         @default(true)
   createdAt        DateTime        @default(now())
   orders           PurchaseOrder[]
+  materialRequests MaterialRequest[]
+  directExpenses   DirectExpenseRequest[]
 }
 
 model PurchaseOrder {
@@ -93,6 +100,8 @@ model PurchaseOrder {
   createdByUserId        String
   createdBy              User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
   sentToEngineerAt       DateTime?
+  materialRequestId      String?         @unique
+  materialRequest        MaterialRequest? @relation(fields: [materialRequestId], references: [id], onDelete: SetNull)
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
   comments               OrderComment[]
@@ -150,4 +159,90 @@ model Notification {
   message   String
   read      Boolean        @default(false)
   createdAt DateTime       @default(now())
+}
+
+// Proceso A — Solicitud de material (Ingeniería inicia).
+model MaterialRequest {
+  id                String                @id @default(cuid())
+  obraId            String
+  obra              Obra                  @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  costCenter        String                @default("")
+  materials         String                @default("")
+  quantities        String                @default("")
+  justification     String                @default("")
+  status            String                @default("draft")
+  createdByUserId   String
+  createdBy         User                  @relation("MaterialRequestsCreated", fields: [createdByUserId], references: [id])
+  sentAt            DateTime?
+  purchaseOrder     PurchaseOrder?
+  createdAt         DateTime              @default(now())
+  updatedAt         DateTime              @updatedAt
+  attachments       SolicitudAttachment[]
+}
+
+// Proceso B — Gasto directo sin OC (Ingeniería / solicitante inicia).
+model DirectExpenseRequest {
+  id                String                 @id @default(cuid())
+  obraId            String
+  obra              Obra                   @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  costCenter        String                 @default("")
+  category          String                 @default("")
+  supplierName      String                 @default("")
+  estimatedAmount   Float                  @default(0)
+  currency          String                 @default("MXN")
+  justification     String                 @default("")
+  status            String                 @default("draft")
+  amountPaidSoFar   Float                  @default(0)
+  paymentLabel      String                 @default("pendiente")
+  createdByUserId   String
+  createdBy         User                   @relation("DirectExpensesCreated", fields: [createdByUserId], references: [id])
+  sentAt            DateTime?
+  createdAt         DateTime               @default(now())
+  updatedAt         DateTime               @updatedAt
+  attachments       SolicitudAttachment[]
+  files             DirectExpenseFile[]
+  paymentRecords    DirectExpensePayment[]
+}
+
+model DirectExpensePayment {
+  id               String               @id @default(cuid())
+  expenseId        String
+  expense          DirectExpenseRequest @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  amount           Float
+  reference        String               @default("")
+  notes            String               @default("")
+  recordedByUserId String
+  recordedBy       User                 @relation(fields: [recordedByUserId], references: [id])
+  createdAt        DateTime             @default(now())
+}
+
+model DirectExpenseFile {
+  id               String               @id @default(cuid())
+  expenseId        String
+  expense          DirectExpenseRequest @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String               @default("")
+  fileData         Bytes?
+  mimeType         String               @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User                 @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime             @default(now())
+}
+
+model SolicitudAttachment {
+  id                String                @id @default(cuid())
+  materialRequestId String?
+  materialRequest   MaterialRequest?      @relation(fields: [materialRequestId], references: [id], onDelete: Cascade)
+  directExpenseId   String?
+  directExpense     DirectExpenseRequest? @relation(fields: [directExpenseId], references: [id], onDelete: Cascade)
+  originalFileName  String
+  storagePath       String                @default("")
+  fileData          Bytes?
+  mimeType          String                @default("application/pdf")
+  sizeBytes         Int
+  uploadedByUserId  String
+  uploadedBy        User                  @relation(fields: [uploadedByUserId], references: [id])
+  createdAt         DateTime              @default(now())
 }

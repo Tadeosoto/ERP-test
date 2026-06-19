@@ -22,7 +22,12 @@ const primaryNav = [
 
 const secondaryNav = [{ href: "/proveedores", label: "Proveedores", icon: "suppliers" }] as const;
 
-type NavItem = (typeof primaryNav)[number] | (typeof secondaryNav)[number];
+const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: "solicitudes" }] as const;
+
+type NavItem =
+  | (typeof primaryNav)[number]
+  | (typeof secondaryNav)[number]
+  | (typeof ingenieroNav)[number];
 
 function NavIcon({ name }: { name: string }) {
   const cls = "h-5 w-5 shrink-0";
@@ -65,6 +70,17 @@ function NavIcon({ name }: { name: string }) {
         />
       </svg>
     );
+  if (name === "solicitudes")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    );
   return null;
 }
 
@@ -74,6 +90,7 @@ function navActive(pathname: string | null, href: string): boolean {
   if (href === "/obras")
     return pathname.startsWith("/obras") || pathname.startsWith("/ordenes");
   if (href === "/proveedores") return pathname.startsWith("/proveedores");
+  if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -215,6 +232,11 @@ export function DashboardShell({
           {primaryNav.map((item) => (
             <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href)} />
           ))}
+
+          {user.role === "ingeniero" &&
+            ingenieroNav.map((item) => (
+              <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href)} />
+            ))}
 
           <div className="my-2 border-t border-zinc-200" role="separator" />
 

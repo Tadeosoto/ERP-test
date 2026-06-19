@@ -4,9 +4,8 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ListSearchInput } from "@/components/list-search-input";
-import { IconBuilding, IconPlus } from "@/components/ui/action-icons";
+import { IconPlus } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
-import { useFeedback } from "@/components/ui/feedback-provider";
 import { ObraCard } from "@/components/obra-card";
 import { ObraOrderRow } from "@/components/obra-order-row";
 import { useSession } from "@/components/session-provider";
@@ -20,7 +19,6 @@ import { filterObras, filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils
 
 export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
   const { user } = useSession();
-  const { showSuccess, showError } = useFeedback();
   const searchParams = useSearchParams();
   const listFilter = parseOrderListFilter(
     searchParams.get("estado"),
@@ -28,7 +26,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
   );
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
-  const [newObraName, setNewObraName] = useState("");
   const [filterObra, setFilterObra] = useState<string>("all");
   const [obraSearch, setObraSearch] = useState("");
   const [orderSearch, setOrderSearch] = useState("");
@@ -54,26 +51,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
     void load();
     onRegisterRefresh?.(() => void load());
   }, [load, onRegisterRefresh]);
-
-  async function createObra(e: React.FormEvent) {
-    e.preventDefault();
-    const res = await fetch("/api/obras", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      credentials: "include",
-      body: JSON.stringify({ name: newObraName }),
-    });
-    const data = (await res.json()) as { error?: string; obra?: ObraDto };
-    if (!res.ok) {
-      showError(data.error ?? "No se pudo crear la obra.");
-      return;
-    }
-    setNewObraName("");
-    await load();
-    showSuccess("La obra se creó correctamente.", () => {
-      if (data.obra) window.location.href = `/obras/${data.obra.id}`;
-    });
-  }
 
   const sortedObras = useMemo(() => sortByCreatedAtDesc(obras), [obras]);
   const visibleObras = useMemo(
@@ -149,7 +126,7 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
         {sortedObras.length === 0 ? (
           <p className="card py-10 text-center text-base text-zinc-500">
             Aún no hay obras registradas.
-            {user?.role === "compras" && " Crea la primera abajo."}
+            {user?.role === "ingeniero" && " Créalas en la sección Obras del menú."}
           </p>
         ) : visibleObras.length === 0 ? (
           <p className="card py-10 text-center text-base text-zinc-500">
@@ -163,29 +140,6 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
           </div>
         )}
       </section>
-
-      {user?.role === "compras" && (
-        <section className="card p-6">
-          <h2 className="text-xl font-semibold">Nueva obra</h2>
-          <p className="mt-1 text-base text-zinc-600">
-            Una obra es un proyecto o construcción (ej. Subestación Norte). Después crearás órdenes de compra
-            dentro de ella.
-          </p>
-          <form onSubmit={createObra} className="mt-4 flex flex-wrap gap-3">
-            <input
-              value={newObraName}
-              onChange={(e) => setNewObraName(e.target.value)}
-              placeholder="Nombre de la obra"
-              required
-              className="min-h-12 flex-1 rounded-2xl border border-orange-100 px-4 text-base"
-            />
-            <button type="submit" className="btn-secondary">
-              <IconBuilding />
-              Crear obra
-            </button>
-          </form>
-        </section>
-      )}
 
       <section className="card p-6">
         <h2 className="text-xl font-semibold">Filtrar órdenes por obra</h2>

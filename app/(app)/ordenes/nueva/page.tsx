@@ -7,7 +7,8 @@ import { ProveedorModal } from "@/components/compras/proveedor-modal";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
-import type { ObraDto, PurchaseOrderDto, SupplierDto } from "@/lib/domain/types";
+import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
+import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
 const PAYMENT_TERMS = [
@@ -178,6 +179,7 @@ function NuevaOcWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resumeOrderId = searchParams.get("orderId");
+  const solicitudIdParam = searchParams.get("solicitudId");
   const initialStep = (Number(searchParams.get("step")) || 1) as Step;
 
   const [step, setStep] = useState<Step>(initialStep >= 1 && initialStep <= 3 ? initialStep : 1);
@@ -204,6 +206,9 @@ function NuevaOcWizard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploadedPdf, setUploadedPdf] = useState<{ name: string; size: number; at: string } | null>(null);
   const [assignedEngineerId, setAssignedEngineerId] = useState("");
+  const [paymentModality, setPaymentModality] = useState<PaymentType>("programado");
+  const [materialRequestId, setMaterialRequestId] = useState<string | null>(solicitudIdParam);
+  const [solicitudBanner, setSolicitudBanner] = useState("");
   const [history, setHistory] = useState<{ at: string; text: string }[]>([]);
 
   const obraName = useMemo(() => obras.find((o) => o.id === obraId)?.name ?? "", [obras, obraId]);
@@ -247,6 +252,8 @@ function NuevaOcWizard() {
     setCurrency(o.currency);
     setDocumentDate(o.documentDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
     if (o.assignedEngineerUserId) setAssignedEngineerId(o.assignedEngineerUserId);
+    if (o.paymentType) setPaymentModality(o.paymentType);
+    if (o.materialRequestId) setMaterialRequestId(o.materialRequestId);
     const pdf = o.files.find((f) => f.kind === "oc_pdf");
     if (pdf) {
       setUploadedPdf({
@@ -271,16 +278,42 @@ function NuevaOcWizard() {
         const res = await fetch(`/api/orders/${resumeOrderId}`, { credentials: "include" });
         if (res.ok) {
           const d = (await res.json()) as { order: PurchaseOrderDto };
-          if (d.order.status === "draft") {
+          if (d.order.status === "draft" || d.order.status === "engineerRejected") {
             setOrder(d.order);
             setOrderId(d.order.id);
             hydrateFromOrder(d.order);
           }
         }
+      } else if (solicitudIdParam) {
+        const sRes = await fetch(`/api/material-requests/${solicitudIdParam}`, { credentials: "include" });
+        if (sRes.ok) {
+          const sd = (await sRes.json()) as {
+            request: {
+              id: string;
+              obraId: string;
+              materials: string;
+              quantities: string;
+              justification: string;
+              costCenter: string;
+              createdByUserId: string;
+              createdByName: string;
+              obraName: string;
+            };
+          };
+          const s = sd.request;
+          setMaterialRequestId(s.id);
+          setObraId(s.obraId);
+          setDescription(
+            [s.materials, s.quantities ? `Cantidades: ${s.quantities}` : "", s.justification].filter(Boolean).join("\n")
+          );
+          setInternalReference(s.costCenter ? `CC: ${s.costCenter}` : "");
+          setAssignedEngineerId(s.createdByUserId);
+          setSolicitudBanner(`Solicitud de ${s.createdByName} · ${s.obraName}`);
+        }
       }
       setLoading(false);
     })();
-  }, [resumeOrderId, loadCatalogs, hydrateFromOrder]);
+  }, [resumeOrderId, solicitudIdParam, loadCatalogs, hydrateFromOrder]);
 
   useEffect(() => {
     const s = Number(searchParams.get("step"));
@@ -315,6 +348,9 @@ function NuevaOcWizard() {
       paymentTerms,
       description,
       internalReference,
+      paymentType: paymentModality,
+      materialRequestId,
+      assignedEngineerUserId: assignedEngineerId || null,
       asDraft: true,
     };
 
@@ -361,6 +397,7 @@ function NuevaOcWizard() {
         totalAmount: amount,
         currency,
         documentDate,
+        paymentType: paymentModality,
       }),
     });
     const data = (await res.json()) as { order?: PurchaseOrderDto; error?: string };
@@ -547,6 +584,12 @@ function NuevaOcWizard() {
         <Stepper step={step} />
       </div>
 
+      {solicitudBanner && (
+        <div className="rounded-xl border border-teal-200 bg-teal-50/60 px-4 py-3 text-sm text-teal-900">
+          <strong>Solicitud vinculada:</strong> {solicitudBanner}. El ingeniero solicitante quedará asignado para aprobar la OC.
+        </div>
+      )}
+
       <div className="flex flex-col gap-6 lg:flex-row lg:items-start">
         <div className="min-w-0 flex-1 space-y-6">
           {step === 1 && (
@@ -610,7 +653,40 @@ function NuevaOcWizard() {
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-medium text-zinc-800">
-                    Condiciones de pago <span className="text-red-500">*</span>
+                    Modalidad de pago acordada <span className="text-red-500">*</span>
+                  </span>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Paty define si el pago será inmediato, a 30 días o por parcialidades.
+                  </p>
+                  <div className="mt-2 space-y-2">
+                    {COMPRAS_PAYMENT_OPTIONS.map((opt) => (
+                      <label
+                        key={opt.value}
+                        className={`flex cursor-pointer gap-3 rounded-xl border px-3 py-2.5 text-sm transition ${
+                          paymentModality === opt.value
+                            ? "border-orange-300 bg-orange-50"
+                            : "border-zinc-200 bg-white hover:border-orange-200"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="paymentModality"
+                          value={opt.value}
+                          checked={paymentModality === opt.value}
+                          onChange={() => setPaymentModality(opt.value)}
+                          className="mt-1"
+                        />
+                        <span>
+                          <span className="font-semibold text-zinc-900">{opt.label}</span>
+                          <span className="mt-0.5 block text-xs text-zinc-500">{opt.hint}</span>
+                        </span>
+                      </label>
+                    ))}
+                  </div>
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-sm font-medium text-zinc-800">
+                    Condiciones con proveedor <span className="text-red-500">*</span>
                   </span>
                   <select
                     value={paymentTerms}

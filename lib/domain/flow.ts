@@ -11,36 +11,42 @@ export const FLOW_STEPS: readonly {
 }[] = [
   {
     step: 1,
-    shortTitle: "Compras",
-    detail: "Paty crea la OC, sube el PDF y selecciona obra e ingeniero",
-    primaryRole: "compras",
-  },
-  {
-    step: 2,
     shortTitle: "Ingeniería",
-    detail: "Santiago revisa y aprueba o rechaza la orden",
+    detail: "Santiago crea y envía la solicitud de material (Proceso A) o gasto directo (Proceso B)",
     primaryRole: "ingeniero",
   },
   {
+    step: 2,
+    shortTitle: "Compras",
+    detail: "Paty cotiza, crea la OC en CONTPAQi, sube el PDF y define la modalidad de pago",
+    primaryRole: "compras",
+  },
+  {
     step: 3,
+    shortTitle: "Ingeniería",
+    detail: "Santiago revisa el PDF de la OC y aprueba o solicita corrección",
+    primaryRole: "ingeniero",
+  },
+  {
+    step: 4,
     shortTitle: "Administración",
     detail: "Carolina realiza el pago y sube el comprobante",
     primaryRole: "pagos",
   },
   {
-    step: 4,
+    step: 5,
     shortTitle: "Coordinación",
     detail: "Paty envía comprobante al proveedor y solicita factura",
     primaryRole: "compras",
   },
   {
-    step: 5,
+    step: 6,
     shortTitle: "Factura",
     detail: "Compras, Administración o Recepción suben el PDF de la factura",
     primaryRole: null,
   },
   {
-    step: 6,
+    step: 7,
     shortTitle: "Contabilidad",
     detail: "Helena valida OC = Pago = Factura y cierra el expediente",
     primaryRole: "contabilidad",
@@ -50,23 +56,23 @@ export const FLOW_STEPS: readonly {
 export function flowPhaseNumber(status: OrderStatus): number {
   switch (status) {
     case "awaitingEngineer":
-      return 2;
+      return 3;
     case "engineerRejected":
-      return 1;
+      return 2;
     case "awaitingPatyDeadline":
     case "awaitingPayment":
-      return 3;
-    case "paid":
       return 4;
-    case "awaitingInvoice":
+    case "paid":
       return 5;
+    case "awaitingInvoice":
+      return 6;
     case "invoiceReceived":
     case "difference":
-      return 6;
-    case "completed":
       return 7;
+    case "completed":
+      return 8;
     default:
-      return 1;
+      return 2;
   }
 }
 
@@ -173,12 +179,15 @@ export function rolePlaybook(role: Role): string[] {
   switch (role) {
     case "compras":
       return [
-        "Crear obras y registrar la OC con PDF tras negociar con proveedores.",
+        "Recibe solicitudes de Ingeniería, cotiza y registra la OC con PDF.",
+        "Define si el pago será inmediato, a 30 días o por parcialidades.",
         "Tras el pago, coordinar con el proveedor y marcar «Esperando factura».",
-        "También puedes subir la factura si Recepción o Administración no lo hacen.",
       ];
     case "ingeniero":
-      return ["Revisar el PDF y aprobar o solicitar correcciones."];
+      return [
+        "Crea obras y vincula solicitudes de material (Proceso A) o gasto directo (Proceso B).",
+        "Revisa el PDF de la OC que envía Compras y aprueba o solicita corrección.",
+      ];
     case "pagos":
       return [
         "Registrar el pago y subir el comprobante bancario.",

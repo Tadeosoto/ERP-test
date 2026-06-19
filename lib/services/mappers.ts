@@ -92,6 +92,7 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     documentDate: order.documentDate?.toISOString() ?? null,
     assignedEngineerUserId: order.assignedEngineerUserId,
     assignedEngineerName: order.assignedEngineer?.name ?? null,
+    materialRequestId: order.materialRequestId,
     totalAmount: total,
     amountPaidSoFar: paid,
     amountRemaining: amountRemaining(total, paid),

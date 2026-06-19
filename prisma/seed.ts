@@ -25,6 +25,7 @@ async function main() {
   }
 
   const paty = await prisma.user.findUnique({ where: { email: "paty@ccp.local" } });
+  const santiago = await prisma.user.findUnique({ where: { email: "santiago@ccp.local" } });
   if (!paty) throw new Error("Usuario Paty no creado");
 
   const supplierCount = await prisma.supplier.count();
@@ -82,9 +83,11 @@ async function main() {
         totalAmount: 85000,
         amountPaidSoFar: 0,
         paymentLabel: "pendiente",
+        paymentType: "parcialidades",
         suggestedPaymentType: "parcialidades",
         status: "awaitingEngineer",
         description: "Material para canalización principal",
+        assignedEngineerUserId: santiago?.id ?? null,
         createdByUserId: paty.id,
       },
     });
@@ -133,6 +136,21 @@ async function main() {
         createdByUserId: paty.id,
       },
     });
+
+    if (santiago) {
+      await prisma.materialRequest.create({
+        data: {
+          obraId: obra2.id,
+          costCenter: "CC-14023-ELEC",
+          materials: "Tubería PVC cédula 40, codos y coples",
+          quantities: "120 m tubería, 48 codos 90°",
+          justification: "Canalización secundaria edificio B",
+          status: "sent",
+          sentAt: new Date(),
+          createdByUserId: santiago.id,
+        },
+      });
+    }
   }
 
   console.log("Seed OK. Contraseña inicial:", INITIAL_PASSWORD);

@@ -2,6 +2,7 @@
 
 import { Suspense } from "react";
 import { ComprasObrasView } from "@/components/compras/compras-obras-view";
+import { IngenieroObrasView } from "@/components/ingeniero/ingeniero-obras-view";
 import { ObrasPageClient } from "@/components/obras-page-client";
 import { usePageRefreshRegister } from "@/components/app-shell";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -13,6 +14,10 @@ function ObrasPageInner() {
 
   if (user?.role === "compras") {
     return <ComprasObrasView onRegisterRefresh={register} />;
+  }
+
+  if (user?.role === "ingeniero") {
+    return <IngenieroObrasView onRegisterRefresh={register} />;
   }
 
   return <ObrasPageClient onRegisterRefresh={register} />;

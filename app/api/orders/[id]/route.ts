@@ -1,9 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { canUpdateDraftOrder } from "@/lib/domain/transitions";
+import { canComprasEditOrder, canDeleteOrder } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asOrderStatus, asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
+import type { PaymentType } from "@/lib/domain/types";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,8 +37,11 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     const status = asOrderStatus(order.status);
     const role = asRole(user.role);
-    if (!canUpdateDraftOrder(status, role)) {
-      return NextResponse.json({ error: "Solo puedes editar órdenes en borrador." }, { status: 403 });
+    if (!canComprasEditOrder(status, role)) {
+      return NextResponse.json(
+        { error: "Solo puedes editar órdenes en borrador o con corrección solicitada." },
+        { status: 403 }
+      );
     }
 
     const body = (await request.json()) as {
@@ -52,6 +56,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       documentDate?: string | null;
       totalAmount?: number;
       currency?: string;
+      paymentType?: PaymentType | null;
       assignedEngineerUserId?: string | null;
     };
 
@@ -78,6 +83,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
             : order.documentDate,
         totalAmount: body.totalAmount ?? order.totalAmount,
         currency: body.currency?.trim() ?? order.currency,
+        paymentType: body.paymentType !== undefined ? body.paymentType : order.paymentType,
+        suggestedPaymentType:
+          body.paymentType === "parcialidades"
+            ? "parcialidades"
+            : body.paymentType
+              ? null
+              : order.suggestedPaymentType,
         assignedEngineerUserId:
           body.assignedEngineerUserId !== undefined
             ? body.assignedEngineerUserId
@@ -87,6 +99,38 @@ export async function PATCH(request: Request, ctx: Ctx) {
     });
 
     return NextResponse.json({ order: mapOrder(updated) });
+  } catch (e) {
+    return apiErrorResponse(e);
+  }
+}
+
+export async function DELETE(_request: Request, ctx: Ctx) {
+  try {
+    const user = await requireSessionUser();
+    const { id } = await ctx.params;
+    const order = await prisma.purchaseOrder.findUnique({ where: { id } });
+    if (!order) return NextResponse.json({ error: "Orden no encontrada." }, { status: 404 });
+
+    const status = asOrderStatus(order.status);
+    const role = asRole(user.role);
+    if (!canDeleteOrder(status, role, order.amountPaidSoFar)) {
+      return NextResponse.json(
+        { error: "No puedes eliminar esta orden (solo borradores o correcciones sin pagos)." },
+        { status: 403 }
+      );
+    }
+
+    await prisma.$transaction(async (tx) => {
+      if (order.materialRequestId) {
+        await tx.materialRequest.updateMany({
+          where: { id: order.materialRequestId, status: "in_oc_process" },
+          data: { status: "sent" },
+        });
+      }
+      await tx.purchaseOrder.delete({ where: { id } });
+    });
+
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);
   }

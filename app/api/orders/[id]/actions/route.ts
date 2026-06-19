@@ -55,34 +55,28 @@ export async function POST(request: Request, ctx: Ctx) {
       if (!canEngineerAct(status, role)) {
         return NextResponse.json({ error: "No puedes aprobar en este estado." }, { status: 403 });
       }
-      const suggested = asPaymentType(order.suggestedPaymentType);
-      let engineerChoice = body.paymentType ?? "inmediato";
-      if (suggested === "parcialidades") {
-        engineerChoice = "parcialidades";
-      } else if (!body.paymentType || !["inmediato", "programado"].includes(body.paymentType)) {
+      const paymentType = asPaymentType(order.paymentType) ?? asPaymentType(order.suggestedPaymentType);
+      if (!paymentType) {
         return NextResponse.json(
-          { error: "Indique modalidad de pago: inmediato o programado." },
+          { error: "Compras debe indicar la modalidad de pago (inmediato, 30 días o parcialidades) en la OC." },
           { status: 400 }
         );
       }
 
-      const { status: nextStatus, paymentType } = engineerApproveNextStatus(
-        engineerChoice,
-        suggested
-      );
+      const { status: nextStatus, paymentType: resolvedType } = engineerApproveNextStatus(paymentType);
 
       const updated = await prisma.$transaction(async (tx) => {
         await tx.orderComment.create({
           data: {
             orderId: id,
             authorId: user.id,
-            body: body.comment?.trim() || `Aprobado · ${paymentType}`,
+            body: body.comment?.trim() || `Aprobado · ${resolvedType}`,
             kind: "approval",
           },
         });
         return tx.purchaseOrder.update({
           where: { id },
-          data: { status: nextStatus, paymentType },
+          data: { status: nextStatus, paymentType: resolvedType },
           include: orderInclude,
         });
       });
@@ -281,19 +275,39 @@ export async function POST(request: Request, ctx: Ctx) {
         return NextResponse.json({ error: "El monto total de la OC debe ser mayor a cero." }, { status: 400 });
       }
 
+      const paymentType = asPaymentType(order.paymentType) ?? asPaymentType(order.suggestedPaymentType);
+      if (!paymentType) {
+        return NextResponse.json(
+          { error: "Indica la modalidad de pago (inmediato, 30 días o parcialidades) antes de enviar a Ingeniería." },
+          { status: 400 }
+        );
+      }
+
       const engineer = await prisma.user.findUnique({ where: { id: engineerId } });
       if (!engineer || engineer.role !== "ingeniero") {
         return NextResponse.json({ error: "Ingeniero no válido." }, { status: 400 });
       }
 
-      const updated = await prisma.purchaseOrder.update({
-        where: { id },
-        data: {
-          status: afterSendToEngineer(),
-          assignedEngineerUserId: engineerId,
-          sentToEngineerAt: new Date(),
-        },
-        include: orderInclude,
+      const updated = await prisma.$transaction(async (tx) => {
+        const po = await tx.purchaseOrder.update({
+          where: { id },
+          data: {
+            status: afterSendToEngineer(),
+            assignedEngineerUserId: engineerId,
+            sentToEngineerAt: new Date(),
+            paymentType: paymentType,
+          },
+          include: orderInclude,
+        });
+
+        if (order.materialRequestId) {
+          await tx.materialRequest.update({
+            where: { id: order.materialRequestId },
+            data: { status: "in_oc_process" },
+          });
+        }
+
+        return po;
       });
 
       const evt = NotificationEvents.orderCreated(updated.title);

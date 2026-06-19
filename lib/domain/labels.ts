@@ -22,9 +22,9 @@ export const PAYMENT_LABEL_TEXT: Record<PaymentLabel, string> = {
 };
 
 export const PAYMENT_TYPE_TEXT: Record<PaymentType, string> = {
-  inmediato: "Pago inmediato (100%)",
-  programado: "Pago programado",
-  parcialidades: "Pago por parcialidades",
+  inmediato: "Pago inmediato",
+  programado: "A 30 días",
+  parcialidades: "Parcialidades",
 };
 
 export const PAYMENT_TYPE_SHORT: Record<PaymentType, string> = {

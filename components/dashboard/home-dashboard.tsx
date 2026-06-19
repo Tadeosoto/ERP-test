@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
+import { IngenieroHomeDashboard } from "@/components/dashboard/ingeniero-home-dashboard";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { MiniListPanel, PanelLink, StatChip } from "@/components/dashboard/panel-link";
 import { CalloutBubble } from "@/components/ui/callout-bubble";
@@ -16,7 +17,7 @@ import {
   ordersForRole,
 } from "@/lib/dashboard/home-stats";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
-import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, MaterialRequestDto, MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
 export function HomeDashboard() {
@@ -24,15 +25,31 @@ export function HomeDashboard() {
   const register = usePageRefreshRegister();
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
+  const [materialRequests, setMaterialRequests] = useState<MaterialRequestDto[]>([]);
+  const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
   const [recentMovements, setRecentMovements] = useState<MovementDto[]>([]);
   const [pendingMovements, setPendingMovements] = useState<PendingMovementDto[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
     if (!user) return;
-    const [oRes, ordRes, recentRes, pendingRes] = await Promise.all([
+    const matUrl =
+      user.role === "compras"
+        ? "/api/material-requests"
+        : user.role === "ingeniero"
+          ? "/api/material-requests?mine=1"
+          : null;
+
+    const [oRes, ordRes, matRes, expRes, recentRes, pendingRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
+      matUrl ? fetch(matUrl, { credentials: "include" }) : Promise.resolve(null),
+      user.role === "ingeniero" || user.role === "pagos"
+        ? fetch(
+            user.role === "ingeniero" ? "/api/direct-expenses?mine=1" : "/api/direct-expenses",
+            { credentials: "include" }
+          )
+        : Promise.resolve(null),
       fetch("/api/movimientos?vista=recientes&limit=5", { credentials: "include" }),
       fetch("/api/movimientos?vista=pendientes&limit=5", { credentials: "include" }),
     ]);
@@ -43,6 +60,14 @@ export function HomeDashboard() {
     if (ordRes.ok) {
       const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
+    }
+    if (matRes?.ok) {
+      const d = (await matRes.json()) as { requests: MaterialRequestDto[] };
+      setMaterialRequests(d.requests);
+    }
+    if (expRes?.ok) {
+      const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
+      setExpenses(d.expenses);
     }
     if (recentRes.ok) {
       const d = (await recentRes.json()) as { recent: MovementDto[] };
@@ -91,6 +116,21 @@ export function HomeDashboard() {
         userName={user.name}
         orders={orders}
         obras={obras}
+        materialRequests={materialRequests}
+        recentMovements={recentMovements}
+        pendingMovements={pendingMovements}
+      />
+    );
+  }
+
+  if (user.role === "ingeniero") {
+    return (
+      <IngenieroHomeDashboard
+        userId={user.id}
+        userName={user.name}
+        orders={orders}
+        materialRequests={materialRequests}
+        expenses={expenses}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
       />

@@ -1,7 +1,7 @@
 import { PrismaClient } from "@prisma/client";
 
 /** Incrementar si cambia schema.prisma y hace falta nuevo cliente en dev (sin reiniciar todo el PC). */
-const CLIENT_CACHE_KEY = "prisma_ccp_v5";
+const CLIENT_CACHE_KEY = "prisma_ccp_v6";
 
 type GlobalPrisma = typeof globalThis & {
   [CLIENT_CACHE_KEY]?: PrismaClient;

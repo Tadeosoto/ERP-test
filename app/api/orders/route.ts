@@ -47,7 +47,10 @@ export async function POST(request: Request) {
       documentDate?: string;
       totalAmount?: number;
       currency?: string;
+      paymentType?: PaymentType | null;
       suggestedPaymentType?: PaymentType | null;
+      materialRequestId?: string | null;
+      assignedEngineerUserId?: string | null;
       asDraft?: boolean;
     };
 
@@ -65,6 +68,39 @@ export async function POST(request: Request) {
     const supplierName = body.supplierName.trim();
     const ocFolio = body.ocFolio?.trim() ?? "";
 
+    let materialRequestId: string | null = body.materialRequestId ?? null;
+    let assignedEngineerUserId = body.assignedEngineerUserId ?? null;
+    let description = body.description?.trim() ?? "";
+    let internalReference = body.internalReference?.trim() ?? "";
+
+    if (materialRequestId) {
+      const solicitud = await prisma.materialRequest.findUnique({
+        where: { id: materialRequestId },
+        include: { purchaseOrder: true },
+      });
+      if (!solicitud || solicitud.status !== "sent") {
+        return NextResponse.json({ error: "Solicitud de material no válida o ya procesada." }, { status: 400 });
+      }
+      if (solicitud.purchaseOrder) {
+        return NextResponse.json({ error: "Esta solicitud ya tiene una OC vinculada." }, { status: 400 });
+      }
+      assignedEngineerUserId = solicitud.createdByUserId;
+      if (!description) {
+        description = [
+          solicitud.materials,
+          solicitud.quantities ? `Cantidades: ${solicitud.quantities}` : "",
+          solicitud.justification ? `Justificación: ${solicitud.justification}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+      if (!internalReference && solicitud.costCenter) {
+        internalReference = `CC: ${solicitud.costCenter}`;
+      }
+    }
+
+    const paymentType = body.paymentType ?? null;
+
     const order = await prisma.purchaseOrder.create({
       data: {
         obraId: body.obraId,
@@ -74,15 +110,17 @@ export async function POST(request: Request) {
         ocFolio,
         ocDate: body.ocDate ? new Date(body.ocDate) : null,
         paymentTerms: body.paymentTerms?.trim() ?? "",
-        description: body.description?.trim() ?? "",
-        internalReference: body.internalReference?.trim() ?? "",
+        description,
+        internalReference,
         documentDate: body.documentDate ? new Date(body.documentDate) : null,
         totalAmount: asDraft ? totalAmount : totalAmount,
         amountPaidSoFar: draft.amountPaidSoFar,
         paymentLabel: draft.paymentLabel,
         currency: body.currency?.trim() || "MXN",
-        suggestedPaymentType:
-          body.suggestedPaymentType === "parcialidades" ? "parcialidades" : null,
+        paymentType: paymentType,
+        suggestedPaymentType: paymentType === "parcialidades" ? "parcialidades" : null,
+        materialRequestId,
+        assignedEngineerUserId,
         status: asDraft ? "draft" : "awaitingEngineer",
         createdByUserId: user.id,
       },

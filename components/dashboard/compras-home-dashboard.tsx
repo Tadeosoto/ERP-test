@@ -3,23 +3,26 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { ComprasKpiCards } from "@/components/dashboard/compras-kpi-cards";
+import { ComprasMaterialRequestsPanel } from "@/components/dashboard/compras-material-requests-panel";
 import { ComprasOrdersPanel } from "@/components/dashboard/compras-orders-panel";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import { comprasKpiCounts, type ComprasOrderTab } from "@/lib/dashboard/compras-dashboard";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
-import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { MovementDto, ObraDto, MaterialRequestDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
 
 export function ComprasHomeDashboard({
   userName,
   orders,
   obras,
+  materialRequests = [],
   recentMovements,
   pendingMovements,
 }: {
   userName: string;
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
+  materialRequests?: MaterialRequestDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
 }) {
@@ -57,6 +60,8 @@ export function ComprasHomeDashboard({
       </header>
 
       {/* Una sola grilla: KPIs fila 1, órdenes cols 1-4, sidebar col 5 */}
+      <ComprasMaterialRequestsPanel requests={materialRequests} />
+
       <div className="compras-dashboard-grid min-h-0 min-w-0 flex-1">
         <ComprasKpiCards
           layout="embedded"
