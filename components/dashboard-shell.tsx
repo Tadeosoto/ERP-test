@@ -194,11 +194,18 @@ export function DashboardShell({
   const { user, logout } = useSession();
   const isHome = pathname === "/inicio";
   const isWideLayout =
-    isHome || pathname === "/obras" || (pathname?.startsWith("/obras/") ?? false);
+    isHome ||
+    pathname === "/obras" ||
+    (pathname?.startsWith("/obras/") ?? false);
   const contentWidth = isWideLayout ? "max-w-none" : "max-w-7xl";
   const contentPad = isWideLayout
     ? "px-4 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-3 xl:px-8"
     : "px-3 py-5 sm:px-6 sm:py-8";
+  const mainLayout = isHome
+    ? "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden"
+    : isWideLayout
+      ? "min-h-0 overflow-x-hidden"
+      : "";
 
   if (!user) return null;
 
@@ -264,7 +271,9 @@ export function DashboardShell({
       </nav>
 
       <div
-        className={`flex min-h-screen flex-1 flex-col ${SIDEBAR_PL} pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0`}
+        className={`flex flex-1 flex-col ${SIDEBAR_PL} pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0 ${
+          isHome ? "min-h-screen lg:h-dvh lg:max-h-dvh lg:overflow-hidden" : "min-h-screen"
+        }`}
       >
         <header
           className={`sticky top-0 z-30 overflow-visible border-b border-zinc-200 bg-white/90 px-3 py-2.5 backdrop-blur sm:px-6 sm:py-3 ${TOP_BAR_H} lg:py-0`}
@@ -305,9 +314,7 @@ export function DashboardShell({
         </header>
 
         <main
-          className={`mx-auto w-full ${contentWidth} flex-1 ${
-            isWideLayout ? `min-h-0 overflow-x-hidden ${contentPad}` : contentPad
-          }`}
+          className={`mx-auto w-full ${contentWidth} flex-1 ${mainLayout} ${contentPad}`}
         >
           {children}
         </main>

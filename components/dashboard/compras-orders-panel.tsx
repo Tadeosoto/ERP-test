@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
 import { SystemStatusBadge } from "@/components/ui/system-status-badge";
+import { OcLink } from "@/components/ui/oc-link";
 import {
   COMPRAS_ESTADO_OPTIONS,
   filterComprasOrders,
@@ -166,7 +167,7 @@ function ComprasOrderMobileCard({
                 </svg>
               </span>
             )}
-            <p className="truncate font-semibold text-zinc-900">{orderDisplayCode(order)}</p>
+            <p className="truncate font-semibold link-oc">{orderDisplayCode(order)}</p>
           </div>
           <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{order.title}</p>
           <p className="mt-1 truncate text-xs font-medium text-teal-800">{order.obraName}</p>
@@ -408,23 +409,12 @@ export function ComprasOrdersPanel({
                       i % 2 === 1 ? "bg-zinc-50/50" : "bg-white"
                     }`}
                   >
-                    <td className={td}>
-                      <div className="flex min-w-0 items-center gap-1">
-                        {hasOcPdf(order) && (
-                          <span className="shrink-0 text-red-500" title="PDF adjunto">
-                            <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden>
-                              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8l-6-6zm-1 2l5 5h-5V4z" />
-                            </svg>
-                          </span>
-                        )}
-                        <div className="min-w-0">
-                          <p className="truncate font-semibold text-zinc-900" title={orderDisplayCode(order)}>
-                            {orderDisplayCode(order)}
-                          </p>
-                          <p className="truncate text-[10px] text-zinc-500" title={order.title}>
-                            {order.title}
-                          </p>
-                        </div>
+                    <td className={td} onClick={(e) => e.stopPropagation()}>
+                      <div className="min-w-0">
+                        <OcLink order={order} showPdfIcon className="text-xs" />
+                        <p className="truncate text-[10px] text-zinc-500" title={order.title}>
+                          {order.title}
+                        </p>
                       </div>
                     </td>
                     <td className={`${td} truncate font-medium text-teal-800`} title={order.obraName}>

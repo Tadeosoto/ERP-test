@@ -97,6 +97,7 @@ type MiniListProps = {
   hint?: PanelHint;
   onDismissHint?: () => void;
   surface?: PanelSurfaceKey;
+  primaryClassName?: string;
 };
 
 export function MiniListPanel({
@@ -108,6 +109,7 @@ export function MiniListPanel({
   hint,
   onDismissHint,
   surface = "bandeja",
+  primaryClassName,
 }: MiniListProps) {
   const rowHover = PANEL_HOVER_ROW[surface] ?? "hover:border-orange-100 hover:bg-orange-50/40";
 
@@ -143,7 +145,9 @@ export function MiniListPanel({
                 href={item.href}
                 className={`block rounded-xl border border-transparent px-3 py-2.5 transition ${rowHover}`}
               >
-                <p className="truncate text-sm font-medium text-zinc-800">{item.primary}</p>
+                <p className={`truncate text-sm font-medium ${primaryClassName ?? "text-zinc-800"}`}>
+                  {item.primary}
+                </p>
                 {item.secondary && (
                   <p className="mt-0.5 truncate text-xs text-zinc-500">{item.secondary}</p>
                 )}

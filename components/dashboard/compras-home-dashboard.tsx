@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { RoleQuickGuideBanner } from "@/components/dashboard/role-quick-guide";
 import { ComprasKpiCards } from "@/components/dashboard/compras-kpi-cards";
 import { ComprasMaterialRequestsPanel } from "@/components/dashboard/compras-material-requests-panel";
 import { ComprasOrdersPanel } from "@/components/dashboard/compras-orders-panel";
@@ -110,6 +111,8 @@ export function ComprasHomeDashboard({
               + Nueva OC
             </span>
           </Link>
+
+          <RoleQuickGuideBanner role="compras" />
         </div>
 
         <div className="col-span-2 flex min-h-0 min-w-0 flex-col lg:col-span-1 lg:row-start-2 lg:self-stretch">

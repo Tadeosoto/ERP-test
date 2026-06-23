@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
 import { IngenieroHomeDashboard } from "@/components/dashboard/ingeniero-home-dashboard";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
+import { RoleQuickGuideBanner } from "@/components/dashboard/role-quick-guide";
 import { MiniListPanel, PanelLink, StatChip } from "@/components/dashboard/panel-link";
 import { CalloutBubble } from "@/components/ui/callout-bubble";
 import { usePageRefreshRegister } from "@/components/app-shell";
@@ -129,6 +130,7 @@ export function HomeDashboard() {
         userId={user.id}
         userName={user.name}
         orders={orders}
+        obras={obras}
         materialRequests={materialRequests}
         expenses={expenses}
         recentMovements={recentMovements}
@@ -174,6 +176,7 @@ export function HomeDashboard() {
             empty="Nada pendiente con tu rol ahora."
             href={myQueue.length ? `/ordenes/${myQueue[0].id}` : "/obras?pendientes=1"}
             linkLabel={myQueue.length ? "Abrir primera" : "Ver obras"}
+            primaryClassName="link-oc"
             items={myQueue.map((o) => ({
               id: o.id,
               primary: o.title,
@@ -203,6 +206,7 @@ export function HomeDashboard() {
               empty="Sin órdenes todavía."
               href="/obras"
               linkLabel="Ver todas"
+              primaryClassName="link-oc"
               items={recentOrders.map((o) => ({
                 id: o.id,
                 primary: formatOrderLine(o),
@@ -235,6 +239,8 @@ export function HomeDashboard() {
               accent="border-l-4 border-l-violet-300/50"
             />
           </div>
+
+          <RoleQuickGuideBanner role={user.role} />
         </div>
 
         <div className="min-w-0 xl:col-span-1">

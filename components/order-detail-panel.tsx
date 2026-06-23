@@ -220,7 +220,7 @@ export function OrderDetailPanel({
       </div>
 
       {order.paymentRecords.length > 0 && (
-        <div className="card p-6">
+        <div id="pagos" className="card scroll-mt-24 p-6">
           <h2 className="text-xl font-semibold">Historial de abonos (Carolina)</h2>
           <ul className="mt-4 space-y-3">
             {order.paymentRecords.map((p) => (
@@ -243,7 +243,7 @@ export function OrderDetailPanel({
       )}
 
       {order.comments.length > 0 && (
-        <div className="card p-6">
+        <div id="comentarios" className="card scroll-mt-24 p-6">
           <h2 className="text-xl font-semibold">Comentarios de ingeniería</h2>
           <ul className="mt-4 space-y-3">
             {order.comments.map((c) => (
@@ -262,7 +262,7 @@ export function OrderDetailPanel({
       )}
 
       {order.files.length > 0 && (
-        <div className="card p-6">
+        <div id="documentos" className="card scroll-mt-24 p-6">
           <h2 className="text-xl font-semibold">Documentos</h2>
           <ul className="mt-4 space-y-3">
             {order.files.map((f) => (
@@ -287,7 +287,9 @@ export function OrderDetailPanel({
       )}
 
 
-      <div className="card border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
+      <div id="facturas" className="scroll-mt-24" aria-hidden />
+
+      <div id="tarea" className="card scroll-mt-24 border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
         <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
 
         {user.role === "compras" && (canComprasEditOrder(order.status, user.role) || canDeleteOrder(order.status, user.role, order.amountPaidSoFar)) && (

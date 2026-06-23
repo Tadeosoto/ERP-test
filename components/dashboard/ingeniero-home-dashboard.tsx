@@ -3,177 +3,168 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
-import { MiniListPanel } from "@/components/dashboard/panel-link";
+import { IngenieroPendingOrdersPanel } from "@/components/dashboard/ingeniero-pending-orders-panel";
+import { RoleQuickGuideBanner } from "@/components/dashboard/role-quick-guide";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import {
-  INGENIERO_KPI_CONFIG,
-  ingenieroKpiCounts,
+  INGENIERO_HOME_KPI_CONFIG,
+  ingenieroHomeKpiCounts,
 } from "@/lib/dashboard/ingeniero-dashboard";
-import { MATERIAL_REQUEST_STATUS_LABEL, DIRECT_EXPENSE_STATUS_LABEL } from "@/lib/domain/solicitudes";
 import type {
   DirectExpenseDto,
   MaterialRequestDto,
   MovementDto,
+  ObraDto,
   PendingMovementDto,
   PurchaseOrderDto,
 } from "@/lib/domain/types";
+import { sortByCreatedAtDesc } from "@/lib/list-utils";
+
+function KpiIcon({ name }: { name: "clock" | "x" | "check" | "alert" }) {
+  const cls = "h-4 w-4 lg:h-5 lg:w-5";
+  if (name === "clock") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+      </svg>
+    );
+  }
+  if (name === "x") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+      </svg>
+    );
+  }
+  if (name === "alert") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
+      </svg>
+    );
+  }
+  return (
+    <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+    </svg>
+  );
+}
 
 export function IngenieroHomeDashboard({
   userId,
   userName,
   orders,
+  obras,
   materialRequests,
-  expenses,
   recentMovements,
   pendingMovements,
 }: {
   userId: string;
   userName: string;
   orders: PurchaseOrderDto[];
+  obras: ObraDto[];
   materialRequests: MaterialRequestDto[];
   expenses: DirectExpenseDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
 }) {
   const counts = useMemo(
-    () => ingenieroKpiCounts({ materialRequests, expenses, orders, engineerUserId: userId }),
-    [materialRequests, expenses, orders, userId]
-  );
-
-  const ocQueue = useMemo(
-    () =>
-      orders.filter(
-        (o) =>
-          o.status === "awaitingEngineer" &&
-          (o.assignedEngineerUserId === userId || !o.assignedEngineerUserId)
-      ),
+    () => ingenieroHomeKpiCounts({ orders, engineerUserId: userId }),
     [orders, userId]
   );
 
-  const myMaterial = useMemo(
-    () => materialRequests.filter((r) => r.createdByUserId === userId).slice(0, 5),
-    [materialRequests, userId]
-  );
-
-  const myExpenses = useMemo(
-    () => expenses.filter((e) => e.createdByUserId === userId).slice(0, 5),
-    [expenses, userId]
-  );
+  const recentObras = useMemo(() => sortByCreatedAtDesc(obras).slice(0, 3), [obras]);
 
   return (
-    <div className="flex min-h-0 flex-col gap-4 overflow-x-hidden overflow-y-auto lg:h-[calc(100dvh-5.5rem)]">
+    <div className="flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto lg:gap-2.5 lg:overflow-hidden">
       <header className="shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-wrap items-center justify-between gap-2">
           <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
+            <h1 className="text-lg font-bold text-zinc-900 sm:text-xl lg:text-2xl">
               ¡Hola, {userName.split(" ")[0]}!
             </h1>
-            <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+            <p className="mt-0.5 hidden items-center gap-2 text-xs text-zinc-500 sm:flex lg:text-sm">
               <RoleActivityIcon role="ingeniero" size="sm" />
-              Ingeniería — Inicia solicitudes (Proceso A y B) y aprueba las OC que envía Compras.
+              Ingeniería — Revisa las OC que envía Compras y gestiona solicitudes de material.
             </p>
           </div>
-          <Link href="/solicitudes/nueva" className="btn-primary w-full shrink-0 sm:w-auto">
+          <Link
+            href="/solicitudes/nueva"
+            className="btn-primary h-10 min-h-10 w-full shrink-0 px-4 py-2 text-sm sm:w-auto"
+          >
             + Nueva solicitud
           </Link>
         </div>
       </header>
 
-      <div className="grid grid-cols-2 gap-2 lg:grid-cols-4 lg:gap-3">
-        {INGENIERO_KPI_CONFIG.map((cfg) => (
+      <div className="grid shrink-0 grid-cols-2 gap-1.5 lg:grid-cols-4 lg:gap-2">
+        {INGENIERO_HOME_KPI_CONFIG.map((cfg) => (
           <div
             key={cfg.key}
-            className={`flex min-w-0 flex-col rounded-2xl border border-orange-100/80 border-l-4 p-3 shadow-sm ${cfg.accent}`}
+            className={`flex min-w-0 flex-col rounded-xl border border-orange-100/80 border-l-4 p-2 shadow-sm lg:rounded-2xl lg:p-2.5 ${cfg.accent}`}
           >
             <div className="flex items-start justify-between gap-2">
-              <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${cfg.iconBg}`}>
-                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-                </svg>
+              <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg lg:h-9 lg:w-9 lg:rounded-xl ${cfg.iconBg}`}>
+                <KpiIcon name={cfg.icon} />
               </span>
-              <span className="text-2xl font-bold tabular-nums text-zinc-900">{counts[cfg.key]}</span>
+              <span className="text-xl font-bold tabular-nums text-zinc-900 lg:text-2xl">{counts[cfg.key]}</span>
             </div>
-            <p className="mt-2 text-xs font-semibold text-zinc-800 lg:text-sm">{cfg.label}</p>
-            <p className="mt-0.5 text-[11px] text-zinc-500 lg:text-xs">{cfg.sublabel}</p>
+            <p className="mt-1 text-[11px] font-semibold leading-tight text-zinc-800 lg:text-xs">{cfg.label}</p>
+            <p className="mt-0.5 hidden text-[10px] text-zinc-500 lg:block lg:text-[11px]">{cfg.sublabel}</p>
           </div>
         ))}
       </div>
 
-      <div className="grid min-h-0 flex-1 grid-cols-1 gap-4 xl:grid-cols-4">
-        <div className="flex min-h-0 flex-col gap-4 xl:col-span-3">
-          <MiniListPanel
-            title="OC pendientes de revisión"
-            surface="bandeja"
-            empty="No hay OC esperando tu aprobación."
-            href={ocQueue[0] ? `/ordenes/${ocQueue[0].id}` : "/obras"}
-            linkLabel={ocQueue[0] ? "Revisar primera" : "Ver obras"}
-            items={ocQueue.slice(0, 5).map((o) => ({
-              id: o.id,
-              primary: o.title,
-              secondary: `${o.obraName} · ${o.supplierName}`,
-              href: `/ordenes/${o.id}`,
-            }))}
+      <div className="grid min-h-0 flex-1 grid-cols-1 gap-2 overflow-hidden xl:grid-cols-4 xl:gap-3">
+        <div className="flex min-h-0 flex-col xl:col-span-3">
+          <IngenieroPendingOrdersPanel
+            orders={orders}
+            engineerUserId={userId}
+            materialRequests={materialRequests}
+            embedded
           />
-
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-2">
-            <MiniListPanel
-              title="Mis solicitudes de material (A)"
-              surface="obras"
-              empty="Aún no has creado solicitudes."
-              href="/solicitudes/material/nueva"
-              linkLabel="Nueva solicitud A"
-              items={myMaterial.map((r) => ({
-                id: r.id,
-                primary: r.materials.slice(0, 60) + (r.materials.length > 60 ? "…" : ""),
-                secondary: `${r.obraName} · ${MATERIAL_REQUEST_STATUS_LABEL[r.status]}`,
-                href: `/solicitudes/material/${r.id}`,
-              }))}
-            />
-
-            <MiniListPanel
-              title="Mis gastos directos (B)"
-              surface="ordenes"
-              empty="Aún no has creado gastos directos."
-              href="/solicitudes/gasto/nueva"
-              linkLabel="Nuevo gasto B"
-              items={myExpenses.map((e) => ({
-                id: e.id,
-                primary: e.category || e.justification.slice(0, 50),
-                secondary: `${e.obraName} · ${DIRECT_EXPENSE_STATUS_LABEL[e.status]}`,
-                href: `/solicitudes/gasto/${e.id}`,
-              }))}
-            />
-          </div>
-
-          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-            <Link
-              href="/obras"
-              className="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-600 to-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-teal-700"
-            >
-              Crear o consultar obras
-            </Link>
-            <Link
-              href="/solicitudes/material/nueva"
-              className="rounded-xl border border-orange-200 bg-gradient-to-r from-orange-600 to-orange-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-orange-700"
-            >
-              Proceso A — Solicitud de material
-            </Link>
-            <Link
-              href="/solicitudes/gasto/nueva"
-              className="rounded-xl border border-teal-200 bg-gradient-to-r from-teal-600 to-teal-700 px-4 py-3 text-sm font-semibold text-white shadow-sm transition hover:from-teal-700"
-            >
-              Proceso B — Gasto directo sin OC
-            </Link>
-          </div>
         </div>
 
-        <div className="min-h-0 xl:col-span-1">
+        <div className="hidden min-h-0 flex-col gap-2 overflow-hidden xl:flex">
           <HomeActivitySidebar
-            className="h-full"
+            compact
+            limit={3}
             recentMovements={recentMovements}
             pendingMovements={pendingMovements}
           />
+
+          <section className="card shrink-0 p-2.5">
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <h2 className="text-xs font-bold text-zinc-900">Mis obras</h2>
+              <Link href="/obras" className="text-[11px] font-medium text-sky-700 hover:underline">
+                Ver todas
+              </Link>
+            </div>
+            <ul className="space-y-0.5">
+              {recentObras.length === 0 ? (
+                <li className="py-2 text-center text-[11px] text-zinc-400">Sin obras registradas.</li>
+              ) : (
+                recentObras.map((obra) => (
+                  <li key={obra.id}>
+                    <Link
+                      href={`/obras/${obra.id}`}
+                      className="block rounded-lg border border-transparent px-1.5 py-1 transition hover:border-orange-100 hover:bg-orange-50/40"
+                    >
+                      <p className="truncate text-xs font-medium text-sky-800">{obra.name}</p>
+                      <p className="text-[10px] text-zinc-500">
+                        {obra.orderCount} orden{obra.orderCount === 1 ? "" : "es"}
+                      </p>
+                    </Link>
+                  </li>
+                ))
+              )}
+            </ul>
+          </section>
         </div>
+      </div>
+
+      <div className="shrink-0">
+        <RoleQuickGuideBanner role="ingeniero" compact />
       </div>
     </div>
   );

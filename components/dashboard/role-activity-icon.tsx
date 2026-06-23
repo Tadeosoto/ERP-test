@@ -1,8 +1,8 @@
 import { ROLE_ACTIVITY_STYLE, type RoleActivityIconName } from "@/lib/dashboard/role-activity-style";
 import type { Role } from "@/lib/domain/types";
 
-function IconGlyph({ name }: { name: RoleActivityIconName }) {
-  const cls = "h-4 w-4";
+function IconGlyph({ name, compact }: { name: RoleActivityIconName; compact?: boolean }) {
+  const cls = compact ? "h-3.5 w-3.5" : "h-4 w-4";
   if (name === "wallet") {
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -65,16 +65,21 @@ function IconGlyph({ name }: { name: RoleActivityIconName }) {
   );
 }
 
-export function RoleActivityIcon({ role, size = "md" }: { role: Role; size?: "sm" | "md" }) {
+export function RoleActivityIcon({ role, size = "md" }: { role: Role; size?: "xs" | "sm" | "md" }) {
   const style = ROLE_ACTIVITY_STYLE[role];
-  const box = size === "sm" ? "h-9 w-9 rounded-xl" : "h-10 w-10 rounded-xl";
+  const box =
+    size === "xs"
+      ? "h-7 w-7 rounded-lg"
+      : size === "sm"
+        ? "h-9 w-9 rounded-xl"
+        : "h-10 w-10 rounded-xl";
 
   return (
     <span
       className={`inline-flex shrink-0 items-center justify-center ring-1 ${box} ${style.bg} ${style.ring}`}
       title={style.label}
     >
-      <IconGlyph name={style.icon} />
+      <IconGlyph name={style.icon} compact={size === "xs"} />
     </span>
   );
 }
