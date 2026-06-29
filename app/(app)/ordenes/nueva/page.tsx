@@ -7,6 +7,7 @@ import { ProveedorModal } from "@/components/compras/proveedor-modal";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
+import { canComprasEditOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatDateShort, formatMoney } from "@/lib/format";
@@ -278,7 +279,7 @@ function NuevaOcWizard() {
         const res = await fetch(`/api/orders/${resumeOrderId}`, { credentials: "include" });
         if (res.ok) {
           const d = (await res.json()) as { order: PurchaseOrderDto };
-          if (d.order.status === "draft" || d.order.status === "engineerRejected") {
+          if (canComprasEditOrder(d.order.status, "compras")) {
             setOrder(d.order);
             setOrderId(d.order.id);
             hydrateFromOrder(d.order);

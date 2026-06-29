@@ -13,7 +13,8 @@ const QUICK_USERS = [
   { email: "paty@ccp.local", name: "Paty", role: "Compras" },
   { email: "santiago@ccp.local", name: "Santiago", role: "Ingeniero" },
   { email: "recepcion@ccp.local", name: "Recepción", role: "Recepción" },
-  { email: "helena@ccp.local", name: "Helena", role: "Contabilidad" },
+  { email: "helena@ccp.local", name: "Elena", role: "Contabilidad" },
+  { email: "diomedes@ccp.local", name: "Ing. Diomedes", role: "Dirección General" },
 ];
 
 export default function LoginPage() {

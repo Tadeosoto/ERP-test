@@ -197,7 +197,7 @@ export async function PUT(request: Request, ctx: Ctx) {
         return NextResponse.json({ error: "No puedes subir comprobante ahora." }, { status: 403 });
       }
     } else if (kind === "factura") {
-      if (!["pagos", "recepcion"].includes(role) || !["paid", "awaiting_invoice"].includes(status)) {
+      if (!["pagos", "recepcion", "contabilidad"].includes(role) || !["paid", "awaiting_invoice"].includes(status)) {
         return NextResponse.json({ error: "No puedes subir factura ahora." }, { status: 403 });
       }
     } else {

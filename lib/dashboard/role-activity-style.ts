@@ -36,6 +36,12 @@ export const ROLE_ACTIVITY_STYLE: Record<
     icon: "calculator",
     label: "Contabilidad",
   },
+  direccion: {
+    bg: "bg-indigo-100 text-indigo-900",
+    ring: "ring-indigo-200/80",
+    icon: "wallet",
+    label: "Dirección",
+  },
 };
 
 export function roleActivityLabel(role: Role, actorName: string): string {

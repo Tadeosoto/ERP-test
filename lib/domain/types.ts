@@ -1,6 +1,6 @@
 import type { DirectExpenseStatus, MaterialRequestStatus } from "./solicitudes";
 
-export type Role = "pagos" | "compras" | "ingeniero" | "recepcion" | "contabilidad";
+export type Role = "pagos" | "compras" | "ingeniero" | "recepcion" | "contabilidad" | "direccion";
 
 export type OrderStatus =
   | "draft"
@@ -109,7 +109,14 @@ export interface SupplierDto {
   primaryContact: string;
   notes: string;
   displayName: string;
+  active: boolean;
   createdAt: string;
+}
+
+export interface SupplierListItemDto extends SupplierDto {
+  relatedObras: string[];
+  orderCount: number;
+  documentationComplete: boolean;
 }
 
 export interface ObraDto {

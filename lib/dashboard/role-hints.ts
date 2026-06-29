@@ -20,11 +20,12 @@ export function getHomePanelHint(role: Role, orders: PurchaseOrderDto[]): HomePa
   const pending = pendingForRole(orders, role);
 
   if (role === "pagos" && pending?.status === "awaitingPayment") {
+    const folio = pending.ocFolio ? ` la ${pending.ocFolio}` : " la OC";
     return {
       target: "bandeja",
       title: "Tu tarea",
-      message: "Registra el pago y sube el comprobante aquí",
-      href: `/ordenes/${pending.id}`,
+      message: `Registrar el pago de${folio} a ${pending.supplierName}`,
+      href: `/ordenes/${pending.id}#pagos`,
       actionLabel: "Ir al pago",
     };
   }

@@ -10,7 +10,8 @@ const USERS = [
   { email: "paty@ccp.local", name: "Paty", role: "compras" },
   { email: "santiago@ccp.local", name: "Santiago", role: "ingeniero" },
   { email: "recepcion@ccp.local", name: "Recepción", role: "recepcion" },
-  { email: "helena@ccp.local", name: "Helena", role: "contabilidad" },
+  { email: "helena@ccp.local", name: "Elena", role: "contabilidad" },
+  { email: "diomedes@ccp.local", name: "Ing. Diomedes", role: "direccion" },
 ] as const;
 
 async function main() {

@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { NotificationHeaderMenu } from "@/components/dashboard/notification-header-menu";
 import { CcpLogoIcon } from "@/components/ccp-logo";
@@ -24,10 +24,24 @@ const secondaryNav = [{ href: "/proveedores", label: "Proveedores", icon: "suppl
 
 const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: "solicitudes" }] as const;
 
+const pagosNav = [{ href: "/obras?estado=pago", label: "Órdenes de compra", icon: "orders" }] as const;
+
+const direccionNav = [
+  { href: "/inicio", label: "Inicio", icon: "home" },
+  { href: "/obras", label: "Obras", icon: "grid" },
+  { href: "/pagos", label: "Pagos", icon: "pay" },
+  { href: "/expedientes", label: "Expedientes", icon: "folder" },
+  { href: "/proveedores", label: "Proveedores", icon: "suppliers" },
+  { href: "/reportes", label: "Reportes", icon: "reports" },
+  { href: "/flujo", label: "Mapa del proceso", icon: "flow", shortLabel: "Mapa" },
+] as const;
+
 type NavItem =
   | (typeof primaryNav)[number]
   | (typeof secondaryNav)[number]
-  | (typeof ingenieroNav)[number];
+  | (typeof ingenieroNav)[number]
+  | (typeof pagosNav)[number]
+  | (typeof direccionNav)[number];
 
 function NavIcon({ name }: { name: string }) {
   const cls = "h-5 w-5 shrink-0";
@@ -81,15 +95,69 @@ function NavIcon({ name }: { name: string }) {
         />
       </svg>
     );
+  if (name === "orders")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
+        />
+      </svg>
+    );
+  if (name === "pay")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8V6m0 12v-2m9-4a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    );
+  if (name === "folder")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2h-6l-2-2H5a2 2 0 00-2 2z"
+        />
+      </svg>
+    );
+  if (name === "reports")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+        />
+      </svg>
+    );
   return null;
 }
 
-function navActive(pathname: string | null, href: string): boolean {
+function navActive(pathname: string | null, href: string, searchParams: URLSearchParams): boolean {
   if (!pathname) return false;
+  const estado = searchParams.get("estado");
   if (href === "/inicio") return pathname === "/inicio";
+  if (href === "/expedientes") return pathname.startsWith("/expedientes");
+  if (href === "/pagos") return pathname.startsWith("/pagos");
+  if (href === "/obras?estado=pago") {
+    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && estado === "pago";
+  }
+  if (href === "/obras?estado=documentos") {
+    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && estado === "documentos";
+  }
   if (href === "/obras")
-    return pathname.startsWith("/obras") || pathname.startsWith("/ordenes");
+    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && !estado;
   if (href === "/proveedores") return pathname.startsWith("/proveedores");
+  if (href === "/reportes") return pathname.startsWith("/reportes");
   if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
@@ -191,29 +259,52 @@ export function DashboardShell({
   onRefresh?: () => void | Promise<void>;
 }) {
   const pathname = usePathname();
+  const searchParams = useSearchParams();
   const { user, logout } = useSession();
   const isHome = pathname === "/inicio";
   const isWideLayout =
     isHome ||
     pathname === "/obras" ||
+    pathname === "/proveedores" ||
+    pathname === "/reportes" ||
+    pathname === "/pagos" ||
+    pathname === "/expedientes" ||
     (pathname?.startsWith("/obras/") ?? false);
   const contentWidth = isWideLayout ? "max-w-none" : "max-w-7xl";
   const contentPad = isWideLayout
     ? "px-4 py-3 sm:px-5 sm:py-4 lg:px-6 lg:py-3 xl:px-8"
     : "px-3 py-5 sm:px-6 sm:py-8";
+  if (!user) return null;
+
+  const homeFixedViewport =
+    isHome && !["pagos", "contabilidad", "recepcion", "direccion"].includes(user.role);
   const mainLayout = isHome
-    ? "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden"
+    ? homeFixedViewport
+      ? "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden"
+      : "flex min-h-0 flex-1 flex-col overflow-y-auto"
     : isWideLayout
       ? "min-h-0 overflow-x-hidden"
       : "";
 
-  if (!user) return null;
+  const sidebarPrimaryNav =
+    user.role === "direccion"
+      ? direccionNav
+      : user.role === "pagos"
+        ? ([
+            { href: "/inicio", label: "Inicio", icon: "home" },
+            { href: "/obras", label: "Obras", icon: "grid" },
+            ...pagosNav,
+          ] as const)
+        : primaryNav;
+
+  const mobileNav =
+    user.role === "direccion" ? [...direccionNav] : [...sidebarPrimaryNav, ...secondaryNav];
 
   async function handleRefresh() {
     await onRefresh?.();
   }
 
-  const mobileNav = [...primaryNav, ...secondaryNav];
+  const mobileNavItems = mobileNav;
 
   return (
     <div className="flex min-h-screen bg-white">
@@ -236,20 +327,23 @@ export function DashboardShell({
         </Link>
 
         <nav className="flex flex-1 flex-col gap-1 px-3 py-4" aria-label="Navegación principal">
-          {primaryNav.map((item) => (
-            <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href)} />
+          {sidebarPrimaryNav.map((item) => (
+            <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
           ))}
 
           {user.role === "ingeniero" &&
             ingenieroNav.map((item) => (
-              <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href)} />
+              <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
             ))}
 
-          <div className="my-2 border-t border-zinc-200" role="separator" />
-
-          {secondaryNav.map((item) => (
-            <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href)} />
-          ))}
+          {user.role !== "direccion" && (
+            <>
+              <div className="my-2 border-t border-zinc-200" role="separator" />
+              {secondaryNav.map((item) => (
+                <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
+              ))}
+            </>
+          )}
         </nav>
 
         <SidebarUserMenu name={user.name} role={ROLE_LABEL[user.role]} />
@@ -259,11 +353,11 @@ export function DashboardShell({
         className="safe-bottom fixed inset-x-0 bottom-0 z-40 flex border-t border-zinc-200 bg-white/95 px-1 py-1 shadow-[0_-4px_20px_rgba(0,0,0,0.06)] backdrop-blur lg:hidden"
         aria-label="Navegación principal"
       >
-        {mobileNav.map((item) => (
+        {mobileNavItems.map((item) => (
           <div key={item.href} className="min-w-0 flex-1">
             <SidebarNavLink
               item={item}
-              active={navActive(pathname, item.href)}
+              active={navActive(pathname, item.href, searchParams)}
               compact
             />
           </div>
@@ -272,7 +366,7 @@ export function DashboardShell({
 
       <div
         className={`flex flex-1 flex-col ${SIDEBAR_PL} pb-[calc(4.75rem+env(safe-area-inset-bottom,0px))] lg:pb-0 ${
-          isHome ? "min-h-screen lg:h-dvh lg:max-h-dvh lg:overflow-hidden" : "min-h-screen"
+          homeFixedViewport ? "min-h-screen lg:h-dvh lg:max-h-dvh lg:overflow-hidden" : "min-h-screen"
         }`}
       >
         <header

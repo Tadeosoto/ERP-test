@@ -2,6 +2,7 @@
 
 import { useRouter } from "next/navigation";
 import { useMemo, useState, type ReactNode } from "react";
+import { OrderActionMenu } from "@/components/obras/order-action-menu";
 import { SystemStatusBadge } from "@/components/ui/system-status-badge";
 import { OcLink } from "@/components/ui/oc-link";
 import {
@@ -144,21 +145,19 @@ function DateRangeFilter({
 function ComprasOrderMobileCard({
   order,
   onOpen,
+  onOrderMutated,
 }: {
   order: PurchaseOrderDto;
   onOpen: (href: string) => void;
+  onOrderMutated?: () => void;
 }) {
   const docs = docFlags(order);
   const href = `/ordenes/${order.id}`;
 
   return (
-    <button
-      type="button"
-      onClick={() => onOpen(href)}
-      className="w-full px-4 py-3.5 text-left transition hover:bg-orange-50/60 active:bg-orange-50"
-    >
-      <div className="flex items-start justify-between gap-3">
-        <div className="min-w-0 flex-1">
+    <div className="px-3 py-3.5 sm:px-4">
+      <div className="flex items-start justify-between gap-2">
+        <button type="button" onClick={() => onOpen(href)} className="min-w-0 flex-1 text-left">
           <div className="flex items-center gap-2">
             {hasOcPdf(order) && (
               <span className="shrink-0 text-red-500" title="PDF adjunto">
@@ -172,16 +171,20 @@ function ComprasOrderMobileCard({
           <p className="mt-0.5 line-clamp-2 text-sm text-zinc-600">{order.title}</p>
           <p className="mt-1 truncate text-xs font-medium text-teal-800">{order.obraName}</p>
           <p className="truncate text-xs text-zinc-500">{order.supplierName}</p>
+        </button>
+        <div className="shrink-0" onClick={(e) => e.stopPropagation()}>
+          <OrderActionMenu order={order} onOrderMutated={onOrderMutated} />
         </div>
-        <svg className="mt-1 h-5 w-5 shrink-0 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-        </svg>
       </div>
-      <div className="mt-3 flex flex-wrap items-center gap-2">
-        <SystemStatusBadge status={order.status} size="xs" />
-        <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(order.createdAt)}</span>
-      </div>
-      <div className="mt-2 flex flex-wrap items-center justify-between gap-2">
+      <button
+        type="button"
+        onClick={() => onOpen(href)}
+        className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 text-left"
+      >
+        <div className="flex flex-wrap items-center gap-2">
+          <SystemStatusBadge status={order.status} size="xs" />
+          <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(order.createdAt)}</span>
+        </div>
         <p className="text-sm font-semibold tabular-nums text-orange-700">
           {formatMoney(order.totalAmount, order.currency)}
         </p>
@@ -190,8 +193,8 @@ function ComprasOrderMobileCard({
           <DocDot ok={docs.pago} label="Comprobante" />
           <DocDot ok={docs.factura} label="Factura" />
         </div>
-      </div>
-    </button>
+      </button>
+    </div>
   );
 }
 
@@ -200,11 +203,13 @@ export function ComprasOrdersPanel({
   obras,
   activeTab,
   onTabChange,
+  onOrderMutated,
 }: {
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
   activeTab: ComprasOrderTab;
   onTabChange: (tab: ComprasOrderTab) => void;
+  onOrderMutated?: () => void;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -357,7 +362,12 @@ export function ComprasOrdersPanel({
         ) : (
           <div className="divide-y divide-orange-50">
             {pageItems.map((order) => (
-              <ComprasOrderMobileCard key={order.id} order={order} onOpen={(href) => router.push(href)} />
+              <ComprasOrderMobileCard
+                key={order.id}
+                order={order}
+                onOpen={(href) => router.push(href)}
+                onOrderMutated={onOrderMutated}
+              />
             ))}
           </div>
         )}
@@ -366,15 +376,16 @@ export function ComprasOrdersPanel({
       <div className="hidden min-h-0 min-w-0 flex-1 overflow-hidden lg:block">
         <table className="w-full table-fixed border-collapse text-left">
           <colgroup>
-            <col className="w-[13%]" />
-            <col className="w-[16%] xl:w-[14%]" />
+            <col className="w-[12%]" />
             <col className="w-[14%] xl:w-[12%]" />
-            <col className="w-[11%]" />
+            <col className="w-[12%] xl:w-[11%]" />
             <col className="w-[10%]" />
-            <col className="w-[10%]" />
-            <col className="w-0 xl:w-[11%]" />
             <col className="w-[9%]" />
-            <col className="w-[17%] xl:w-[10%]" />
+            <col className="w-[9%]" />
+            <col className="w-0 xl:w-[9%]" />
+            <col className="w-[8%]" />
+            <col className="w-[10%]" />
+            <col className="w-[16%] xl:w-[12%]" />
           </colgroup>
           <thead className="bg-orange-50/95">
             <tr className="border-b border-orange-100">
@@ -387,12 +398,13 @@ export function ComprasOrdersPanel({
               <th className={`${th} hidden xl:table-cell`}>Mod.</th>
               <th className={th}>Fecha</th>
               <th className={th}>Estado</th>
+              <th className={`${th} text-right`}>Acción</th>
             </tr>
           </thead>
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={9} className="px-4 py-10 text-center text-sm text-zinc-500">
+                <td colSpan={10} className="px-4 py-10 text-center text-sm text-zinc-500">
                   No hay órdenes con estos filtros.
                 </td>
               </tr>
@@ -454,6 +466,9 @@ export function ComprasOrdersPanel({
                       <div className="min-w-0 overflow-hidden">
                         <SystemStatusBadge status={order.status} size="xs" />
                       </div>
+                    </td>
+                    <td className={`${td} text-right`} onClick={(e) => e.stopPropagation()}>
+                      <OrderActionMenu order={order} onOrderMutated={onOrderMutated} />
                     </td>
                   </tr>
                 );

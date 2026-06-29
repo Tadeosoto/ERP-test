@@ -8,9 +8,12 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import {
   canComprasEditOrder,
   canDeleteOrder,
+  canRegisterPayment,
   canUploadInvoice,
   canUploadOcPdf,
+  canUploadPaymentReceipt,
 } from "@/lib/domain/transitions";
+import { hasPaymentReceipt } from "@/lib/dashboard/pagos-dashboard";
 import type { PurchaseOrderDto, Role } from "@/lib/domain/types";
 
 type IconKind =
@@ -111,34 +114,54 @@ function buildMenuEntries(
   const entries: MenuEntry[] = [];
 
   if (role === "compras") {
-    if (canComprasEditOrder(order.status, role)) {
-      entries.push({
-        kind: "link",
-        label: "Editar OC",
-        href: `/ordenes/nueva?orderId=${order.id}`,
-        icon: "edit",
-      });
-    }
-    if (canUploadOcPdf(order.status, role)) {
-      entries.push({
-        kind: "link",
-        label: hasOcPdf ? "Reemplazar PDF de OC" : "Subir PDF de OC",
-        href: `${base}#tarea`,
-        icon: "ocPdf",
-      });
-    }
-    if (canDeleteOrder(order.status, role, order.amountPaidSoFar)) {
-      entries.push({
-        kind: "action",
-        label: "Eliminar OC",
-        icon: "delete",
-        onClick: onDelete,
-        danger: true,
-      });
-    }
-    if (entries.length > 0) {
-      entries.push({ kind: "separator" });
-    }
+    const canEdit = canComprasEditOrder(order.status, role);
+    const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
+    const canUpload = canUploadOcPdf(order.status, role);
+
+    entries.push({
+      kind: "link",
+      label: "Editar OC",
+      href: `/ordenes/nueva?orderId=${order.id}`,
+      icon: "edit",
+      disabled: !canEdit,
+    });
+    entries.push({
+      kind: "link",
+      label: hasOcPdf ? "Reemplazar PDF de OC" : "Subir PDF de OC",
+      href: `${base}#tarea`,
+      icon: "ocPdf",
+      disabled: !canUpload,
+    });
+    entries.push({
+      kind: "action",
+      label: "Eliminar OC",
+      icon: "delete",
+      onClick: onDelete,
+      danger: true,
+      disabled: !canDel,
+    });
+    entries.push({ kind: "separator" });
+  }
+
+  if (role === "pagos") {
+    const canPay = canRegisterPayment(order.status, role);
+    const canReceipt = canUploadPaymentReceipt(order.status, role) && !hasPaymentReceipt(order);
+
+    entries.push({
+      kind: "link",
+      label: "Registrar pago",
+      href: `${base}#pagos`,
+      icon: "pay",
+      disabled: !canPay,
+    });
+    entries.push({
+      kind: "link",
+      label: hasPaymentReceipt(order) ? "Ver comprobante" : "Subir comprobante",
+      href: `${base}#tarea`,
+      icon: "receipt",
+      disabled: !canReceipt && !hasPaymentReceipt(order),
+    });
+    entries.push({ kind: "separator" });
   }
 
   entries.push(
@@ -198,10 +221,16 @@ export function OrderActionMenu({
   order,
   onOrderMutated,
   primaryLabel = "Expediente",
+  primaryHref,
+  appearance = "default",
+  showDropdown = true,
 }: {
   order: PurchaseOrderDto;
   onOrderMutated?: () => void;
   primaryLabel?: string;
+  primaryHref?: string;
+  appearance?: "default" | "neutral";
+  showDropdown?: boolean;
 }) {
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
@@ -214,6 +243,7 @@ export function OrderActionMenu({
   const menuRef = useRef<HTMLDivElement>(null);
 
   const base = `/ordenes/${order.id}`;
+  const primaryLink = primaryHref ?? base;
 
   const deleteOrder = useCallback(async () => {
     if (!window.confirm("¿Eliminar esta orden de compra? Esta acción no se puede deshacer.")) return;
@@ -320,11 +350,12 @@ export function OrderActionMenu({
                     type="button"
                     role="menuitem"
                     disabled={busy || entry.disabled}
-                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm disabled:opacity-40 ${
+                    title={entry.disabled ? "No disponible en este estado de la OC" : undefined}
+                    className={`flex w-full items-center gap-2.5 px-3 py-2 text-left text-sm disabled:cursor-not-allowed disabled:opacity-40 ${
                       entry.danger ? "text-red-700 hover:bg-red-50" : "text-zinc-700 hover:bg-orange-50"
                     }`}
                     onClick={() => {
-                      entry.onClick();
+                      if (!entry.disabled) entry.onClick();
                     }}
                   >
                     <MenuIcon kind={entry.icon} danger={entry.danger} />
@@ -338,6 +369,7 @@ export function OrderActionMenu({
                   <span
                     key={entry.label}
                     role="menuitem"
+                    title="No disponible en este estado de la OC"
                     className="flex cursor-not-allowed items-center gap-2.5 px-3 py-2 text-sm text-zinc-300"
                   >
                     <MenuIcon kind={entry.icon} />
@@ -366,30 +398,45 @@ export function OrderActionMenu({
         )
       : null;
 
+  const primaryClass =
+    appearance === "neutral"
+      ? `inline-flex h-9 items-center border border-zinc-300 bg-white px-3 text-xs font-semibold text-zinc-900 shadow-sm transition hover:bg-zinc-50 ${
+          showDropdown ? "rounded-l-lg rounded-r-none border-r-0" : "rounded-lg"
+        }`
+      : "inline-flex h-8 items-center rounded-lg border border-teal-200 bg-white px-2.5 text-xs font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50";
+
+  const dropdownClass =
+    appearance === "neutral"
+      ? "inline-flex h-9 w-8 shrink-0 items-center justify-center rounded-r-lg rounded-l-none border border-zinc-300 bg-white text-zinc-600 shadow-sm hover:bg-zinc-50"
+      : "inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm hover:bg-zinc-50";
+
   return (
-    <div ref={rootRef} className="relative flex items-center justify-end gap-1">
+    <div ref={rootRef} className="relative inline-flex items-center justify-end">
       <Link
-        href={base}
-        className="inline-flex h-8 items-center rounded-lg border border-teal-200 bg-white px-2.5 text-xs font-semibold text-teal-800 shadow-sm transition hover:bg-teal-50"
+        href={primaryLink}
+        className={primaryClass}
         onClick={(e) => e.stopPropagation()}
       >
         {primaryLabel}
       </Link>
-      <button
-        ref={triggerRef}
-        type="button"
-        aria-expanded={open}
-        aria-haspopup="menu"
-        className="inline-flex h-8 w-8 items-center justify-center rounded-lg border border-zinc-200 bg-white text-zinc-600 shadow-sm hover:bg-zinc-50"
-        onClick={(e) => {
-          e.stopPropagation();
-          setOpen((v) => !v);
-        }}
-      >
-        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+      {showDropdown && (
+        <button
+          ref={triggerRef}
+          type="button"
+          aria-expanded={open}
+          aria-haspopup="menu"
+          aria-label="Más acciones"
+          className={dropdownClass}
+          onClick={(e) => {
+            e.stopPropagation();
+            setOpen((v) => !v);
+          }}
+        >
+          <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+          </svg>
+        </button>
+      )}
       {menu}
     </div>
   );

@@ -292,18 +292,37 @@ export function OrderDetailPanel({
       <div id="tarea" className="card scroll-mt-24 border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
         <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
 
-        {user.role === "compras" && (canComprasEditOrder(order.status, user.role) || canDeleteOrder(order.status, user.role, order.amountPaidSoFar)) && (
+        {user.role === "compras" && (
           <div className="mt-4 flex flex-wrap gap-3">
-            {canComprasEditOrder(order.status, user.role) && (
+            {canComprasEditOrder(order.status, user.role) ? (
               <Link href={`/ordenes/nueva?orderId=${order.id}`} className="btn-secondary">
                 <IconEdit />
                 Editar OC
               </Link>
+            ) : (
+              <span
+                className="btn-secondary cursor-not-allowed opacity-50"
+                title="Solo puedes editar antes del pago o cierre documental"
+              >
+                <IconEdit />
+                Editar OC
+              </span>
             )}
-            {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) && (
+            {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) ? (
               <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
                 Eliminar OC
               </button>
+            ) : (
+              <span
+                className="btn-danger inline-flex cursor-not-allowed opacity-50"
+                title={
+                  order.amountPaidSoFar > 0.01
+                    ? "No se puede eliminar: ya hay pagos registrados"
+                    : "No se puede eliminar en este estado"
+                }
+              >
+                Eliminar OC
+              </span>
             )}
           </div>
         )}
@@ -487,8 +506,8 @@ export function OrderDetailPanel({
         {canUploadInvoice(order.status, user.role) && (
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
-              Sube el PDF de la factura del proveedor. Compras, Administración o Recepción pueden
-              hacerlo.
+              Sube el PDF de la factura del proveedor. Compras, Administración, Recepción o
+              Contabilidad pueden cargarla.
             </p>
             <div>
               <p className="font-medium text-zinc-800">Factura (PDF)</p>

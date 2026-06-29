@@ -1,7 +1,8 @@
 "use client";
 
-import { createContext, useCallback, useContext, useRef, useState } from "react";
+import { createContext, useCallback, useContext, useRef, useState, Suspense } from "react";
 import { DashboardShell } from "@/components/dashboard-shell";
+import { LoadingScreen } from "@/components/ui/loading-screen";
 
 type RefreshCtx = { register: (fn: () => void) => void };
 
@@ -26,7 +27,9 @@ export function AppShell({ children }: { children: React.ReactNode }) {
 
   return (
     <RefreshContext.Provider value={{ register }}>
-      <DashboardShell onRefresh={onRefresh}>{children}</DashboardShell>
+      <Suspense fallback={<LoadingScreen message="Cargando" />}>
+        <DashboardShell onRefresh={onRefresh}>{children}</DashboardShell>
+      </Suspense>
     </RefreshContext.Provider>
   );
 }

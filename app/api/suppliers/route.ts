@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { canManageSuppliers } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
-import { mapSupplier } from "@/lib/services/mappers";
+import { asRole, mapSupplier } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
 export async function GET() {
@@ -17,8 +18,9 @@ export async function GET() {
 export async function POST(request: Request) {
   try {
     const user = await requireSessionUser();
-    if (user.role !== "compras") {
-      return NextResponse.json({ error: "Solo Compras puede registrar proveedores." }, { status: 403 });
+    const role = asRole(user.role);
+    if (!canManageSuppliers(role)) {
+      return NextResponse.json({ error: "No tienes permiso para registrar proveedores." }, { status: 403 });
     }
 
     const body = (await request.json()) as {

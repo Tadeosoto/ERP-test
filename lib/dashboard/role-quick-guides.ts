@@ -61,10 +61,10 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
       {
         heading: "Crear y editar OC",
         steps: [
-          "Desde Inicio u Obras, pulsa «Nueva OC» y elige obra y proveedor.",
+          "Desde Inicio u Obras, pulsa «Nueva OC» o «Editar OC» en el menú de acciones de una fila.",
           "Define modalidad de pago: inmediato, a 30 días o parcialidades.",
           "Sube el PDF de CONTPAQi y envía a Ingeniería para aprobación.",
-          "Solo Compras puede editar, eliminar o reemplazar el PDF en borrador o corrección.",
+          "Puedes editar o eliminar mientras la OC no tenga pagos ni factura cerrada.",
         ],
       },
       {
@@ -151,6 +151,27 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         heading: "Cierre",
         steps: [
           "Al validar, el expediente queda completado y disponible para consulta de todos.",
+        ],
+      },
+    ],
+  },
+  direccion: {
+    role: "direccion",
+    title: "Guía rápida — Dirección",
+    intro: "Ing. Diomedes supervisa pagos, gastos y el avance de todo el flujo de compras.",
+    sections: [
+      {
+        heading: "Panel ejecutivo",
+        steps: [
+          "Revisa KPIs, gráficas y alertas en Inicio.",
+          "Consulta pagos pendientes y parcialidades activas desde la tabla de autorizaciones.",
+        ],
+      },
+      {
+        heading: "Consulta",
+        steps: [
+          "Puedes abrir cualquier obra, OC o expediente en modo consulta.",
+          "Usa Movimientos para ver qué hace cada área del equipo.",
         ],
       },
     ],

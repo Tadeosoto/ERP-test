@@ -60,6 +60,19 @@ body {
   @apply font-medium text-sky-700 hover:text-sky-900 hover:underline;
 }
 
+/* Inicio: scroll natural en móvil, viewport fijo en desktop */
+.home-dashboard {
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .home-dashboard--fit {
+    min-height: 0;
+    flex: 1 1 0%;
+    overflow: hidden;
+  }
+}
+
 /* Grilla única del dashboard Compras: KPIs + panel alineados en 5 columnas */
 .compras-dashboard-grid {
   display: grid;
@@ -75,6 +88,12 @@ body {
   }
 }
 
+@media (min-width: 768px) {
+  .compras-dashboard-grid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
 @media (min-width: 1024px) {
   .compras-dashboard-grid {
     grid-template-columns: repeat(5, minmax(0, 1fr));
@@ -82,6 +101,8 @@ body {
     align-items: stretch;
   }
 }
+
+/* (layout pagos: flex en componente, sin grilla global) */
 
 /* Logo CCP: crece → gira → encoge (spring) */
 @keyframes ccp-logo-loading {

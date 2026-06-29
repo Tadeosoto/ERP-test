@@ -11,7 +11,7 @@ import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto, Role } from "@/lib/domain/types";
 import { formatDateTime } from "@/lib/format";
 
-const ROLES: Role[] = ["compras", "pagos", "ingeniero", "recepcion", "contabilidad"];
+const ROLES: Role[] = ["compras", "pagos", "ingeniero", "recepcion", "contabilidad", "direccion"];
 
 type Props = {
   variant: "recent" | "pending";

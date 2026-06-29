@@ -135,7 +135,7 @@ export default function DirectExpenseDetailPage() {
             </div>
           )}
 
-          {["pagos", "recepcion"].includes(user?.role ?? "") && expense.status === "awaiting_invoice" && (
+          {["pagos", "recepcion", "contabilidad"].includes(user?.role ?? "") && expense.status === "awaiting_invoice" && (
             <div className="mt-4">
               <FilePickButton disabled={busy} label="Subir factura PDF" hint="del proveedor" onPick={(f) => void uploadFile("factura", f)} />
             </div>

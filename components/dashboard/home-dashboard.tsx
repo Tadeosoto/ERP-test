@@ -3,6 +3,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
 import { IngenieroHomeDashboard } from "@/components/dashboard/ingeniero-home-dashboard";
+import { PagosHomeDashboard } from "@/components/dashboard/pagos-home-dashboard";
+import { ContabilidadRecepcionHomeDashboard } from "@/components/dashboard/contabilidad-recepcion-home-dashboard";
+import { DireccionHomeDashboard } from "@/components/dashboard/direccion-home-dashboard";
 import { HomeActivitySidebar } from "@/components/dashboard/home-activity-sidebar";
 import { RoleQuickGuideBanner } from "@/components/dashboard/role-quick-guide";
 import { MiniListPanel, PanelLink, StatChip } from "@/components/dashboard/panel-link";
@@ -18,7 +21,7 @@ import {
   ordersForRole,
 } from "@/lib/dashboard/home-stats";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
-import type { DirectExpenseDto, MaterialRequestDto, MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, MaterialRequestDto, MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto, SupplierDto } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
 export function HomeDashboard() {
@@ -30,6 +33,7 @@ export function HomeDashboard() {
   const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
   const [recentMovements, setRecentMovements] = useState<MovementDto[]>([]);
   const [pendingMovements, setPendingMovements] = useState<PendingMovementDto[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -41,7 +45,7 @@ export function HomeDashboard() {
           ? "/api/material-requests?mine=1"
           : null;
 
-    const [oRes, ordRes, matRes, expRes, recentRes, pendingRes] = await Promise.all([
+    const [oRes, ordRes, matRes, expRes, recentRes, pendingRes, supRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       matUrl ? fetch(matUrl, { credentials: "include" }) : Promise.resolve(null),
@@ -53,6 +57,9 @@ export function HomeDashboard() {
         : Promise.resolve(null),
       fetch("/api/movimientos?vista=recientes&limit=5", { credentials: "include" }),
       fetch("/api/movimientos?vista=pendientes&limit=5", { credentials: "include" }),
+      user.role === "pagos"
+        ? fetch("/api/suppliers", { credentials: "include" })
+        : Promise.resolve(null),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
@@ -77,6 +84,10 @@ export function HomeDashboard() {
     if (pendingRes.ok) {
       const d = (await pendingRes.json()) as { pending: PendingMovementDto[] };
       setPendingMovements(d.pending);
+    }
+    if (supRes?.ok) {
+      const d = (await supRes.json()) as { suppliers: SupplierDto[] };
+      setSuppliers(d.suppliers);
     }
     setInitialLoading(false);
   }, [user]);
@@ -120,6 +131,7 @@ export function HomeDashboard() {
         materialRequests={materialRequests}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
+        onOrderMutated={() => void load()}
       />
     );
   }
@@ -139,10 +151,49 @@ export function HomeDashboard() {
     );
   }
 
+  if (user.role === "pagos") {
+    return (
+      <PagosHomeDashboard
+        userName={user.name}
+        orders={orders}
+        obras={obras}
+        suppliers={suppliers}
+        recentMovements={recentMovements}
+        pendingMovements={pendingMovements}
+        onOrdersMutated={() => void load()}
+      />
+    );
+  }
+
+  if (user.role === "contabilidad" || user.role === "recepcion") {
+    return (
+      <ContabilidadRecepcionHomeDashboard
+        userName={user.name}
+        role={user.role}
+        orders={orders}
+        obras={obras}
+        recentMovements={recentMovements}
+        pendingMovements={pendingMovements}
+      />
+    );
+  }
+
+  if (user.role === "direccion") {
+    return (
+      <DireccionHomeDashboard
+        userName={user.name}
+        orders={orders}
+        obras={obras}
+        recentMovements={recentMovements}
+        pendingMovements={pendingMovements}
+      />
+    );
+  }
+
   const playbook = rolePlaybook(user.role)[0];
 
   return (
-    <div className="flex flex-col gap-4 pb-2">
+    <div className="home-dashboard flex flex-col gap-4 pb-2 sm:gap-5 lg:min-h-0 lg:flex-1 lg:gap-4 lg:overflow-y-auto lg:pb-0">
       <header className="shrink-0">
         <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">¡Hola, {user.name.split(" ")[0]}!</h1>
         <p className="mt-1 text-sm text-zinc-500">
@@ -168,8 +219,8 @@ export function HomeDashboard() {
         />
       )}
 
-      <div className="grid grid-cols-1 gap-4 xl:grid-cols-4 xl:items-start xl:gap-4">
-        <div className="flex flex-col gap-4 xl:col-span-3">
+      <div className="grid grid-cols-1 gap-4 lg:grid-cols-4 lg:items-start lg:gap-4">
+        <div className="flex flex-col gap-4 lg:col-span-3">
           <MiniListPanel
             title="Tu bandeja"
             surface="bandeja"
@@ -240,11 +291,13 @@ export function HomeDashboard() {
             />
           </div>
 
-          <RoleQuickGuideBanner role={user.role} />
+          <RoleQuickGuideBanner role={user.role} compact />
         </div>
 
-        <div className="min-w-0 xl:col-span-1">
+        <div className="min-w-0 lg:col-span-1">
           <HomeActivitySidebar
+            compact
+            limit={3}
             recentMovements={recentMovements}
             pendingMovements={pendingMovements}
           />

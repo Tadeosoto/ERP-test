@@ -123,7 +123,12 @@ export function canCreateOrder(role: Role): boolean {
 }
 
 export function canCreateObra(role: Role): boolean {
-  return role === "ingeniero";
+  return role === "ingeniero" || role === "pagos";
+}
+
+/** Paty (compras) y Rosa (pagos) pueden crear, editar y eliminar proveedores. */
+export function canManageSuppliers(role: Role): boolean {
+  return role === "compras" || role === "pagos";
 }
 
 export function canConfigureObra(role: Role): boolean {
@@ -134,15 +139,25 @@ export function canUpdateDraftOrder(status: OrderStatus, role: Role): boolean {
   return canComprasEditOrder(status, role);
 }
 
-/** Compras puede editar borradores y OCs devueltas por corrección de Ingeniería. */
+/** Estados en los que la OC ya avanzó a pago/factura/cierre y Compras no debe editarla ni borrarla. */
+const COMPRAS_LOCKED_STATUSES: OrderStatus[] = [
+  "paid",
+  "awaitingInvoice",
+  "invoiceReceived",
+  "completed",
+  "difference",
+];
+
+/** Compras (Paty) puede editar la OC mientras no haya entrado a pago ni cierre documental. */
 export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && (status === "draft" || status === "engineerRejected");
+  if (role !== "compras") return false;
+  return !COMPRAS_LOCKED_STATUSES.includes(status);
 }
 
 export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar: number): boolean {
   if (role !== "compras") return false;
   if (amountPaidSoFar > 0.01) return false;
-  return status === "draft" || status === "engineerRejected";
+  return !COMPRAS_LOCKED_STATUSES.includes(status);
 }
 
 export function canSendToEngineer(status: OrderStatus, role: Role): boolean {

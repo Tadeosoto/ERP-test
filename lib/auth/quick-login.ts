@@ -5,6 +5,7 @@ export const QUICK_LOGIN_EMAILS = [
   "santiago@ccp.local",
   "recepcion@ccp.local",
   "helena@ccp.local",
+  "diomedes@ccp.local",
 ] as const;
 
 export type QuickLoginEmail = (typeof QUICK_LOGIN_EMAILS)[number];

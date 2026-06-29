@@ -30,7 +30,7 @@ export async function POST(request: Request) {
     const user = await requireSessionUser();
     const role = asRole(user.role);
     if (!canCreateObra(role)) {
-      return NextResponse.json({ error: "Solo Ingeniería puede crear obras." }, { status: 403 });
+      return NextResponse.json({ error: "No tienes permiso para crear obras." }, { status: 403 });
     }
 
     const body = (await request.json()) as {

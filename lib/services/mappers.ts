@@ -165,6 +165,7 @@ export function mapSupplier(s: {
   country: string;
   primaryContact: string;
   notes: string;
+  active: boolean;
   createdAt: Date;
 }): import("@/lib/domain/types").SupplierDto {
   const displayName = s.commercialName.trim() || s.legalName;
@@ -186,6 +187,7 @@ export function mapSupplier(s: {
     primaryContact: s.primaryContact,
     notes: s.notes,
     displayName,
+    active: s.active,
     createdAt: s.createdAt.toISOString(),
   };
 }

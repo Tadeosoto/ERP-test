@@ -19,6 +19,7 @@ export function ComprasHomeDashboard({
   materialRequests = [],
   recentMovements,
   pendingMovements,
+  onOrderMutated,
 }: {
   userName: string;
   orders: PurchaseOrderDto[];
@@ -26,6 +27,7 @@ export function ComprasHomeDashboard({
   materialRequests?: MaterialRequestDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
+  onOrderMutated?: () => void;
 }) {
   const [activeTab, setActiveTab] = useState<ComprasOrderTab>("all");
   const [hintDismissed, setHintDismissed] = useState(false);
@@ -39,19 +41,19 @@ export function ComprasHomeDashboard({
   }, [hintKey]);
 
   return (
-    <div className="flex min-h-0 flex-col gap-3 overflow-x-hidden overflow-y-auto lg:h-[calc(100dvh-5.5rem)] lg:gap-3">
+    <div className="home-dashboard flex flex-col gap-3 pb-2 sm:gap-4 lg:min-h-0 lg:flex-1 lg:gap-3 lg:overflow-hidden lg:pb-0">
       <header className="shrink-0">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
           <div className="min-w-0 flex-1">
             <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
               ¡Hola, {userName.split(" ")[0]}!
             </h1>
-            <p className="mt-1 flex items-center gap-2 text-sm text-zinc-500">
+            <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
               <RoleActivityIcon role="compras" size="sm" />
-              Compras — Crear obras y registrar la OC con PDF tras negociar con proveedores.
+              <span>Compras — Registra la OC con PDF tras negociar con proveedores.</span>
             </p>
           </div>
-          <Link href="/ordenes/nueva" className="btn-primary w-full shrink-0 sm:w-auto">
+          <Link href="/ordenes/nueva" className="btn-primary h-11 min-h-11 w-full shrink-0 text-sm sm:w-auto">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
@@ -88,6 +90,7 @@ export function ComprasHomeDashboard({
             obras={obras}
             activeTab={activeTab}
             onTabChange={setActiveTab}
+            onOrderMutated={onOrderMutated}
           />
 
           <Link
@@ -112,12 +115,14 @@ export function ComprasHomeDashboard({
             </span>
           </Link>
 
-          <RoleQuickGuideBanner role="compras" />
+          <RoleQuickGuideBanner role="compras" compact />
         </div>
 
         <div className="col-span-2 flex min-h-0 min-w-0 flex-col lg:col-span-1 lg:row-start-2 lg:self-stretch">
           <HomeActivitySidebar
-            className="h-full min-h-0 flex-1"
+            compact
+            limit={3}
+            className="lg:h-full lg:min-h-0"
             recentMovements={recentMovements}
             pendingMovements={pendingMovements}
           />

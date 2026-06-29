@@ -2,7 +2,7 @@ import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import { ROLE_ACTIVITY_STYLE } from "@/lib/dashboard/role-activity-style";
 import type { Role } from "@/lib/domain/types";
 
-const ROLES: Role[] = ["compras", "ingeniero", "pagos", "recepcion", "contabilidad"];
+const ROLES: Role[] = ["compras", "ingeniero", "pagos", "recepcion", "contabilidad", "direccion"];
 
 export function RoleLegend({ className = "" }: { className?: string }) {
   return (

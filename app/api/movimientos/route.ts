@@ -5,7 +5,7 @@ import type { Role } from "@/lib/domain/types";
 import { fetchPendingMovements, fetchRecentMovements } from "@/lib/services/activity-feed";
 import { asRole } from "@/lib/services/mappers";
 
-const ROLES: Role[] = ["compras", "pagos", "ingeniero", "recepcion", "contabilidad"];
+const ROLES: Role[] = ["compras", "pagos", "ingeniero", "recepcion", "contabilidad", "direccion"];
 
 export async function GET(request: Request) {
   try {

@@ -54,6 +54,7 @@ model Supplier {
   country         String          @default("México")
   primaryContact  String          @default("")
   notes           String          @default("")
+  active          Boolean         @default(true)
   createdAt       DateTime        @default(now())
   orders          PurchaseOrder[]
 }

@@ -14,6 +14,7 @@ export const ROLE_LABEL: Record<Role, string> = {
   ingeniero: "Ingeniería",
   recepcion: "Recepción",
   contabilidad: "Contabilidad",
+  direccion: "Dirección General",
 };
 
 export const PAYMENT_LABEL_TEXT: Record<PaymentLabel, string> = {

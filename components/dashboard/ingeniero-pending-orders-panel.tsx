@@ -15,6 +15,56 @@ import { formatDateShort, formatMoney } from "@/lib/format";
 
 const PAGE_SIZES = [5, 10, 15] as const;
 
+function IngenieroOrderMobileCard({
+  order,
+  request,
+  onOpen,
+}: {
+  order: PurchaseOrderDto;
+  request?: MaterialRequestDto;
+  onOpen: (href: string) => void;
+}) {
+  const href = `/ordenes/${order.id}`;
+  const received = order.sentToEngineerAt ?? order.createdAt;
+
+  return (
+    <div className="px-3 py-3 sm:px-4">
+      <div className="flex items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <div onClick={(e) => e.stopPropagation()} role="presentation">
+            <OcLink order={order} showPdfIcon className="text-sm" />
+          </div>
+          <p className="mt-1 truncate text-xs font-medium text-sky-800">{order.obraName}</p>
+          <p className="truncate text-xs text-zinc-600">{order.supplierName}</p>
+          {request && (
+            <Link
+              href={`/solicitudes/material/${request.id}`}
+              className="link-entity mt-1 line-clamp-2 text-[11px] leading-snug"
+              onClick={(e) => e.stopPropagation()}
+            >
+              {materialRequestDisplayLabel(request)}
+            </Link>
+          )}
+        </div>
+        <div className="flex shrink-0 flex-col items-end gap-2" onClick={(e) => e.stopPropagation()}>
+          <OrderActionMenu order={order} primaryLabel="Revisar" />
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={() => onOpen(href)}
+        className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 rounded-lg text-left"
+      >
+        <SystemStatusBadge status={order.status} size="xs" />
+        <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(received)}</span>
+        <span className="text-sm font-semibold tabular-nums text-zinc-900">
+          {formatMoney(order.totalAmount, order.currency)}
+        </span>
+      </button>
+    </div>
+  );
+}
+
 export function IngenieroPendingOrdersPanel({
   orders,
   engineerUserId,
@@ -87,8 +137,14 @@ export function IngenieroPendingOrdersPanel({
   const td = embedded ? "px-2 py-1.5 align-middle" : "px-2 py-2.5 align-middle";
 
   return (
-    <section className={`card flex flex-col ${embedded ? "min-h-0 flex-1 overflow-hidden" : ""}`}>
-      <div className={`shrink-0 border-b border-orange-50 ${embedded ? "px-3 py-2.5" : "px-4 py-4 sm:px-5"}`}>
+    <section
+      className={`card flex flex-col ${embedded ? "lg:min-h-0 lg:flex-1 lg:overflow-hidden" : ""}`}
+    >
+      <div
+        className={`shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4 sm:py-3.5 ${
+          embedded ? "lg:px-3 lg:py-2.5" : "sm:px-5"
+        }`}
+      >
         <h2 className={`font-bold text-zinc-900 ${embedded ? "text-base" : "text-lg"}`}>
           Órdenes pendientes de mi aprobación
         </h2>
@@ -119,7 +175,7 @@ export function IngenieroPendingOrdersPanel({
             </svg>
           </div>
 
-          <div className={`grid grid-cols-2 gap-1.5 ${embedded ? "lg:grid-cols-5" : "gap-2 lg:grid-cols-5"}`}>
+          <div className="grid grid-cols-1 gap-1.5 sm:grid-cols-2 lg:grid-cols-5">
             <select
               value={obraId}
               onChange={(e) => {
@@ -175,8 +231,8 @@ export function IngenieroPendingOrdersPanel({
             <button
               type="button"
               onClick={clearFilters}
-              className={`rounded-lg border border-zinc-200 bg-white text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 ${
-                embedded ? "h-8" : "h-9"
+              className={`col-span-1 rounded-lg border border-zinc-200 bg-white text-xs font-medium text-zinc-700 shadow-sm hover:bg-zinc-50 sm:col-span-2 lg:col-span-1 ${
+                embedded ? "h-9 sm:h-8" : "h-9"
               }`}
             >
               Limpiar filtros
@@ -185,7 +241,22 @@ export function IngenieroPendingOrdersPanel({
         </div>
       </div>
 
-      <div className={`min-h-0 flex-1 overflow-auto ${embedded ? "" : "overflow-x-auto"}`}>
+      <div className="divide-y divide-orange-50 lg:hidden">
+        {pageItems.length === 0 ? (
+          <p className="px-4 py-10 text-center text-sm text-zinc-500">No hay órdenes con estos filtros.</p>
+        ) : (
+          pageItems.map((order) => (
+            <IngenieroOrderMobileCard
+              key={order.id}
+              order={order}
+              request={order.materialRequestId ? requestById.get(order.materialRequestId) : undefined}
+              onOpen={(href) => router.push(href)}
+            />
+          ))
+        )}
+      </div>
+
+      <div className={`hidden min-h-0 flex-1 overflow-auto lg:block ${embedded ? "" : "overflow-x-auto"}`}>
         <table className="w-full min-w-[960px] border-collapse text-left">
           <thead className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm">
             <tr className="border-b border-orange-100">

@@ -1,7 +1,7 @@
 import type { OrderStatus, Role, PaymentType } from "./types";
 import { ROLE_LABEL, PAYMENT_TYPE_TEXT } from "./labels";
 
-export const INVOICE_UPLOAD_ROLES: Role[] = ["compras", "pagos", "recepcion"];
+export const INVOICE_UPLOAD_ROLES: Role[] = ["compras", "pagos", "recepcion", "contabilidad"];
 
 export const FLOW_STEPS: readonly {
   step: number;
@@ -42,7 +42,7 @@ export const FLOW_STEPS: readonly {
   {
     step: 6,
     shortTitle: "Factura",
-    detail: "Compras, Administración o Recepción suben el PDF de la factura",
+    detail: "Compras, Administración, Recepción o Contabilidad suben el PDF de la factura",
     primaryRole: null,
   },
   {
@@ -144,7 +144,7 @@ export function describeGate(status: OrderStatus, paymentType?: PaymentType | nu
     case "paid":
       return "Compras debe enviar el comprobante al proveedor, solicitar la factura y marcar «Esperando factura».";
     case "awaitingInvoice":
-      return "Compras, Administración o Recepción pueden subir el PDF de la factura.";
+      return "Compras, Administración, Recepción o Contabilidad pueden subir el PDF de la factura.";
     case "invoiceReceived":
       return "Contabilidad debe validar que OC = Pago = Factura.";
     case "difference":
@@ -202,6 +202,11 @@ export function rolePlaybook(role: Role): string[] {
       return [
         "Validar que OC, pago y factura coinciden.",
         "Cerrar el expediente o marcar diferencia si algo no cuadra.",
+      ];
+    case "direccion":
+      return [
+        "Consultar el resumen de gastos, pagos y expedientes del consorcio.",
+        "Dar seguimiento a autorizaciones pendientes y actividad del equipo.",
       ];
     default:
       return [];

@@ -39,7 +39,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const role = asRole(user.role);
     if (!canComprasEditOrder(status, role)) {
       return NextResponse.json(
-        { error: "Solo puedes editar órdenes en borrador o con corrección solicitada." },
+        { error: "Solo puedes editar órdenes antes del pago o cierre documental." },
         { status: 403 }
       );
     }
@@ -115,7 +115,7 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     const role = asRole(user.role);
     if (!canDeleteOrder(status, role, order.amountPaidSoFar)) {
       return NextResponse.json(
-        { error: "No puedes eliminar esta orden (solo borradores o correcciones sin pagos)." },
+        { error: "No puedes eliminar esta orden (ya tiene pagos o está cerrada)." },
         { status: 403 }
       );
     }
