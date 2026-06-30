@@ -1,6 +1,7 @@
 "use client";
 
 import type { MonthlySpendPoint, ObraSpendSlice } from "@/lib/dashboard/direccion-dashboard";
+import type { MonthlyYoYPoint } from "@/lib/dashboard/direccion-reportes";
 import { DONUT_COLORS } from "@/lib/dashboard/direccion-dashboard";
 import { formatMoney } from "@/lib/format";
 
@@ -67,7 +68,84 @@ export function DireccionLineChart({
   );
 }
 
-export function DireccionDonutChart({ slices }: { slices: ObraSpendSlice[] }) {
+export function ReportesYoYLineChart({
+  data,
+  currency = "MXN",
+}: {
+  data: MonthlyYoYPoint[];
+  currency?: string;
+}) {
+  const width = 480;
+  const height = 180;
+  const pad = { t: 16, r: 12, b: 28, l: 8 };
+  const innerW = width - pad.l - pad.r;
+  const innerH = height - pad.t - pad.b;
+  const max = Math.max(...data.flatMap((d) => [d.currentYear, d.previousYear]), 1);
+
+  function seriesPoints(key: "currentYear" | "previousYear") {
+    return data.map((d, i) => {
+      const x = pad.l + (data.length <= 1 ? innerW / 2 : (i / (data.length - 1)) * innerW);
+      const y = pad.t + innerH - (d[key] / max) * innerH;
+      return { x, y };
+    });
+  }
+
+  const currentPts = seriesPoints("currentYear");
+  const prevPts = seriesPoints("previousYear");
+  const toPath = (pts: { x: number; y: number }[]) =>
+    pts.map((p, i) => `${i === 0 ? "M" : "L"} ${p.x.toFixed(1)} ${p.y.toFixed(1)}`).join(" ");
+
+  return (
+    <div className="w-full">
+      <div className="mb-2 flex flex-wrap items-center justify-end gap-4 text-[11px] text-zinc-600">
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded bg-violet-600" />
+          Este año
+        </span>
+        <span className="inline-flex items-center gap-1.5">
+          <span className="h-0.5 w-4 rounded bg-zinc-400" />
+          Año anterior
+        </span>
+      </div>
+      <svg viewBox={`0 0 ${width} ${height}`} className="h-44 w-full" aria-hidden>
+        {[0.25, 0.5, 0.75, 1].map((f) => (
+          <line
+            key={f}
+            x1={pad.l}
+            x2={width - pad.r}
+            y1={pad.t + innerH * (1 - f)}
+            y2={pad.t + innerH * (1 - f)}
+            stroke="#e4e4e7"
+            strokeWidth={1}
+          />
+        ))}
+        <path d={toPath(prevPts)} fill="none" stroke="#a1a1aa" strokeWidth={2} strokeLinecap="round" />
+        <path d={toPath(currentPts)} fill="none" stroke="#7c3aed" strokeWidth={2.5} strokeLinecap="round" />
+        {currentPts.map((p, i) => (
+          <circle key={i} cx={p.x} cy={p.y} r={3.5} fill="#7c3aed" stroke="white" strokeWidth={1.5} />
+        ))}
+      </svg>
+      <div className="mt-1 flex justify-between gap-1 text-[10px] text-zinc-500">
+        {data.map((d) => (
+          <span key={d.month} className="min-w-0 flex-1 truncate text-center capitalize">
+            {d.label}
+          </span>
+        ))}
+      </div>
+      <p className="mt-2 text-center text-xs text-zinc-500">
+        Máximo: {formatMoney(max, currency)}
+      </p>
+    </div>
+  );
+}
+
+export function DireccionDonutChart({
+  slices,
+  centerLabel,
+}: {
+  slices: ObraSpendSlice[];
+  centerLabel?: string;
+}) {
   const total = slices.reduce((s, x) => s + x.total, 0);
   const r = 52;
   const cx = 64;
@@ -104,12 +182,14 @@ export function DireccionDonutChart({ slices }: { slices: ObraSpendSlice[] }) {
             transform={`rotate(-90 ${cx} ${cy})`}
           />
         ))}
-        <text x={cx} y={cy - 4} textAnchor="middle" className="fill-zinc-900 text-[11px] font-bold">
-          {total > 0 ? `${Math.round((slices[0]?.pct ?? 0))}%` : "—"}
+        <text x={cx} y={cy - 2} textAnchor="middle" className="fill-zinc-900 text-[10px] font-bold">
+          {centerLabel ?? (total > 0 ? `${Math.round((slices[0]?.pct ?? 0))}%` : "—")}
         </text>
-        <text x={cx} y={cy + 10} textAnchor="middle" className="fill-zinc-500 text-[8px]">
-          principal
-        </text>
+        {!centerLabel && (
+          <text x={cx} y={cy + 10} textAnchor="middle" className="fill-zinc-500 text-[8px]">
+            principal
+          </text>
+        )}
       </svg>
       <ul className="min-w-0 flex-1 space-y-1.5 text-xs">
         {slices.length === 0 ? (

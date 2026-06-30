@@ -4,7 +4,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExpedienteDetailDrawer } from "@/components/expedientes/expediente-detail-drawer";
 import { OcLink } from "@/components/ui/oc-link";
 import { LoadingScreen } from "@/components/ui/loading-screen";
-import { useSession } from "@/components/session-provider";
 import {
   applyExpedienteFilters,
   EXPEDIENTE_ESTATUS_LABEL,
@@ -98,7 +97,6 @@ function SummaryKpi({
 }
 
 export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
-  const { user } = useSession();
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -172,13 +170,6 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
   }
 
   if (loading) return <LoadingScreen message="Cargando expedientes" />;
-  if (user?.role !== "direccion") {
-    return (
-      <div className="py-16 text-center text-zinc-600">
-        Esta sección está disponible solo para Dirección.
-      </div>
-    );
-  }
 
   const rangeStart = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, sorted.length);

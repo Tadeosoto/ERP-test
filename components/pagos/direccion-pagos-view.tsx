@@ -5,7 +5,6 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { OrderActionMenu } from "@/components/obras/order-action-menu";
 import { OcLink } from "@/components/ui/oc-link";
 import { LoadingScreen } from "@/components/ui/loading-screen";
-import { useSession } from "@/components/session-provider";
 import {
   amountToPay,
   applyPagosFilters,
@@ -96,7 +95,6 @@ function KpiCard({
 }
 
 export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
-  const { user } = useSession();
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -166,13 +164,6 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
   }
 
   if (loading) return <LoadingScreen message="Cargando pagos" />;
-  if (user?.role !== "direccion") {
-    return (
-      <div className="py-16 text-center text-zinc-600">
-        Esta sección está disponible solo para Dirección.
-      </div>
-    );
-  }
 
   const rangeStart = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, sorted.length);
@@ -182,7 +173,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Pagos</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Consulta, autoriza y da seguimiento a los pagos de la empresa.
+          Consulta y da seguimiento a los pagos del consorcio.
         </p>
       </div>
 

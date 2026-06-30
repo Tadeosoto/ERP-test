@@ -22,6 +22,11 @@ const primaryNav = [
 
 const secondaryNav = [{ href: "/proveedores", label: "Proveedores", icon: "suppliers" }] as const;
 
+const consultaNav = [
+  { href: "/pagos", label: "Pagos", icon: "pay" },
+  { href: "/expedientes", label: "Expedientes", icon: "folder" },
+] as const;
+
 const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: "solicitudes" }] as const;
 
 const pagosNav = [{ href: "/obras?estado=pago", label: "Órdenes de compra", icon: "orders" }] as const;
@@ -41,7 +46,8 @@ type NavItem =
   | (typeof secondaryNav)[number]
   | (typeof ingenieroNav)[number]
   | (typeof pagosNav)[number]
-  | (typeof direccionNav)[number];
+  | (typeof direccionNav)[number]
+  | (typeof consultaNav)[number];
 
 function NavIcon({ name }: { name: string }) {
   const cls = "h-5 w-5 shrink-0";
@@ -298,7 +304,9 @@ export function DashboardShell({
         : primaryNav;
 
   const mobileNav =
-    user.role === "direccion" ? [...direccionNav] : [...sidebarPrimaryNav, ...secondaryNav];
+    user.role === "direccion"
+      ? [...direccionNav]
+      : [...sidebarPrimaryNav, ...consultaNav, ...secondaryNav];
 
   async function handleRefresh() {
     await onRefresh?.();
@@ -339,6 +347,9 @@ export function DashboardShell({
           {user.role !== "direccion" && (
             <>
               <div className="my-2 border-t border-zinc-200" role="separator" />
+              {consultaNav.map((item) => (
+                <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
+              ))}
               {secondaryNav.map((item) => (
                 <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
               ))}
