@@ -7,6 +7,7 @@ import { NotificationHeaderMenu } from "@/components/dashboard/notification-head
 import { CcpLogoIcon } from "@/components/ccp-logo";
 import { useSession } from "@/components/session-provider";
 import { ROLE_LABEL } from "@/lib/domain/labels";
+import type { Role } from "@/lib/domain/types";
 import { IconLogOut, IconRefresh } from "@/components/ui/action-icons";
 
 const SIDEBAR_W = "w-[17.5rem]";
@@ -29,7 +30,9 @@ const consultaNav = [
 
 const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: "solicitudes" }] as const;
 
-const pagosNav = [{ href: "/obras?estado=pago", label: "Órdenes de compra", icon: "orders" }] as const;
+const pagosNav = [{ href: "/ordenes", label: "Órdenes de compra", icon: "orders" }] as const;
+
+const recepcionConsultaNav = [{ href: "/expedientes", label: "Expedientes", icon: "folder" }] as const;
 
 const direccionNav = [
   { href: "/inicio", label: "Inicio", icon: "home" },
@@ -47,7 +50,18 @@ type NavItem =
   | (typeof ingenieroNav)[number]
   | (typeof pagosNav)[number]
   | (typeof direccionNav)[number]
-  | (typeof consultaNav)[number];
+  | (typeof consultaNav)[number]
+  | (typeof recepcionConsultaNav)[number];
+
+function consultaNavForRole(role: Role) {
+  if (role === "recepcion") return recepcionConsultaNav;
+  return consultaNav;
+}
+
+function secondaryNavForRole(role: Role) {
+  if (role === "recepcion") return [] as const;
+  return secondaryNav;
+}
 
 function NavIcon({ name }: { name: string }) {
   const cls = "h-5 w-5 shrink-0";
@@ -154,14 +168,14 @@ function navActive(pathname: string | null, href: string, searchParams: URLSearc
   if (href === "/inicio") return pathname === "/inicio";
   if (href === "/expedientes") return pathname.startsWith("/expedientes");
   if (href === "/pagos") return pathname.startsWith("/pagos");
+  if (href === "/ordenes") return pathname === "/ordenes";
   if (href === "/obras?estado=pago") {
-    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && estado === "pago";
+    return pathname.startsWith("/obras") && estado === "pago";
   }
   if (href === "/obras?estado=documentos") {
-    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && estado === "documentos";
+    return pathname.startsWith("/obras") && estado === "documentos";
   }
-  if (href === "/obras")
-    return (pathname.startsWith("/obras") || pathname.startsWith("/ordenes")) && !estado;
+  if (href === "/obras") return pathname.startsWith("/obras") && !estado;
   if (href === "/proveedores") return pathname.startsWith("/proveedores");
   if (href === "/reportes") return pathname.startsWith("/reportes");
   if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes");
@@ -271,6 +285,7 @@ export function DashboardShell({
   const isWideLayout =
     isHome ||
     pathname === "/obras" ||
+    pathname === "/ordenes" ||
     pathname === "/proveedores" ||
     pathname === "/reportes" ||
     pathname === "/pagos" ||
@@ -303,10 +318,13 @@ export function DashboardShell({
           ] as const)
         : primaryNav;
 
+  const roleConsultaNav = consultaNavForRole(user.role);
+  const roleSecondaryNav = secondaryNavForRole(user.role);
+
   const mobileNav =
     user.role === "direccion"
       ? [...direccionNav]
-      : [...sidebarPrimaryNav, ...consultaNav, ...secondaryNav];
+      : [...sidebarPrimaryNav, ...roleConsultaNav, ...roleSecondaryNav];
 
   async function handleRefresh() {
     await onRefresh?.();
@@ -347,10 +365,10 @@ export function DashboardShell({
           {user.role !== "direccion" && (
             <>
               <div className="my-2 border-t border-zinc-200" role="separator" />
-              {consultaNav.map((item) => (
+              {roleConsultaNav.map((item) => (
                 <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
               ))}
-              {secondaryNav.map((item) => (
+              {roleSecondaryNav.map((item) => (
                 <SidebarNavLink key={item.href} item={item} active={navActive(pathname, item.href, searchParams)} />
               ))}
             </>

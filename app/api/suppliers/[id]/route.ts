@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { canManageSuppliers } from "@/lib/domain/transitions";
+import { canManageSuppliers, isAdministration } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole, mapSupplier } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
@@ -99,14 +99,22 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     if (!existing) {
       return NextResponse.json({ error: "Proveedor no encontrado." }, { status: 404 });
     }
-    if (existing._count.orders > 0) {
+    if (existing._count.orders > 0 && !isAdministration(role)) {
       return NextResponse.json(
         { error: "No se puede eliminar un proveedor con órdenes de compra asociadas." },
         { status: 409 }
       );
     }
 
-    await prisma.supplier.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      if (existing._count.orders > 0) {
+        await tx.purchaseOrder.updateMany({
+          where: { supplierId: id },
+          data: { supplierId: null },
+        });
+      }
+      await tx.supplier.delete({ where: { id } });
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);

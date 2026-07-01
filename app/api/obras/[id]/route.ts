@@ -1,7 +1,8 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { canConfigureObra } from "@/lib/domain/transitions";
+import { canConfigureObra, canDeleteObra } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
+import { cleanupOrderStoredFiles } from "@/lib/services/files";
 import { asRole, mapObra } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
@@ -79,6 +80,34 @@ export async function PATCH(request: Request, ctx: Ctx) {
       include: { _count: { select: { orders: true } } },
     });
     return NextResponse.json({ obra: mapObra(obra) });
+  } catch (e) {
+    return apiErrorResponse(e);
+  }
+}
+
+export async function DELETE(_request: Request, ctx: Ctx) {
+  try {
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
+    if (!canDeleteObra(role)) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar obras." }, { status: 403 });
+    }
+
+    const { id } = await ctx.params;
+    const existing = await prisma.obra.findUnique({
+      where: { id },
+      include: { orders: { select: { id: true } } },
+    });
+    if (!existing) {
+      return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+    }
+
+    for (const order of existing.orders) {
+      await cleanupOrderStoredFiles(order.id);
+    }
+    await prisma.obra.delete({ where: { id } });
+
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);
   }

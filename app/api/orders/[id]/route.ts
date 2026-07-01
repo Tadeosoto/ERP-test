@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canComprasEditOrder, canDeleteOrder } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
+import { cleanupOrderStoredFiles } from "@/lib/services/files";
 import { asOrderStatus, asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType } from "@/lib/domain/types";
@@ -120,6 +121,7 @@ export async function DELETE(_request: Request, ctx: Ctx) {
       );
     }
 
+    await cleanupOrderStoredFiles(id);
     await prisma.$transaction(async (tx) => {
       if (order.materialRequestId) {
         await tx.materialRequest.updateMany({

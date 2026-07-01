@@ -92,6 +92,32 @@ export async function getFileForDownload(fileId: string) {
   return { file, absPath: abs };
 }
 
+export async function removeStoredFileFromDisk(storagePath: string): Promise<void> {
+  if (!storagePath || storagePath === "database") return;
+  try {
+    const root = filesRoot();
+    const abs = path.join(root, storagePath);
+    await fs.unlink(abs);
+  } catch {
+    // Archivo ya ausente en disco.
+  }
+}
+
+export async function deleteStoredFile(fileId: string): Promise<boolean> {
+  const file = await prisma.storedFile.findUnique({ where: { id: fileId } });
+  if (!file) return false;
+  await removeStoredFileFromDisk(file.storagePath);
+  await prisma.storedFile.delete({ where: { id: fileId } });
+  return true;
+}
+
+export async function cleanupOrderStoredFiles(orderId: string): Promise<void> {
+  const files = await prisma.storedFile.findMany({ where: { orderId } });
+  for (const file of files) {
+    await removeStoredFileFromDisk(file.storagePath);
+  }
+}
+
 export async function readFileBuffer(fileId: string): Promise<{
   buffer: Buffer;
   mimeType: string;

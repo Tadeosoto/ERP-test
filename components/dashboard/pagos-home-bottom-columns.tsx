@@ -24,7 +24,7 @@ export function PagosHomeBottomColumns({
       <section className="card flex min-w-0 flex-col overflow-hidden p-4">
         <div className="mb-2 flex items-center justify-between gap-2">
           <h3 className="text-sm font-bold text-zinc-900">Obras con pagos pendientes</h3>
-          <Link href="/obras?estado=pago" className="text-[11px] font-medium text-orange-700 hover:underline">
+          <Link href="/ordenes" className="text-[11px] font-medium text-orange-700 hover:underline">
             Ver
           </Link>
         </div>

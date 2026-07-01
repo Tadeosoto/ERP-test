@@ -6,8 +6,10 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { IconBuilding, IconPlus } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
+import { canCreateObra } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { filterObras, sortByCreatedAtDesc } from "@/lib/list-utils";
@@ -26,6 +28,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   const router = useRouter();
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
+  const { confirmDelete } = useConfirmDelete();
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [search, setSearch] = useState("");
@@ -40,7 +43,8 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   const [startDate, setStartDate] = useState("");
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
 
-  const isIngeniero = user?.role === "ingeniero";
+  const canCreate = user ? canCreateObra(user.role) : false;
+  const isAdmin = user?.role === "pagos";
 
   const load = useCallback(async () => {
     const [oRes, ordRes] = await Promise.all([
@@ -94,6 +98,34 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
     }
   }
 
+  async function deleteObra(obra: ObraDto, e: React.MouseEvent) {
+    e.stopPropagation();
+    const message =
+      orders.filter((o) => o.obraId === obra.id).length > 0
+        ? `Se eliminará la obra «${obra.name}» y todas sus órdenes de compra asociadas.`
+        : `Se eliminará la obra «${obra.name}» del catálogo.`;
+    const ok = await confirmDelete({
+      title: "Eliminar obra",
+      message,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/obras/${obra.id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar la obra.");
+      showSuccess("Obra eliminada.");
+      await load();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Error al eliminar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
   if (loading) return <LoadingScreen message="Cargando obras" />;
 
   return (
@@ -106,7 +138,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
           </p>
         </div>
         <div className="flex gap-2">
-          {isIngeniero && (
+          {canCreate && (
             <button type="button" className="btn-secondary" onClick={() => setShowCreate((v) => !v)}>
               <IconBuilding />
               {showCreate ? "Cerrar formulario" : "Nueva obra"}
@@ -121,7 +153,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
         </div>
       </div>
 
-      {showCreate && isIngeniero && (
+      {showCreate && canCreate && (
         <section className="card p-5">
           <h2 className="text-lg font-bold">Registrar nueva obra</h2>
           <form onSubmit={createObra} className="mt-4 grid gap-3 sm:grid-cols-2">
@@ -177,13 +209,14 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
                 <th className="px-3 py-2 text-right">OC</th>
                 <th className="px-3 py-2 text-right">Comprado</th>
                 <th className="px-3 py-2 text-right">Pagado</th>
+                {isAdmin && <th className="px-3 py-2 text-right">Acción</th>}
                 <th className="px-3 py-2 w-8" />
               </tr>
             </thead>
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={8} className="px-4 py-12 text-center text-zinc-500">
+                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-12 text-center text-zinc-500">
                     No hay obras con ese criterio.
                   </td>
                 </tr>
@@ -216,6 +249,18 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
                       <td className="px-3 py-3 text-right tabular-nums font-medium text-emerald-700">
                         {formatMoney(fin.totalPagado, "MXN")}
                       </td>
+                      {isAdmin && (
+                        <td className="px-3 py-3 text-right" onClick={(e) => e.stopPropagation()}>
+                          <button
+                            type="button"
+                            disabled={busy}
+                            className="text-xs font-semibold text-red-700 hover:underline disabled:opacity-50"
+                            onClick={(e) => void deleteObra(obra, e)}
+                          >
+                            Eliminar
+                          </button>
+                        </td>
+                      )}
                       <td className="px-3 py-3 text-orange-600">→</td>
                     </tr>
                   );

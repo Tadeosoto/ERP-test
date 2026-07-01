@@ -126,9 +126,26 @@ export function canCreateObra(role: Role): boolean {
   return role === "ingeniero" || role === "pagos";
 }
 
+/** Rosa (Administración) tiene permisos elevados de eliminación. */
+export function isAdministration(role: Role): boolean {
+  return role === "pagos";
+}
+
 /** Paty (compras) y Rosa (pagos) pueden crear, editar y eliminar proveedores. */
 export function canManageSuppliers(role: Role): boolean {
   return role === "compras" || role === "pagos";
+}
+
+export function canDeleteObra(role: Role): boolean {
+  return isAdministration(role);
+}
+
+export function canDeleteOrderFile(role: Role): boolean {
+  return isAdministration(role);
+}
+
+export function canDeletePayment(role: Role): boolean {
+  return isAdministration(role);
 }
 
 export function canConfigureObra(role: Role): boolean {
@@ -155,6 +172,7 @@ export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
 }
 
 export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar: number): boolean {
+  if (isAdministration(role)) return true;
   if (role !== "compras") return false;
   if (amountPaidSoFar > 0.01) return false;
   return !COMPRAS_LOCKED_STATUSES.includes(status);

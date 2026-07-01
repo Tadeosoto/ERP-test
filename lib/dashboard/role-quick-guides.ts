@@ -39,7 +39,7 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         heading: "Obras",
         steps: [
           "En Obras puedes crear y editar proyectos del consorcio.",
-          "Todos los roles consultan las obras y sus OC; solo tú creas obras nuevas.",
+          "Todos los roles consultan las obras y sus OC; Ingeniería y Administración pueden crear obras nuevas.",
         ],
       },
       {
@@ -111,6 +111,15 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
           "También puedes subir la factura del proveedor si llega antes que Compras o Recepción.",
         ],
       },
+      {
+        heading: "Administración y limpieza",
+        steps: [
+          "Puedes crear obras nuevas desde Obras o el acceso rápido del inicio.",
+          "Puedes eliminar OC/expedientes, pagos registrados, archivos adjuntos, obras y proveedores.",
+          "Usa el menú de acciones (⋮) en tablas de Pagos, Expedientes y Obras.",
+          "Las eliminaciones son permanentes; confirma antes de continuar.",
+        ],
+      },
     ],
   },
   recepcion: {
@@ -128,8 +137,9 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
       {
         heading: "Consulta",
         steps: [
-          "Puedes ver todas las obras, OC y expedientes completos.",
-          "Usa el menú de acciones para consultar pagos, comprobantes y bitácora.",
+          "Puedes ver obras, expedientes y el detalle de cada OC.",
+          "Usa Expedientes para buscar por proveedor, obra o estatus.",
+          "No tienes acceso a Pagos ni Proveedores; enfócate en documentos y facturas.",
         ],
       },
     ],

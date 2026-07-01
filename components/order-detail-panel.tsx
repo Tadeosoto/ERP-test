@@ -28,6 +28,8 @@ import {
   canAccountingValidate,
   canComprasEditOrder,
   canDeleteOrder,
+  canDeleteOrderFile,
+  canDeletePayment,
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
@@ -42,6 +44,7 @@ import {
   PAYMENT_TYPE_TEXT,
 } from "@/lib/domain/labels";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import {
   actionSuccessMessage,
   fileUploadSuccessMessage,
@@ -59,6 +62,7 @@ export function OrderDetailPanel({
   const router = useRouter();
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
+  const { confirmDelete } = useConfirmDelete();
   const [busy, setBusy] = useState(false);
   const [comment, setComment] = useState("");
   const [paymentDueDate, setPaymentDueDate] = useState("");
@@ -117,7 +121,11 @@ export function OrderDetailPanel({
   }
 
   async function deleteOrder() {
-    if (!window.confirm("¿Eliminar esta orden de compra? Esta acción no se puede deshacer.")) return;
+    const ok = await confirmDelete({
+      title: "Eliminar orden de compra",
+      message: "Se eliminará esta orden de compra y su expediente asociado.",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
@@ -131,6 +139,58 @@ export function OrderDetailPanel({
       router.refresh();
     } catch (e) {
       showError(e instanceof Error ? e.message : "No se pudo eliminar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deletePayment(paymentId: string) {
+    const ok = await confirmDelete({
+      title: "Eliminar pago",
+      message: "Se eliminará este registro de pago y se recalculará el saldo de la OC.",
+      confirmLabel: "Eliminar pago",
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/orders/${order.id}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "delete_payment", paymentId }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar el pago.");
+      showSuccess("Pago eliminado.");
+      onUpdated();
+      router.refresh();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "No se pudo eliminar el pago.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteFile(fileId: string, fileName: string) {
+    const ok = await confirmDelete({
+      title: "Eliminar archivo",
+      message: `Se eliminará el archivo «${fileName}» del expediente.`,
+      confirmLabel: "Eliminar archivo",
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/files/${fileId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar el archivo.");
+      showSuccess("Archivo eliminado.");
+      onUpdated();
+      router.refresh();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "No se pudo eliminar el archivo.");
     } finally {
       setBusy(false);
     }
@@ -236,6 +296,16 @@ export function OrderDetailPanel({
                   {p.reference ? ` · Ref. ${p.reference}` : ""}
                 </p>
                 {p.notes && <p className="mt-1 text-sm text-zinc-600">{p.notes}</p>}
+                {user && canDeletePayment(user.role) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="mt-2 text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
+                    onClick={() => void deletePayment(p.id)}
+                  >
+                    Eliminar pago
+                  </button>
+                )}
               </li>
             ))}
           </ul>
@@ -279,6 +349,16 @@ export function OrderDetailPanel({
                     hint={FILE_VIEW_HINT[f.kind] ?? "abre el PDF en el navegador"}
                   />
                   <DocumentDownloadButton fileId={f.id} />
+                  {user && canDeleteOrderFile(user.role) && (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      className="text-left text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
+                      onClick={() => void deleteFile(f.id, f.originalFileName)}
+                    >
+                      Eliminar archivo
+                    </button>
+                  )}
                 </div>
               </li>
             ))}
@@ -323,6 +403,16 @@ export function OrderDetailPanel({
               >
                 Eliminar OC
               </span>
+            )}
+          </div>
+        )}
+
+        {user.role === "pagos" && (
+          <div className="mt-4 flex flex-wrap gap-3">
+            {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) && (
+              <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
+                Eliminar OC / expediente
+              </button>
             )}
           </div>
         )}

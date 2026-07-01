@@ -5,6 +5,7 @@ import { createPortal } from "react-dom";
 import { IconPlus } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { ProveedorModal } from "@/components/compras/proveedor-modal";
 import { canManageSuppliers } from "@/lib/domain/transitions";
@@ -149,6 +150,7 @@ function SupplierActionMenu({
 export function ProveedoresListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
+  const { confirmDelete } = useConfirmDelete();
   const canManage = user ? canManageSuppliers(user.role) : false;
 
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
@@ -203,9 +205,14 @@ export function ProveedoresListView({ onRegisterRefresh }: { onRegisterRefresh?:
   }, [pages]);
 
   async function handleDelete(supplier: SupplierListItemDto) {
-    const ok = window.confirm(
-      `¿Eliminar a "${supplier.displayName}" del catálogo? Esta acción no se puede deshacer.`
-    );
+    const message =
+      user?.role === "pagos" && supplier.orderCount > 0
+        ? `«${supplier.displayName}» tiene ${supplier.orderCount} OC asociada(s). Se desvincularán pero no se borrarán las órdenes.`
+        : `Se eliminará «${supplier.displayName}» del catálogo de proveedores.`;
+    const ok = await confirmDelete({
+      title: "Eliminar proveedor",
+      message,
+    });
     if (!ok) return;
     try {
       const res = await fetch(`/api/suppliers/${supplier.id}`, {

@@ -222,9 +222,18 @@ export function ContabilidadRecepcionHomeDashboard({
           </div>
         </div>
         <div className="flex flex-col gap-2 sm:flex-row">
-          <QuickActionButton href="/obras?estado=pago" label="Ver pagos" icon="pay" />
-          <QuickActionButton href="/obras?estado=pago" label="Ver pendientes" icon="pending" />
-          <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
+          {role === "recepcion" ? (
+            <>
+              <QuickActionButton href="/expedientes" label="Ver expedientes" icon="pending" />
+              <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
+            </>
+          ) : (
+            <>
+              <QuickActionButton href="/ordenes" label="Ver pagos" icon="pay" />
+              <QuickActionButton href="/ordenes" label="Ver pendientes" icon="pending" />
+              <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
+            </>
+          )}
         </div>
       </div>
 

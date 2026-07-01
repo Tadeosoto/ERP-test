@@ -356,7 +356,7 @@ export function PagosPendingPaymentsPanel({
       {/* Pie */}
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-zinc-100 px-4 py-3 sm:px-5">
         <Link
-          href="/obras?estado=pago"
+          href="/ordenes"
           className="text-sm font-medium text-orange-700 hover:underline"
         >
           Ver todos los pagos por realizar →

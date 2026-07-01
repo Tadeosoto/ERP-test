@@ -1,11 +1,13 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
@@ -21,6 +23,7 @@ function obraDisplayCode(obra: ObraDto): string {
 export function ObraDetailView({ obraId }: { obraId: string }) {
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
+  const { confirmDelete } = useConfirmDelete();
   const [obra, setObra] = useState<ObraDto | null>(null);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -79,6 +82,8 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const pctPagado = fin.totalComprado > 0 ? Math.round((fin.totalPagado / fin.totalComprado) * 100) : 0;
   const pctPendiente = 100 - pctPagado;
   const canEditObra = user?.role === "ingeniero";
+  const canDelete = user?.role === "pagos";
+  const router = useRouter();
 
   async function saveObra(e: React.FormEvent) {
     e.preventDefault();
@@ -103,6 +108,35 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
       showSuccess("Obra actualizada.");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Error al guardar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteObra() {
+    if (!obra) return;
+    const message =
+      orders.length > 0
+        ? `Se eliminará la obra «${obra.name}» y sus ${orders.length} orden(es) de compra asociadas.`
+        : `Se eliminará la obra «${obra.name}» del catálogo.`;
+    const ok = await confirmDelete({
+      title: "Eliminar obra",
+      message,
+    });
+    if (!ok) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/obras/${obraId}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar la obra.");
+      showSuccess("Obra eliminada.");
+      router.push("/obras");
+      router.refresh();
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Error al eliminar.");
     } finally {
       setBusy(false);
     }
@@ -177,6 +211,11 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
             {canEditObra && (
               <button type="button" className="btn-secondary text-sm" onClick={() => setEditOpen((v) => !v)}>
                 Editar obra
+              </button>
+            )}
+            {canDelete && (
+              <button type="button" disabled={busy} className="btn-danger text-sm" onClick={() => void deleteObra()}>
+                Eliminar obra
               </button>
             )}
           </div>

@@ -51,7 +51,7 @@ export function ContabilidadRecentPaymentsPanel({
     <section className={wrapperCls}>
       <div className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-4 py-3">
         <h2 className="text-sm font-bold text-zinc-900">Pagos recientes</h2>
-        <Link href="/obras?estado=pago" className="text-xs font-medium text-emerald-700 hover:underline">
+        <Link href="/ordenes" className="text-xs font-medium text-emerald-700 hover:underline">
           Ver todos los pagos →
         </Link>
       </div>

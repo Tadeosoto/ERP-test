@@ -2,8 +2,10 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { ExpedienteDetailDrawer } from "@/components/expedientes/expediente-detail-drawer";
+import { OrderActionMenu } from "@/components/obras/order-action-menu";
 import { OcLink } from "@/components/ui/oc-link";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useSession } from "@/components/session-provider";
 import {
   applyExpedienteFilters,
   EXPEDIENTE_ESTATUS_LABEL,
@@ -97,6 +99,7 @@ function SummaryKpi({
 }
 
 export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
+  const { user } = useSession();
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -126,6 +129,13 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
     void load();
     onRegisterRefresh?.(() => void load());
   }, [load, onRegisterRefresh]);
+
+  const showAdminActions = user?.role === "pagos";
+
+  const handleOrderDeleted = useCallback(() => {
+    setSelectedId(null);
+    void load();
+  }, [load]);
 
   const kpis = useMemo(() => expedienteKpis(orders), [orders]);
   const suppliers = useMemo(() => uniqueExpedienteSuppliers(orders), [orders]);
@@ -352,12 +362,13 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
                     <th className="px-4 py-2.5 text-right">Saldo pendiente</th>
                     <th className="px-4 py-2.5">Estatus</th>
                     <th className="px-4 py-2.5">Última actividad</th>
+                    {showAdminActions && <th className="px-4 py-2.5 text-right">Acción</th>}
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-zinc-100">
                   {pageItems.length === 0 ? (
                     <tr>
-                      <td colSpan={8} className="px-4 py-12 text-center text-zinc-500">
+                      <td colSpan={showAdminActions ? 9 : 8} className="px-4 py-12 text-center text-zinc-500">
                         No hay expedientes que coincidan con los filtros.
                       </td>
                     </tr>
@@ -402,6 +413,16 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
                               {act.message}
                             </span>
                           </td>
+                          {showAdminActions && (
+                            <td className="px-4 py-2.5 text-right" onClick={(e) => e.stopPropagation()}>
+                              <OrderActionMenu
+                                order={order}
+                                onOrderMutated={handleOrderDeleted}
+                                primaryLabel="Ver"
+                                appearance="neutral"
+                              />
+                            </td>
+                          )}
                         </tr>
                       );
                     })

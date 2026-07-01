@@ -5,6 +5,7 @@ import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } fr
 import { createPortal } from "react-dom";
 import { useSession } from "@/components/session-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import {
   canComprasEditOrder,
   canDeleteOrder,
@@ -146,6 +147,7 @@ function buildMenuEntries(
   if (role === "pagos") {
     const canPay = canRegisterPayment(order.status, role);
     const canReceipt = canUploadPaymentReceipt(order.status, role) && !hasPaymentReceipt(order);
+    const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
 
     entries.push({
       kind: "link",
@@ -160,6 +162,14 @@ function buildMenuEntries(
       href: `${base}#tarea`,
       icon: "receipt",
       disabled: !canReceipt && !hasPaymentReceipt(order),
+    });
+    entries.push({
+      kind: "action",
+      label: "Eliminar OC / expediente",
+      icon: "delete",
+      onClick: onDelete,
+      danger: true,
+      disabled: !canDel,
     });
     entries.push({ kind: "separator" });
   }
@@ -234,6 +244,7 @@ export function OrderActionMenu({
 }) {
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
+  const { confirmDelete } = useConfirmDelete();
   const [open, setOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -246,7 +257,11 @@ export function OrderActionMenu({
   const primaryLink = primaryHref ?? base;
 
   const deleteOrder = useCallback(async () => {
-    if (!window.confirm("¿Eliminar esta orden de compra? Esta acción no se puede deshacer.")) return;
+    const ok = await confirmDelete({
+      title: "Eliminar orden de compra",
+      message: "Se eliminará esta orden de compra y su expediente asociado.",
+    });
+    if (!ok) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${order.id}`, {
@@ -263,7 +278,7 @@ export function OrderActionMenu({
     } finally {
       setBusy(false);
     }
-  }, [order.id, onOrderMutated, showError, showSuccess]);
+  }, [order.id, onOrderMutated, showError, showSuccess, confirmDelete]);
 
   const entries = useMemo(
     () => buildMenuEntries(order, user?.role, () => void deleteOrder()),

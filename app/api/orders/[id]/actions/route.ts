@@ -9,11 +9,13 @@ import {
   afterSendToEngineer,
   canAccountingResolveDifference,
   canAccountingValidate,
+  canDeletePayment,
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
   canSendToEngineer,
   canSetPaymentDeadline,
+  computePaymentLabel,
   engineerApproveNextStatus,
   registerPaymentAmount,
 } from "@/lib/domain/transitions";
@@ -27,9 +29,28 @@ import {
   orderInclude,
 } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
-import type { PaymentType } from "@/lib/domain/types";
+import type { PaymentType, OrderStatus } from "@/lib/domain/types";
 
 type Ctx = { params: Promise<{ id: string }> };
+
+function statusAfterPaymentRemoval(currentStatus: OrderStatus, totalAmount: number, amountPaidSoFar: number): OrderStatus {
+  if (amountPaidSoFar <= 0.01) {
+    if (["paid", "awaitingInvoice", "invoiceReceived"].includes(currentStatus)) {
+      return "awaitingPayment";
+    }
+    return currentStatus;
+  }
+  if (amountPaidSoFar >= totalAmount - 0.01) {
+    if (["awaitingPayment", "awaitingPatyDeadline"].includes(currentStatus)) {
+      return "paid";
+    }
+    return currentStatus;
+  }
+  if (["paid", "awaitingInvoice"].includes(currentStatus)) {
+    return "awaitingPayment";
+  }
+  return currentStatus;
+}
 
 export async function POST(request: Request, ctx: Ctx) {
   try {
@@ -44,6 +65,7 @@ export async function POST(request: Request, ctx: Ctx) {
       paymentType?: PaymentType;
       paymentDueDate?: string;
       assignedEngineerUserId?: string;
+      paymentId?: string;
     };
 
     const order = await prisma.purchaseOrder.findUnique({ where: { id } });
@@ -182,6 +204,45 @@ export async function POST(request: Request, ctx: Ctx) {
 
       const evt = NotificationEvents.paymentRegistered(updated.title, result.fullyPaid);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "delete_payment") {
+      if (!canDeletePayment(role)) {
+        return NextResponse.json({ error: "No tienes permiso para eliminar pagos." }, { status: 403 });
+      }
+      if (!body.paymentId) {
+        return NextResponse.json({ error: "Indique el pago a eliminar." }, { status: 400 });
+      }
+
+      const payment = await prisma.paymentRecord.findFirst({
+        where: { id: body.paymentId, orderId: id },
+      });
+      if (!payment) {
+        return NextResponse.json({ error: "Pago no encontrado." }, { status: 404 });
+      }
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.paymentRecord.delete({ where: { id: payment.id } });
+        const remaining = await tx.paymentRecord.findMany({
+          where: { orderId: id },
+          orderBy: { createdAt: "asc" },
+        });
+        const amountPaidSoFar = remaining.reduce((sum, row) => sum + row.amount, 0);
+        const paymentLabel = computePaymentLabel(order.totalAmount, amountPaidSoFar);
+        const nextStatus = statusAfterPaymentRemoval(status, order.totalAmount, amountPaidSoFar);
+
+        return tx.purchaseOrder.update({
+          where: { id },
+          data: {
+            amountPaidSoFar: amountPaidSoFar >= order.totalAmount - 0.01 ? order.totalAmount : amountPaidSoFar,
+            paymentLabel,
+            status: nextStatus,
+          },
+          include: orderInclude,
+        });
+      });
+
       return NextResponse.json({ order: mapOrder(updated) });
     }
 

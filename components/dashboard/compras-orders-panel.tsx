@@ -204,12 +204,16 @@ export function ComprasOrdersPanel({
   activeTab,
   onTabChange,
   onOrderMutated,
+  title = "Mis órdenes de compra",
+  embedded = true,
 }: {
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
   activeTab: ComprasOrderTab;
   onTabChange: (tab: ComprasOrderTab) => void;
   onOrderMutated?: () => void;
+  title?: string;
+  embedded?: boolean;
 }) {
   const router = useRouter();
   const [search, setSearch] = useState("");
@@ -257,10 +261,12 @@ export function ComprasOrdersPanel({
   const money = "tabular-nums whitespace-nowrap";
 
   return (
-    <section className="card flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+    <section
+      className={`card flex min-h-0 min-w-0 flex-col overflow-hidden ${embedded ? "flex-1" : "min-h-[28rem]"}`}
+    >
       <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4">
         <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-base font-bold text-zinc-900 sm:text-lg">Mis órdenes de compra</h2>
+          <h2 className="text-base font-bold text-zinc-900 sm:text-lg">{title}</h2>
           <p className="text-xs text-zinc-500">{filtered.length} orden{filtered.length === 1 ? "" : "es"}</p>
         </div>
 

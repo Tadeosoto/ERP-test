@@ -1,6 +1,9 @@
 import { NextResponse } from "next/server";
 import { requireSessionUser } from "@/lib/auth/session-server";
-import { readFileBuffer } from "@/lib/services/files";
+import { canDeleteOrderFile } from "@/lib/domain/transitions";
+import { asRole } from "@/lib/services/mappers";
+import { deleteStoredFile, readFileBuffer } from "@/lib/services/files";
+import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -27,5 +30,25 @@ export async function GET(request: Request, ctx: Ctx) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
     return NextResponse.json({ error: "Error al obtener archivo." }, { status: 500 });
+  }
+}
+
+export async function DELETE(_request: Request, ctx: Ctx) {
+  try {
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
+    if (!canDeleteOrderFile(role)) {
+      return NextResponse.json({ error: "No tienes permiso para eliminar archivos." }, { status: 403 });
+    }
+
+    const { id } = await ctx.params;
+    const deleted = await deleteStoredFile(id);
+    if (!deleted) {
+      return NextResponse.json({ error: "Archivo no encontrado." }, { status: 404 });
+    }
+
+    return NextResponse.json({ ok: true });
+  } catch (e) {
+    return apiErrorResponse(e);
   }
 }

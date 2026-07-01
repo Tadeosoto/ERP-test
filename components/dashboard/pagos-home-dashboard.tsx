@@ -253,7 +253,7 @@ export function PagosHomeDashboard({
             onClick={() => setProveedorModalOpen(true)}
           />
           <QuickActionButton label="Nueva obra" icon="obras" onClick={() => setObraModalOpen(true)} />
-          <QuickActionButton href="/obras?estado=pago" label="Buscar expediente" icon="search" />
+          <QuickActionButton href="/ordenes" label="Buscar expediente" icon="search" />
         </div>
       </div>
 
