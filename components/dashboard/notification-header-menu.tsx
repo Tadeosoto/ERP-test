@@ -10,6 +10,7 @@ import {
   notificationActionLabel,
 } from "@/lib/dashboard/notification-actions";
 import { useNotifications } from "@/lib/hooks/use-notifications";
+import { formatDateTime } from "@/lib/format";
 
 export function NotificationHeaderMenu() {
   const { user } = useSession();
@@ -72,6 +73,7 @@ export function NotificationHeaderMenu() {
         <FloatingCallout
           title="Aviso reciente"
           message={latest.message}
+          timestamp={latest.createdAt}
           actionLabel={actionable ? actionLabel : undefined}
           href={
             actionable
@@ -121,12 +123,26 @@ export function NotificationHeaderMenu() {
                       <Link
                         href={href}
                         onClick={() => setOpen(false)}
-                        className="block px-4 py-3 text-sm text-zinc-700 hover:bg-orange-50/50"
+                        className="block px-4 py-3 hover:bg-orange-50/50"
                       >
-                        {n.message}
+                        <span className="block text-sm text-zinc-700">{n.message}</span>
+                        <time
+                          dateTime={n.createdAt}
+                          className="mt-1 block text-[11px] tabular-nums text-zinc-400"
+                        >
+                          {formatDateTime(n.createdAt)}
+                        </time>
                       </Link>
                     ) : (
-                      <p className="px-4 py-3 text-sm text-zinc-700">{n.message}</p>
+                      <div className="px-4 py-3">
+                        <p className="text-sm text-zinc-700">{n.message}</p>
+                        <time
+                          dateTime={n.createdAt}
+                          className="mt-1 block text-[11px] tabular-nums text-zinc-400"
+                        >
+                          {formatDateTime(n.createdAt)}
+                        </time>
+                      </div>
                     )}
                   </li>
                 );

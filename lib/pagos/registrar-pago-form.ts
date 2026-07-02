@@ -1,4 +1,7 @@
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import { formatAmountInput, parseAmountInput } from "@/lib/format";
+
+export { formatAmountInput, parseAmountInput };
 
 export const PAYMENT_METHODS = [
   "Transferencia bancaria",
@@ -32,20 +35,6 @@ export function defaultConcept(order: PurchaseOrderDto): string {
 export function defaultAmount(order: PurchaseOrderDto): string {
   const n = order.amountRemaining > 0 ? order.amountRemaining : order.totalAmount - order.amountPaidSoFar;
   return formatAmountInput(n);
-}
-
-export function formatAmountInput(value: number): string {
-  if (!Number.isFinite(value)) return "";
-  return new Intl.NumberFormat("es-MX", {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(value);
-}
-
-export function parseAmountInput(raw: string): number {
-  const cleaned = raw.replace(/[^\d.,-]/g, "").replace(/,/g, "");
-  const n = Number.parseFloat(cleaned);
-  return Number.isFinite(n) ? n : 0;
 }
 
 export function formatDisplayDate(isoDate: string): string {

@@ -391,19 +391,17 @@ export function ProveedorModal({
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Correo electrónico" required>
+                    <Field label="Correo electrónico">
                       <input
                         type="email"
-                        required
                         value={form.email}
                         onChange={(e) => set("email", e.target.value)}
                         placeholder="correo@proveedor.com"
                         className={inputCls}
                       />
                     </Field>
-                    <Field label="Teléfono" required>
+                    <Field label="Teléfono">
                       <input
-                        required
                         value={form.phone}
                         onChange={(e) => set("phone", e.target.value)}
                         placeholder="Ej. 33 1234 5678"
@@ -490,9 +488,8 @@ export function ProveedorModal({
                       </button>
                     </div>
                   </Field>
-                  <Field label="Estado" required>
+                  <Field label="Estado">
                     <select
-                      required
                       value={form.state}
                       onChange={(e) => set("state", e.target.value)}
                       className={inputCls}
@@ -505,18 +502,16 @@ export function ProveedorModal({
                       ))}
                     </select>
                   </Field>
-                  <Field label="Municipio / Alcaldía" required>
+                  <Field label="Municipio / Alcaldía">
                     <input
-                      required
                       value={form.city}
                       onChange={(e) => set("city", e.target.value)}
                       placeholder="Selecciona un municipio"
                       className={inputCls}
                     />
                   </Field>
-                  <Field label="Colonia" required>
+                  <Field label="Colonia">
                     <input
-                      required
                       value={form.neighborhood}
                       onChange={(e) => set("neighborhood", e.target.value)}
                       placeholder="Selecciona una colonia"

@@ -19,7 +19,7 @@ import {
   type RegistrarPagoForm,
 } from "@/lib/pagos/registrar-pago-form";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
-import { formatMoney } from "@/lib/format";
+import { formatMoney, sanitizeAmountInput } from "@/lib/format";
 import { actionSuccessMessage } from "@/lib/process-feedback";
 
 const MAX_RECEIPT_BYTES = 20 * 1024 * 1024;
@@ -366,7 +366,7 @@ export function RegistrarPagoModal({
                     </span>
                     <input
                       value={form.amount}
-                      onChange={(e) => setForm((f) => ({ ...f, amount: e.target.value }))}
+                      onChange={(e) => setForm((f) => ({ ...f, amount: sanitizeAmountInput(e.target.value) }))}
                       onBlur={() =>
                         setForm((f) => ({ ...f, amount: formatAmountInput(parseAmountInput(f.amount)) }))
                       }

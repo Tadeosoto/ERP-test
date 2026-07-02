@@ -8,6 +8,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import type { DirectExpenseDto, ObraDto } from "@/lib/domain/types";
+import { formatAmountInput, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 const inputCls =
   "mt-1.5 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-200";
@@ -63,7 +64,7 @@ export default function DirectExpenseNewPage() {
       costCenter,
       category,
       supplierName,
-      estimatedAmount: Number.parseFloat(estimatedAmount.replace(/,/g, "")) || 0,
+      estimatedAmount: parseAmountInput(estimatedAmount),
       justification,
     };
     if (expenseId) {
@@ -145,7 +146,19 @@ export default function DirectExpenseNewPage() {
         </label>
         <label className="block">
           <span className="text-sm font-medium">Monto estimado (MXN)</span>
-          <input value={estimatedAmount} onChange={(e) => setEstimatedAmount(e.target.value)} className={inputCls} inputMode="decimal" />
+          <input
+            value={estimatedAmount}
+            onChange={(e) => setEstimatedAmount(sanitizeAmountInput(e.target.value))}
+            onBlur={() =>
+              setEstimatedAmount((v) => {
+                const n = parseAmountInput(v);
+                return n > 0 ? formatAmountInput(n) : v.trim();
+              })
+            }
+            placeholder="1,244,213.00"
+            className={`${inputCls} tabular-nums`}
+            inputMode="decimal"
+          />
         </label>
         <label className="block">
           <span className="text-sm font-medium">Justificación *</span>

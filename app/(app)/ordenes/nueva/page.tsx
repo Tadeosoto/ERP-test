@@ -4,13 +4,14 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { ProveedorModal } from "@/components/compras/proveedor-modal";
+import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import { canComprasEditOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
-import { formatDateShort, formatMoney } from "@/lib/format";
+import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 const PAYMENT_TERMS = [
   "Contado",
@@ -249,7 +250,7 @@ function NuevaOcWizard() {
     setDescription(o.description);
     setInternalReference(o.internalReference);
     setOcFolio(o.ocFolio);
-    setTotalAmount(o.totalAmount > 0 ? String(o.totalAmount) : "");
+    setTotalAmount(o.totalAmount > 0 ? formatAmountInput(o.totalAmount) : "");
     setCurrency(o.currency);
     setDocumentDate(o.documentDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
     if (o.assignedEngineerUserId) setAssignedEngineerId(o.assignedEngineerUserId);
@@ -383,7 +384,7 @@ function NuevaOcWizard() {
   }
 
   async function saveStep2(id: string) {
-    const amount = Number.parseFloat(totalAmount.replace(/,/g, ""));
+    const amount = parseAmountInput(totalAmount);
     if (!Number.isFinite(amount) || amount <= 0) {
       throw new Error("El monto total de la OC es requerido.");
     }
@@ -509,10 +510,9 @@ function NuevaOcWizard() {
     }
   }
 
-  function onSupplierChange(id: string) {
+  function onSupplierChange(id: string, supplier: SupplierDto | null) {
     setSupplierId(id);
-    const s = suppliers.find((x) => x.id === id);
-    if (s) setSupplierName(s.displayName);
+    setSupplierName(supplier?.displayName ?? "");
   }
 
   function onPdfPick(file: File | null) {
@@ -619,18 +619,13 @@ function NuevaOcWizard() {
                     Proveedor <span className="text-red-500">*</span>
                   </span>
                   <div className="mt-1.5 flex gap-2">
-                    <select
+                    <SupplierCombobox
+                      suppliers={suppliers}
                       value={supplierId}
-                      onChange={(e) => onSupplierChange(e.target.value)}
+                      onChange={onSupplierChange}
+                      placeholder="Escribe para buscar proveedor…"
                       className={`${inputCls} mt-0 flex-1`}
-                    >
-                      <option value="">Seleccionar proveedor…</option>
-                      {suppliers.map((s) => (
-                        <option key={s.id} value={s.id}>
-                          {s.displayName}
-                        </option>
-                      ))}
-                    </select>
+                    />
                     <button
                       type="button"
                       onClick={() => setProveedorOpen(true)}
@@ -862,9 +857,15 @@ function NuevaOcWizard() {
                       required
                       inputMode="decimal"
                       value={totalAmount}
-                      onChange={(e) => setTotalAmount(e.target.value)}
-                      placeholder="85000.00"
-                      className={inputCls}
+                      onChange={(e) => setTotalAmount(sanitizeAmountInput(e.target.value))}
+                      onBlur={() =>
+                        setTotalAmount((v) => {
+                          const n = parseAmountInput(v);
+                          return n > 0 ? formatAmountInput(n) : v.trim();
+                        })
+                      }
+                      placeholder="1,244,213.00"
+                      className={`${inputCls} tabular-nums`}
                     />
                   </label>
                   <label className="block">
@@ -950,7 +951,7 @@ function NuevaOcWizard() {
                   </div>
                   <div>
                     <dt className="text-zinc-500">Monto total OC</dt>
-                    <dd className="font-medium">{formatMoney(Number(totalAmount), currency)}</dd>
+                    <dd className="font-medium">{formatMoney(parseAmountInput(totalAmount), currency)}</dd>
                   </div>
                   <div>
                     <dt className="text-zinc-500">Moneda</dt>
@@ -1052,7 +1053,7 @@ function NuevaOcWizard() {
           ocDate={ocDate}
           paymentTerms={paymentTerms}
           currency={currency}
-          totalAmount={Number.parseFloat(totalAmount) || 0}
+          totalAmount={parseAmountInput(totalAmount)}
           hasPdf={Boolean(uploadedPdf || pdfFile)}
           statusLabel="BORRADOR"
           nextStatus={step === 3 ? "PENDIENTE APROBACIÓN" : undefined}

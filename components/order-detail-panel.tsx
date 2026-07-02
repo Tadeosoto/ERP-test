@@ -50,7 +50,7 @@ import {
   fileUploadSuccessMessage,
 } from "@/lib/process-feedback";
 import type { PaymentType, PurchaseOrderDto } from "@/lib/domain/types";
-import { formatDate, formatMoney } from "@/lib/format";
+import { formatAmountInput, formatDate, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 export function OrderDetailPanel({
   order,
@@ -200,68 +200,111 @@ export function OrderDetailPanel({
 
   const defaultPayAmount =
     order.paymentType === "inmediato" || order.paymentType === "programado"
-      ? String(order.amountRemaining)
+      ? formatAmountInput(order.amountRemaining)
       : payAmount;
 
-  return (
-    <div className="space-y-6 sm:space-y-8">
-      <div className="card p-4 sm:p-6">
-        <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
-          <div className="min-w-0">
-            <p className="text-sm font-medium text-teal-700 sm:text-base">{order.obraName}</p>
-            <h1 className="mt-1 break-words text-2xl font-bold text-zinc-900 sm:text-3xl">{order.title}</h1>
-            <p className="mt-2 text-base text-zinc-600 sm:text-lg">{order.supplierName}</p>
-            <p className="mt-2 text-sm text-zinc-500 sm:text-base">Orden creada el {formatDate(order.createdAt)}</p>
-            <div className="mt-3 flex flex-wrap gap-2">
-              <SystemStatusBadge status={order.status} />
-              <span className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-900">
-                {PAYMENT_LABEL_TEXT[order.paymentLabel]}
+  const prioritizeDocuments = user.role === "ingeniero";
+
+  const headerPanel = (
+    <div className="card p-4 sm:p-6">
+      <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
+        <div className="min-w-0">
+          <p className="text-sm font-medium text-teal-700 sm:text-base">{order.obraName}</p>
+          <h1 className="mt-1 break-words text-2xl font-bold text-zinc-900 sm:text-3xl">{order.title}</h1>
+          <p className="mt-2 text-base text-zinc-600 sm:text-lg">{order.supplierName}</p>
+          <p className="mt-2 text-sm text-zinc-500 sm:text-base">Orden creada el {formatDate(order.createdAt)}</p>
+          <div className="mt-3 flex flex-wrap gap-2">
+            <SystemStatusBadge status={order.status} />
+            <span className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-900">
+              {PAYMENT_LABEL_TEXT[order.paymentLabel]}
+            </span>
+            {order.paymentType && (
+              <span className="inline-flex rounded-full bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-800">
+                Pago: {PAYMENT_TYPE_TEXT[order.paymentType]}
               </span>
-              {order.paymentType && (
-                <span className="inline-flex rounded-full bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-800">
-                  Pago: {PAYMENT_TYPE_TEXT[order.paymentType]}
-                </span>
-              )}
-              {!order.paymentType && order.suggestedPaymentType === "parcialidades" && (
-                <span className="inline-flex rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900">
-                  Paty indicó parcialidades
-                </span>
-              )}
-            </div>
-            {order.paymentDueDate && (
-              <p className="mt-3 text-base font-medium text-teal-800">
-                Fecha límite de pago:{" "}
-                {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
-                  weekday: "long",
-                  year: "numeric",
-                  month: "long",
-                  day: "numeric",
-                })}
-              </p>
+            )}
+            {!order.paymentType && order.suggestedPaymentType === "parcialidades" && (
+              <span className="inline-flex rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900">
+                Paty indicó parcialidades
+              </span>
             )}
           </div>
-          <div className="grid w-full grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:w-auto sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0 sm:text-right">
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
-              <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
-                {formatMoney(order.totalAmount, order.currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
-              <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
-                {formatMoney(order.amountPaidSoFar, order.currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
-              <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
-                {formatMoney(order.amountRemaining, order.currency)}
-              </p>
-            </div>
+          {order.paymentDueDate && (
+            <p className="mt-3 text-base font-medium text-teal-800">
+              Fecha límite de pago:{" "}
+              {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
+                weekday: "long",
+                year: "numeric",
+                month: "long",
+                day: "numeric",
+              })}
+            </p>
+          )}
+        </div>
+        <div className="grid w-full grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:w-auto sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0 sm:text-right">
+          <div>
+            <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
+            <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
+              {formatMoney(order.totalAmount, order.currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
+            <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
+              {formatMoney(order.amountPaidSoFar, order.currency)}
+            </p>
+          </div>
+          <div>
+            <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
+            <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
+              {formatMoney(order.amountRemaining, order.currency)}
+            </p>
           </div>
         </div>
       </div>
+    </div>
+  );
+
+  const documentsPanel =
+    order.files.length > 0 ? (
+      <div id="documentos" className="card scroll-mt-24 p-6">
+        <h2 className="text-xl font-semibold">Documentos</h2>
+        <ul className="mt-4 space-y-3">
+          {order.files.map((f) => (
+            <li
+              key={f.id}
+              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/50 px-4 py-3"
+            >
+              <span className="text-base font-medium text-zinc-800">
+                {FILE_KIND_LABEL[f.kind] ?? f.kind}: {f.originalFileName}
+              </span>
+              <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[14rem]">
+                <DocumentViewButton
+                  fileId={f.id}
+                  hint={FILE_VIEW_HINT[f.kind] ?? "abre el PDF en el navegador"}
+                />
+                <DocumentDownloadButton fileId={f.id} />
+                {user && canDeleteOrderFile(user.role) && (
+                  <button
+                    type="button"
+                    disabled={busy}
+                    className="text-left text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
+                    onClick={() => void deleteFile(f.id, f.originalFileName)}
+                  >
+                    Eliminar archivo
+                  </button>
+                )}
+              </div>
+            </li>
+          ))}
+        </ul>
+      </div>
+    ) : null;
+
+  return (
+    <div className="space-y-6 sm:space-y-8">
+      {prioritizeDocuments && documentsPanel}
+      {headerPanel}
 
       <div className="card border-teal-200 bg-gradient-to-br from-white to-teal-50/40 p-4 sm:p-6">
         <p className="text-base font-semibold text-zinc-900 sm:text-lg">
@@ -331,40 +374,7 @@ export function OrderDetailPanel({
         </div>
       )}
 
-      {order.files.length > 0 && (
-        <div id="documentos" className="card scroll-mt-24 p-6">
-          <h2 className="text-xl font-semibold">Documentos</h2>
-          <ul className="mt-4 space-y-3">
-            {order.files.map((f) => (
-              <li
-                key={f.id}
-                className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/50 px-4 py-3"
-              >
-                <span className="text-base font-medium text-zinc-800">
-                  {FILE_KIND_LABEL[f.kind] ?? f.kind}: {f.originalFileName}
-                </span>
-                <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[14rem]">
-                  <DocumentViewButton
-                    fileId={f.id}
-                    hint={FILE_VIEW_HINT[f.kind] ?? "abre el PDF en el navegador"}
-                  />
-                  <DocumentDownloadButton fileId={f.id} />
-                  {user && canDeleteOrderFile(user.role) && (
-                    <button
-                      type="button"
-                      disabled={busy}
-                      className="text-left text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
-                      onClick={() => void deleteFile(f.id, f.originalFileName)}
-                    >
-                      Eliminar archivo
-                    </button>
-                  )}
-                </div>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+      {!prioritizeDocuments && documentsPanel}
 
 
       <div id="facturas" className="scroll-mt-24" aria-hidden />
@@ -522,11 +532,17 @@ export function OrderDetailPanel({
                   : "Registra el pago inmediato del 100% de la orden."}
             </p>
             <input
-              type="number"
               inputMode="decimal"
               placeholder="Monto del abono"
               value={payAmount || defaultPayAmount}
-              onChange={(e) => setPayAmount(e.target.value)}
+              onChange={(e) => setPayAmount(sanitizeAmountInput(e.target.value))}
+              onBlur={() =>
+                setPayAmount((v) => {
+                  const raw = v || defaultPayAmount;
+                  const n = parseAmountInput(raw);
+                  return n > 0 ? formatAmountInput(n) : raw.trim();
+                })
+              }
               className="w-full min-h-12 rounded-2xl border border-orange-100 px-4 text-base tabular-nums"
             />
             <input
@@ -549,7 +565,7 @@ export function OrderDetailPanel({
               onClick={() =>
                 void postAction({
                   action: "register_payment",
-                  amount: Number.parseFloat(payAmount || defaultPayAmount),
+                  amount: parseAmountInput(payAmount || defaultPayAmount),
                   reference: payReference,
                   notes: payNotes,
                 })

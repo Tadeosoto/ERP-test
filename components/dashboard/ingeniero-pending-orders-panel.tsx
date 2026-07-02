@@ -134,7 +134,8 @@ export function IngenieroPendingOrdersPanel({
 
   const th =
     "px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap";
-  const td = embedded ? "px-2 py-1.5 align-middle" : "px-2 py-2.5 align-middle";
+  const td = embedded ? "px-2 py-1.5 align-middle max-w-0" : "px-2 py-2.5 align-middle max-w-0";
+  const tdTruncate = `${td} truncate text-xs`;
 
   return (
     <section
@@ -256,8 +257,18 @@ export function IngenieroPendingOrdersPanel({
         )}
       </div>
 
-      <div className={`hidden min-h-0 flex-1 overflow-auto lg:block ${embedded ? "" : "overflow-x-auto"}`}>
-        <table className="w-full min-w-[960px] border-collapse text-left">
+      <div className="hidden min-h-0 min-w-0 flex-1 overflow-hidden lg:block">
+        <table className="w-full table-fixed border-collapse text-left">
+          <colgroup>
+            <col className="w-[9%]" />
+            <col className="w-[17%]" />
+            <col className="w-[14%]" />
+            <col className="w-[10%]" />
+            <col className="w-[8%]" />
+            <col className="w-[20%]" />
+            <col className="w-[12%]" />
+            <col className="w-[10%]" />
+          </colgroup>
           <thead className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm">
             <tr className="border-b border-orange-100">
               <th className={th}>OC</th>
@@ -293,30 +304,34 @@ export function IngenieroPendingOrdersPanel({
                     }`}
                   >
                     <td className={td} onClick={(e) => e.stopPropagation()}>
-                      <OcLink order={order} showPdfIcon />
+                      <div className="min-w-0 overflow-hidden">
+                        <OcLink order={order} showPdfIcon className="block truncate text-xs" />
+                      </div>
                     </td>
-                    <td className={`max-w-[8rem] ${td}`} onClick={(e) => e.stopPropagation()}>
-                      <Link href={`/obras/${order.obraId}`} className="link-entity truncate text-xs">
+                    <td className={td} onClick={(e) => e.stopPropagation()}>
+                      <Link
+                        href={`/obras/${order.obraId}`}
+                        className="link-entity block truncate text-xs"
+                        title={order.obraName}
+                      >
                         {order.obraName}
                       </Link>
                     </td>
-                    <td className={`max-w-[9rem] ${td}`}>
-                      <p className="truncate text-xs text-zinc-800" title={order.supplierName}>
-                        {order.supplierName}
-                      </p>
+                    <td className={tdTruncate} title={order.supplierName}>
+                      {order.supplierName}
                     </td>
-                    <td className={`${td} text-right text-xs font-semibold tabular-nums text-zinc-900`}>
+                    <td className={`${td} text-right text-xs font-semibold tabular-nums text-zinc-900 whitespace-nowrap`}>
                       {formatMoney(order.totalAmount, order.currency)}
                     </td>
                     <td className={`${td} text-[11px] tabular-nums text-zinc-600 whitespace-nowrap`}>
                       {formatDateShort(received)}
                     </td>
-                    <td className={`max-w-[10rem] ${td}`} onClick={(e) => e.stopPropagation()}>
+                    <td className={td} onClick={(e) => e.stopPropagation()}>
                       {request ? (
                         <Link
                           href={`/solicitudes/material/${request.id}`}
-                          className="link-entity line-clamp-2 text-[11px] leading-snug"
-                          title={request.materials}
+                          className="link-entity block min-w-0 overflow-hidden text-[11px] leading-snug line-clamp-2"
+                          title={materialRequestDisplayLabel(request)}
                         >
                           {materialRequestDisplayLabel(request)}
                         </Link>
@@ -325,9 +340,11 @@ export function IngenieroPendingOrdersPanel({
                       )}
                     </td>
                     <td className={td}>
-                      <SystemStatusBadge status={order.status} size="xs" />
+                      <div className="min-w-0 overflow-hidden">
+                        <SystemStatusBadge status={order.status} size="xs" />
+                      </div>
                     </td>
-                    <td className={`${td} text-right`} onClick={(e) => e.stopPropagation()}>
+                    <td className={`${td} text-right whitespace-nowrap`} onClick={(e) => e.stopPropagation()}>
                       <OrderActionMenu order={order} primaryLabel="Revisar" />
                     </td>
                   </tr>

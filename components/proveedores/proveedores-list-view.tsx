@@ -81,12 +81,15 @@ function SupplierActionMenu({
 }) {
   const [open, setOpen] = useState(false);
   const btnRef = useRef<HTMLButtonElement>(null);
+  const menuRef = useRef<HTMLDivElement>(null);
   const [pos, setPos] = useState({ top: 0, left: 0 });
 
   useEffect(() => {
     if (!open) return;
     function onDoc(e: MouseEvent) {
-      if (btnRef.current?.contains(e.target as Node)) return;
+      const target = e.target as Node;
+      if (btnRef.current?.contains(target)) return;
+      if (menuRef.current?.contains(target)) return;
       setOpen(false);
     }
     document.addEventListener("mousedown", onDoc);
@@ -117,8 +120,10 @@ function SupplierActionMenu({
       {open &&
         createPortal(
           <div
+            ref={menuRef}
             className="fixed z-[200] w-40 overflow-hidden rounded-xl border border-zinc-200 bg-white py-1 shadow-lg"
             style={{ top: pos.top, left: pos.left }}
+            role="menu"
           >
             <button
               type="button"

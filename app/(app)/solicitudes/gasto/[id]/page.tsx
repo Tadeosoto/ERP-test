@@ -14,7 +14,7 @@ import {
 } from "@/lib/domain/solicitudes";
 import type { DirectExpenseDto } from "@/lib/domain/types";
 import { ROLE_LABEL } from "@/lib/domain/labels";
-import { formatDateShort, formatMoney } from "@/lib/format";
+import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 export default function DirectExpenseDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -117,9 +117,21 @@ export default function DirectExpenseDetailPage() {
 
           {user?.role === "pagos" && expense.status === "sent" && (
             <div className="mt-4 space-y-3">
-              <input value={payAmount} onChange={(e) => setPayAmount(e.target.value)} placeholder="Monto del pago" className="w-full rounded-xl border px-3 py-2" />
+              <input
+                value={payAmount}
+                onChange={(e) => setPayAmount(sanitizeAmountInput(e.target.value))}
+                onBlur={() =>
+                  setPayAmount((v) => {
+                    const n = parseAmountInput(v);
+                    return n > 0 ? formatAmountInput(n) : v.trim();
+                  })
+                }
+                placeholder="Monto del pago"
+                inputMode="decimal"
+                className="w-full rounded-xl border px-3 py-2 tabular-nums"
+              />
               <input value={payReference} onChange={(e) => setPayReference(e.target.value)} placeholder="Referencia" className="w-full rounded-xl border px-3 py-2" />
-              <button type="button" disabled={busy} className="btn-primary" onClick={() => void postAction({ action: "register_payment", amount: Number(payAmount), reference: payReference })}>
+              <button type="button" disabled={busy} className="btn-primary" onClick={() => void postAction({ action: "register_payment", amount: parseAmountInput(payAmount), reference: payReference })}>
                 Registrar pago
               </button>
               <FilePickButton disabled={busy} label="Subir comprobante" hint="PDF del banco" onPick={(f) => void uploadFile("comprobante_pago", f)} />

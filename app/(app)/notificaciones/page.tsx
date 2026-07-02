@@ -5,6 +5,7 @@ import { IconCheck, IconRefresh } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useNotifications } from "@/lib/hooks/use-notifications";
+import { formatDateTime } from "@/lib/format";
 
 export default function NotificacionesPage() {
   const { notifications, unreadCount, loading, refresh } = useNotifications(0);
@@ -61,9 +62,9 @@ export default function NotificacionesPage() {
               className={`card p-5 ${n.read ? "opacity-80" : "border-teal-200 bg-teal-50/30"}`}
             >
               <p className="text-base text-zinc-800">{n.message}</p>
-              <p className="mt-2 text-sm text-zinc-500">
-                {new Date(n.createdAt).toLocaleString("es-MX")}
-              </p>
+              <time dateTime={n.createdAt} className="mt-2 block text-sm tabular-nums text-zinc-500">
+                {formatDateTime(n.createdAt)}
+              </time>
               {n.orderId && (
                 <Link
                   href={`/ordenes/${n.orderId}`}

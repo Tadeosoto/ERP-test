@@ -1,10 +1,13 @@
 import Link from "next/link";
+import { formatDateTime } from "@/lib/format";
 
 type TailSide = "bottom" | "top" | "left" | "right";
 
 type CalloutBubbleProps = {
   title?: string;
   message: string;
+  /** ISO 8601 — se muestra fecha y hora debajo del mensaje */
+  timestamp?: string;
   actionLabel?: string;
   href?: string;
   onDismiss?: () => void;
@@ -32,6 +35,7 @@ function tailClasses(side: TailSide, align: "left" | "center" | "right"): string
 export function CalloutBubble({
   title,
   message,
+  timestamp,
   actionLabel,
   href,
   onDismiss,
@@ -63,6 +67,15 @@ export function CalloutBubble({
       <p className={`text-sm leading-snug text-zinc-600 ${title ? "mt-1" : onDismiss ? "pr-8" : ""}`}>
         {message}
       </p>
+
+      {timestamp && (
+        <time
+          dateTime={timestamp}
+          className={`mt-1.5 block text-[11px] tabular-nums text-zinc-400 ${onDismiss ? "pr-8" : ""}`}
+        >
+          {formatDateTime(timestamp)}
+        </time>
+      )}
 
       {href && actionLabel && (
         <Link

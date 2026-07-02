@@ -35,7 +35,7 @@ export const FLOW_STEPS: readonly {
   },
   {
     step: 5,
-    shortTitle: "Coordinación",
+    shortTitle: "Compras",
     detail: "Paty envía comprobante al proveedor y solicita factura",
     primaryRole: "compras",
   },
