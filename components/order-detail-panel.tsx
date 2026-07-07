@@ -278,7 +278,7 @@ export function OrderDetailPanel({
               <span className="text-base font-medium text-zinc-800">
                 {FILE_KIND_LABEL[f.kind] ?? f.kind}: {f.originalFileName}
               </span>
-              <div className="flex w-full flex-col gap-2 sm:w-auto sm:min-w-[14rem]">
+              <div className="flex w-full flex-col gap-2 sm:w-80 sm:shrink-0">
                 <DocumentViewButton
                   fileId={f.id}
                   hint={FILE_VIEW_HINT[f.kind] ?? "abre el PDF en el navegador"}

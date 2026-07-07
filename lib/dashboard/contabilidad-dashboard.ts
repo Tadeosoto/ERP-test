@@ -1,4 +1,4 @@
-import { canUploadInvoice } from "@/lib/domain/transitions";
+import { canUploadInvoice, canAccountingValidate, canAccountingResolveDifference } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto, Role } from "@/lib/domain/types";
 
 export type ContabilidadHomeKpiKey =
@@ -193,6 +193,20 @@ export function contabilidadPrimaryAction(
   order: PurchaseOrderDto,
   role: Role
 ): { label: string; href: string; showDropdown: boolean } {
+  if (canAccountingValidate(order.status, role)) {
+    return {
+      label: "Validar expediente",
+      href: `/ordenes/${order.id}#tarea`,
+      showDropdown: true,
+    };
+  }
+  if (canAccountingResolveDifference(order.status, role)) {
+    return {
+      label: "Resolver diferencia",
+      href: `/ordenes/${order.id}#tarea`,
+      showDropdown: true,
+    };
+  }
   if (canUploadInvoice(order.status, role)) {
     return {
       label: "Subir factura",

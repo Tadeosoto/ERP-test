@@ -1,5 +1,5 @@
 import { prisma } from "@/lib/db";
-import { INVOICE_UPLOAD_ROLES } from "@/lib/domain/flow";
+import { INVOICE_UPLOAD_ROLES, EXPEDIENTE_CLOSE_ROLES } from "@/lib/domain/flow";
 import type { Role } from "@/lib/domain/types";
 
 /** Dirección recibe copia informativa de notificaciones clave del flujo. */
@@ -8,7 +8,7 @@ function ccDireccion(roles: Role[]): Role[] {
 }
 
 type NotifyInput = {
-  orderId: string;
+  orderId?: string | null;
   type: string;
   message: string;
   userIds: string[];
@@ -19,7 +19,7 @@ export async function notifyUsers(input: NotifyInput): Promise<void> {
   await prisma.notification.createMany({
     data: input.userIds.map((userId) => ({
       userId,
-      orderId: input.orderId,
+      orderId: input.orderId || null,
       type: input.type,
       message: input.message,
     })),
@@ -27,14 +27,14 @@ export async function notifyUsers(input: NotifyInput): Promise<void> {
 }
 
 export async function notifyByRoles(
-  orderId: string,
+  orderId: string | null,
   type: string,
   message: string,
   roles: Role[]
 ): Promise<void> {
   const users = await prisma.user.findMany({ where: { role: { in: roles } } });
   await notifyUsers({
-    orderId,
+    orderId: orderId ?? "",
     type,
     message,
     userIds: users.map((u) => u.id),
@@ -96,8 +96,8 @@ export const NotificationEvents = {
   }),
   invoiceUploaded: (orderTitle: string) => ({
     type: "invoice_uploaded",
-    message: `Factura recibida en «${orderTitle}». Contabilidad: valida el expediente.`,
-    roles: ccDireccion(["contabilidad"] as Role[]),
+    message: `Factura recibida en «${orderTitle}». Valida y cierra el expediente.`,
+    roles: ccDireccion(EXPEDIENTE_CLOSE_ROLES),
   }),
   orderCompleted: (orderTitle: string) => ({
     type: "order_completed",
@@ -106,7 +106,17 @@ export const NotificationEvents = {
   }),
   orderDifference: (orderTitle: string) => ({
     type: "order_difference",
-    message: `Diferencia detectada en «${orderTitle}». Contabilidad debe revisar.`,
-    roles: ccDireccion(["contabilidad", "compras", "pagos"] as Role[]),
+    message: `Diferencia detectada en «${orderTitle}». Revisa y resuelve el expediente.`,
+    roles: ccDireccion([...EXPEDIENTE_CLOSE_ROLES, "compras"] as Role[]),
+  }),
+  invoiceFirstRegistered: (folio: string, supplierName: string) => ({
+    type: "invoice_first_registered",
+    message: `Dirección registró la factura ${folio} (${supplierName}). Administración: revisa y solicita la OC.`,
+    roles: ["pagos"] as Role[],
+  }),
+  invoiceFirstOcRequested: (folio: string) => ({
+    type: "invoice_first_oc_requested",
+    message: `Administración solicitó OC para la factura ${folio}. Compras: genera la orden.`,
+    roles: ["compras"] as Role[],
   }),
 };

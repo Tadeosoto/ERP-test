@@ -1,4 +1,5 @@
 import type { NotificationDto, Role } from "@/lib/domain/types";
+import { EXPEDIENTE_CLOSE_ROLES } from "@/lib/domain/flow";
 
 const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   order_created: ["ingeniero"],
@@ -9,8 +10,8 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   deadline_set: ["pagos"],
   payment_registered: ["compras"],
   awaiting_invoice: ["compras", "pagos", "recepcion"],
-  invoice_uploaded: ["contabilidad"],
-  order_difference: ["contabilidad"],
+  invoice_uploaded: [...EXPEDIENTE_CLOSE_ROLES],
+  order_difference: [...EXPEDIENTE_CLOSE_ROLES, "compras"],
 };
 
 export function isNotificationActionable(n: NotificationDto, role: Role): boolean {

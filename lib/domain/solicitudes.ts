@@ -1,4 +1,5 @@
 import type { Role } from "./types";
+import { EXPEDIENTE_CLOSE_ROLES } from "./flow";
 
 export type MaterialRequestStatus = "draft" | "sent" | "in_oc_process" | "completed";
 
@@ -71,19 +72,35 @@ export function canSendDirectExpense(status: DirectExpenseStatus, role: Role, ow
 }
 
 export function directExpensePendingRole(status: DirectExpenseStatus): Role | null {
+  const roles = directExpensePendingRoles(status);
+  return roles[0] ?? null;
+}
+
+export function directExpensePendingRoles(status: DirectExpenseStatus): Role[] {
   switch (status) {
     case "sent":
-      return "pagos";
     case "paid":
-      return "pagos";
+      return ["pagos"];
     case "awaiting_invoice":
-      return "recepcion";
+      return ["pagos", "recepcion", "contabilidad"];
     case "invoice_received":
     case "difference":
-      return "contabilidad";
+      return [...EXPEDIENTE_CLOSE_ROLES];
     default:
-      return null;
+      return [];
   }
+}
+
+export function canActOnDirectExpense(status: DirectExpenseStatus, role: Role): boolean {
+  return directExpensePendingRoles(status).includes(role);
+}
+
+export function canValidateDirectExpense(status: DirectExpenseStatus, role: Role): boolean {
+  return EXPEDIENTE_CLOSE_ROLES.includes(role) && status === "invoice_received";
+}
+
+export function canResolveDirectExpenseDifference(status: DirectExpenseStatus, role: Role): boolean {
+  return EXPEDIENTE_CLOSE_ROLES.includes(role) && status === "difference";
 }
 
 export function describeDirectExpenseGate(status: DirectExpenseStatus): string {
@@ -97,9 +114,9 @@ export function describeDirectExpenseGate(status: DirectExpenseStatus): string {
     case "awaiting_invoice":
       return "Recepción o Administración deben subir el PDF de la factura.";
     case "invoice_received":
-      return "Contabilidad debe validar y cerrar el expediente.";
+      return "Administración, Recepción o Contabilidad deben validar y cerrar el expediente.";
     case "difference":
-      return "Contabilidad debe revisar la observación.";
+      return "Hay una diferencia. Administración, Recepción o Contabilidad deben revisar.";
     case "completed":
       return "Expediente cerrado.";
     default:

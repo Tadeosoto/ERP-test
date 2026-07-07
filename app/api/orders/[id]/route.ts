@@ -129,6 +129,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
           data: { status: "sent" },
         });
       }
+      if (order.invoiceFirstCommitmentId) {
+        await tx.invoiceFirstCommitment.updateMany({
+          where: { id: order.invoiceFirstCommitmentId, status: "in_payment" },
+          data: { status: "oc_requested" },
+        });
+      }
       await tx.purchaseOrder.delete({ where: { id } });
     });
 

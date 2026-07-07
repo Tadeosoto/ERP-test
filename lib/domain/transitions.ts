@@ -1,5 +1,5 @@
 import type { Role, OrderStatus, PaymentType, PaymentLabel } from "./types";
-import { INVOICE_UPLOAD_ROLES, statusAfterEngineerApprove } from "./flow";
+import { INVOICE_UPLOAD_ROLES, EXPEDIENTE_CLOSE_ROLES, statusAfterEngineerApprove } from "./flow";
 
 export function createDraftOrder(): {
   totalAmount: number;
@@ -136,6 +136,10 @@ export function canManageSuppliers(role: Role): boolean {
   return role === "compras" || role === "pagos";
 }
 
+export function canManageRecurringCommitments(role: Role): boolean {
+  return role === "pagos";
+}
+
 export function canDeleteObra(role: Role): boolean {
   return isAdministration(role);
 }
@@ -211,11 +215,11 @@ export function canUploadInvoice(status: OrderStatus, role: Role): boolean {
 }
 
 export function canAccountingValidate(status: OrderStatus, role: Role): boolean {
-  return role === "contabilidad" && status === "invoiceReceived";
+  return EXPEDIENTE_CLOSE_ROLES.includes(role) && status === "invoiceReceived";
 }
 
 export function canAccountingResolveDifference(status: OrderStatus, role: Role): boolean {
-  return role === "contabilidad" && status === "difference";
+  return EXPEDIENTE_CLOSE_ROLES.includes(role) && status === "difference";
 }
 
 export function amountRemaining(totalAmount: number, amountPaidSoFar: number): number {

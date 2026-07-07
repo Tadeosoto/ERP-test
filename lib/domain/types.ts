@@ -1,4 +1,5 @@
 import type { DirectExpenseStatus, MaterialRequestStatus } from "./solicitudes";
+import type { InvoiceFirstStatus } from "./proceso-c";
 
 export type Role = "pagos" | "compras" | "ingeniero" | "recepcion" | "contabilidad" | "direccion";
 
@@ -240,4 +241,64 @@ export interface DirectExpenseDto {
   attachments: SolicitudAttachmentDto[];
   files: DirectExpenseFileDto[];
   paymentRecords: DirectExpensePaymentDto[];
+}
+
+export interface RecurringCommitmentDto {
+  id: string;
+  supplierId: string | null;
+  supplierName: string;
+  concept: string;
+  frequency: string;
+  expectedReceptionDay: number;
+  nextReceptionDate: string;
+  dueDate: string;
+  obraId: string | null;
+  obraName: string | null;
+  costCenter: string;
+  currency: string;
+  estimatedAmount: number | null;
+  lifecycleStatus: string;
+  workflowStatus: string;
+  notes: string;
+  active: boolean;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+}
+
+export interface InvoiceFirstFileDto {
+  id: string;
+  kind: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface InvoiceFirstCommitmentDto {
+  id: string;
+  invoiceFolio: string;
+  supplierId: string | null;
+  supplierName: string;
+  obraId: string | null;
+  obraName: string | null;
+  totalAmount: number;
+  amountPaidSoFar: number;
+  amountRemaining: number;
+  displayTotal: number;
+  currency: string;
+  invoiceDate: string;
+  comment: string;
+  status: InvoiceFirstStatus;
+  createdByUserId: string;
+  createdByName: string;
+  ocRequestedAt: string | null;
+  purchaseOrderId: string | null;
+  purchaseOrderFolio: string | null;
+  purchaseOrderStatus: string | null;
+  paymentType: string | null;
+  lastPaymentAt: string | null;
+  createdAt: string;
+  updatedAt: string;
+  files: InvoiceFirstFileDto[];
 }

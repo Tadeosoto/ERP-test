@@ -154,6 +154,110 @@ async function main() {
     }
   }
 
+  const carolina = await prisma.user.findUnique({ where: { email: "carolina@ccp.local" } });
+  const commitmentCount = await prisma.recurringCommitment.count();
+  if (commitmentCount === 0 && carolina) {
+    const y = 2026;
+    await prisma.recurringCommitment.createMany({
+      data: [
+        {
+          supplierName: "AT&T",
+          concept: "Planes celulares",
+          frequency: "mensual",
+          expectedReceptionDay: 5,
+          nextReceptionDate: new Date(y, 6, 5, 12, 0, 0),
+          dueDate: new Date(y, 6, 20, 12, 0, 0),
+          workflowStatus: "awaiting_invoice",
+          createdByUserId: carolina.id,
+        },
+        {
+          supplierName: "Microsoft 365",
+          concept: "Licencias",
+          frequency: "mensual",
+          expectedReceptionDay: 7,
+          nextReceptionDate: new Date(y, 6, 7, 12, 0, 0),
+          dueDate: new Date(y, 6, 22, 12, 0, 0),
+          workflowStatus: "awaiting_invoice",
+          createdByUserId: carolina.id,
+        },
+        {
+          supplierName: "CFE",
+          concept: "Energía eléctrica",
+          frequency: "bimestral",
+          expectedReceptionDay: 10,
+          nextReceptionDate: new Date(y, 6, 10, 12, 0, 0),
+          dueDate: new Date(y, 6, 30, 12, 0, 0),
+          workflowStatus: "pending",
+          createdByUserId: carolina.id,
+        },
+        {
+          supplierName: "Telmex",
+          concept: "Internet empresarial",
+          frequency: "mensual",
+          expectedReceptionDay: 12,
+          nextReceptionDate: new Date(y, 6, 12, 12, 0, 0),
+          dueDate: new Date(y, 6, 27, 12, 0, 0),
+          workflowStatus: "awaiting_invoice",
+          createdByUserId: carolina.id,
+        },
+        {
+          supplierName: "Renta oficina GDL",
+          concept: "Renta",
+          frequency: "mensual",
+          expectedReceptionDay: 15,
+          nextReceptionDate: new Date(y, 6, 15, 12, 0, 0),
+          dueDate: new Date(y, 6, 30, 12, 0, 0),
+          workflowStatus: "awaiting_invoice",
+          createdByUserId: carolina.id,
+        },
+      ],
+    });
+  }
+
+  const diomedes = await prisma.user.findUnique({ where: { email: "diomedes@ccp.local" } });
+  const invoiceFirstCount = await prisma.invoiceFirstCommitment.count();
+  if (invoiceFirstCount === 0 && diomedes) {
+    const obras = await prisma.obra.findMany({ take: 2 });
+    const obra1 = obras[0];
+    const obra2 = obras[1] ?? obras[0];
+    await prisma.invoiceFirstCommitment.createMany({
+      data: [
+        {
+          invoiceFolio: "FAC-4587",
+          supplierName: "Aceros del Norte",
+          obraId: obra1?.id ?? null,
+          totalAmount: 350000,
+          currency: "MXN",
+          invoiceDate: new Date("2026-06-01"),
+          comment: "Material estructural — cimentaciones",
+          status: "awaiting_oc",
+          createdByUserId: diomedes.id,
+        },
+        {
+          invoiceFolio: "FAC-8123",
+          supplierName: "CFE",
+          obraId: obra2?.id ?? null,
+          totalAmount: 18500,
+          currency: "MXN",
+          invoiceDate: new Date("2026-06-10"),
+          status: "oc_requested",
+          ocRequestedAt: new Date(),
+          createdByUserId: diomedes.id,
+        },
+        {
+          invoiceFolio: "FAC-9012",
+          supplierName: "Tecnología Industrial SA",
+          obraId: obra1?.id ?? null,
+          totalAmount: 42350,
+          currency: "MXN",
+          invoiceDate: new Date("2026-05-20"),
+          status: "awaiting_oc",
+          createdByUserId: diomedes.id,
+        },
+      ],
+    });
+  }
+
   console.log("Seed OK. Contraseña inicial:", INITIAL_PASSWORD);
 }
 

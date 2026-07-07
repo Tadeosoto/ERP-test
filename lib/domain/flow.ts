@@ -3,6 +3,9 @@ import { ROLE_LABEL, PAYMENT_TYPE_TEXT } from "./labels";
 
 export const INVOICE_UPLOAD_ROLES: Role[] = ["compras", "pagos", "recepcion", "contabilidad"];
 
+/** Roles que pueden validar y cerrar expedientes (OC = pago = factura). */
+export const EXPEDIENTE_CLOSE_ROLES: Role[] = ["pagos", "recepcion", "contabilidad"];
+
 export const FLOW_STEPS: readonly {
   step: number;
   shortTitle: string;
@@ -100,7 +103,7 @@ export function getPendingRoles(status: OrderStatus): Role[] {
       return INVOICE_UPLOAD_ROLES;
     case "invoiceReceived":
     case "difference":
-      return ["contabilidad"];
+      return [...EXPEDIENTE_CLOSE_ROLES];
     case "completed":
       return [];
     default:
@@ -146,9 +149,9 @@ export function describeGate(status: OrderStatus, paymentType?: PaymentType | nu
     case "awaitingInvoice":
       return "Compras, Administración, Recepción o Contabilidad pueden subir el PDF de la factura.";
     case "invoiceReceived":
-      return "Contabilidad debe validar que OC = Pago = Factura.";
+      return "Administración, Recepción o Contabilidad deben validar que OC = Pago = Factura.";
     case "difference":
-      return "Hay una diferencia en contabilidad. Contabilidad debe revisar y resolver.";
+      return "Hay una diferencia. Administración, Recepción o Contabilidad deben revisar y resolver.";
     case "completed":
       return "Expediente cerrado. Todos pueden consultar y descargar.";
     default:

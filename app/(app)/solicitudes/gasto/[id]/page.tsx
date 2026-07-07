@@ -9,8 +9,11 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import {
   DIRECT_EXPENSE_STATUS_LABEL,
+  canActOnDirectExpense,
+  canResolveDirectExpenseDifference,
+  canValidateDirectExpense,
   describeDirectExpenseGate,
-  directExpensePendingRole,
+  directExpensePendingRoles,
 } from "@/lib/domain/solicitudes";
 import type { DirectExpenseDto } from "@/lib/domain/types";
 import { ROLE_LABEL } from "@/lib/domain/labels";
@@ -40,8 +43,8 @@ export default function DirectExpenseDetailPage() {
 
   if (!expense) return <LoadingScreen message="Cargando gasto directo" />;
 
-  const pendingRole = directExpensePendingRole(expense.status);
-  const canAct = user ? pendingRole === user.role : false;
+  const pendingRoles = directExpensePendingRoles(expense.status);
+  const canAct = user ? canActOnDirectExpense(expense.status, user.role) : false;
 
   async function postAction(body: Record<string, unknown>) {
     setBusy(true);
@@ -98,8 +101,10 @@ export default function DirectExpenseDetailPage() {
 
       <section className="card border-teal-100 bg-teal-50/30 p-4">
         <p className="text-sm font-medium text-zinc-900">{describeDirectExpenseGate(expense.status)}</p>
-        {pendingRole && (
-          <p className="mt-1 text-sm text-zinc-600">Le toca a {ROLE_LABEL[pendingRole]}.</p>
+        {pendingRoles.length > 0 && (
+          <p className="mt-1 text-sm text-zinc-600">
+            Le toca a {pendingRoles.map((r) => ROLE_LABEL[r]).join(" / ")}.
+          </p>
         )}
       </section>
 
@@ -111,7 +116,7 @@ export default function DirectExpenseDetailPage() {
         {expense.sentAt && <p className="text-xs text-zinc-400">Enviada {formatDateShort(expense.sentAt)}</p>}
       </section>
 
-      {(canAct || user?.role === "contabilidad") && expense.status !== "completed" && (
+      {canAct && expense.status !== "completed" && (
         <section className="card border-dashed border-orange-200 p-5">
           <h2 className="font-bold text-zinc-900">Tu tarea</h2>
 
@@ -153,10 +158,10 @@ export default function DirectExpenseDetailPage() {
             </div>
           )}
 
-          {user?.role === "contabilidad" && expense.status === "invoice_received" && (
+          {user && canValidateDirectExpense(expense.status, user.role) && (
             <div className="mt-4 flex flex-wrap gap-3">
               <button type="button" disabled={busy} className="btn-primary" onClick={() => void postAction({ action: "accounting_complete" })}>
-                Cerrar expediente
+                Validar y cerrar expediente
               </button>
               <button type="button" disabled={busy} className="btn-danger" onClick={() => void postAction({ action: "accounting_flag_difference", comment: "Observación contable" })}>
                 Marcar diferencia
@@ -164,7 +169,7 @@ export default function DirectExpenseDetailPage() {
             </div>
           )}
 
-          {user?.role === "contabilidad" && expense.status === "difference" && (
+          {user && canResolveDirectExpenseDifference(expense.status, user.role) && (
             <button type="button" disabled={busy} className="btn-primary mt-4" onClick={() => void postAction({ action: "accounting_resolve" })}>
               Resolver y cerrar
             </button>

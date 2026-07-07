@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import { EXPEDIENTE_CLOSE_ROLES } from "@/lib/domain/flow";
 import {
+  canResolveDirectExpenseDifference,
   canSendDirectExpense,
+  canValidateDirectExpense,
   type DirectExpenseStatus,
 } from "@/lib/domain/solicitudes";
 import { computePaymentLabel } from "@/lib/domain/transitions";
@@ -130,7 +133,7 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     if (body.action === "accounting_complete") {
-      if (role !== "contabilidad" || status !== "invoice_received") {
+      if (!canValidateDirectExpense(status, role)) {
         return NextResponse.json({ error: "No puedes cerrar el expediente ahora." }, { status: 403 });
       }
       const updated = await prisma.directExpenseRequest.update({
@@ -142,7 +145,7 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     if (body.action === "accounting_flag_difference") {
-      if (role !== "contabilidad" || status !== "invoice_received") {
+      if (!canValidateDirectExpense(status, role)) {
         return NextResponse.json({ error: "No puedes marcar diferencia ahora." }, { status: 403 });
       }
       if (!body.comment?.trim()) {
@@ -157,7 +160,7 @@ export async function POST(request: Request, ctx: Ctx) {
     }
 
     if (body.action === "accounting_resolve") {
-      if (role !== "contabilidad" || status !== "difference") {
+      if (!canResolveDirectExpenseDifference(status, role)) {
         return NextResponse.json({ error: "No puedes resolver la diferencia ahora." }, { status: 403 });
       }
       const updated = await prisma.directExpenseRequest.update({
@@ -217,8 +220,8 @@ export async function PUT(request: Request, ctx: Ctx) {
       await notifyByRoles(
         "",
         "direct_expense_invoice",
-        `Factura recibida en gasto directo «${row.category || row.obraId}». Contabilidad: valida.`,
-        ["contabilidad"]
+        `Factura recibida en gasto directo «${row.category || row.obraId}». Valida y cierra el expediente.`,
+        EXPEDIENTE_CLOSE_ROLES
       );
     }
 

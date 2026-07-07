@@ -50,13 +50,10 @@ export async function POST(request: Request) {
       paymentType?: PaymentType | null;
       suggestedPaymentType?: PaymentType | null;
       materialRequestId?: string | null;
+      invoiceFirstCommitmentId?: string | null;
       assignedEngineerUserId?: string | null;
       asDraft?: boolean;
     };
-
-    if (!body.obraId || !body.supplierName?.trim()) {
-      return NextResponse.json({ error: "Obra y proveedor son requeridos." }, { status: 400 });
-    }
 
     const asDraft = body.asDraft !== false;
     const draft = createDraftOrder();
@@ -65,10 +62,11 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El monto total debe ser mayor a cero." }, { status: 400 });
     }
 
-    const supplierName = body.supplierName.trim();
+    const supplierNameInput = body.supplierName?.trim() ?? "";
     const ocFolio = body.ocFolio?.trim() ?? "";
 
     let materialRequestId: string | null = body.materialRequestId ?? null;
+    let invoiceFirstCommitmentId: string | null = body.invoiceFirstCommitmentId ?? null;
     let assignedEngineerUserId = body.assignedEngineerUserId ?? null;
     let description = body.description?.trim() ?? "";
     let internalReference = body.internalReference?.trim() ?? "";
@@ -99,32 +97,79 @@ export async function POST(request: Request) {
       }
     }
 
+    if (invoiceFirstCommitmentId) {
+      const compromiso = await prisma.invoiceFirstCommitment.findUnique({
+        where: { id: invoiceFirstCommitmentId },
+        include: { purchaseOrder: true },
+      });
+      if (!compromiso || compromiso.status !== "oc_requested") {
+        return NextResponse.json({ error: "Factura (Proceso C) no válida o aún no solicitada a Compras." }, { status: 400 });
+      }
+      if (compromiso.purchaseOrder) {
+        return NextResponse.json({ error: "Esta factura ya tiene una OC vinculada." }, { status: 400 });
+      }
+      if (!body.obraId && compromiso.obraId) {
+        body.obraId = compromiso.obraId;
+      }
+      if (!body.obraId) {
+        return NextResponse.json({ error: "La obra es requerida para la OC." }, { status: 400 });
+      }
+      if (!description) {
+        description = [
+          `Proceso C — Factura ${compromiso.invoiceFolio}`,
+          compromiso.comment ? `Comentario: ${compromiso.comment}` : "",
+        ]
+          .filter(Boolean)
+          .join("\n");
+      }
+      if (!internalReference) {
+        internalReference = compromiso.invoiceFolio;
+      }
+    }
+
+    if (!body.obraId || !supplierNameInput) {
+      return NextResponse.json({ error: "Obra y proveedor son requeridos." }, { status: 400 });
+    }
+
+    const supplierName = supplierNameInput;
     const paymentType = body.paymentType ?? null;
 
-    const order = await prisma.purchaseOrder.create({
-      data: {
-        obraId: body.obraId,
-        title: buildTitle(ocFolio, supplierName),
-        supplierName,
-        supplierId: body.supplierId ?? null,
-        ocFolio,
-        ocDate: body.ocDate ? new Date(body.ocDate) : null,
-        paymentTerms: body.paymentTerms?.trim() ?? "",
-        description,
-        internalReference,
-        documentDate: body.documentDate ? new Date(body.documentDate) : null,
-        totalAmount: asDraft ? totalAmount : totalAmount,
-        amountPaidSoFar: draft.amountPaidSoFar,
-        paymentLabel: draft.paymentLabel,
-        currency: body.currency?.trim() || "MXN",
-        paymentType: paymentType,
-        suggestedPaymentType: paymentType === "parcialidades" ? "parcialidades" : null,
-        materialRequestId,
-        assignedEngineerUserId,
-        status: asDraft ? "draft" : "awaitingEngineer",
-        createdByUserId: user.id,
-      },
-      include: orderInclude,
+    const order = await prisma.$transaction(async (tx) => {
+      const created = await tx.purchaseOrder.create({
+        data: {
+          obraId: body.obraId!,
+          title: buildTitle(ocFolio, supplierName),
+          supplierName,
+          supplierId: body.supplierId ?? null,
+          ocFolio,
+          ocDate: body.ocDate ? new Date(body.ocDate) : null,
+          paymentTerms: body.paymentTerms?.trim() ?? "",
+          description,
+          internalReference,
+          documentDate: body.documentDate ? new Date(body.documentDate) : null,
+          totalAmount,
+          amountPaidSoFar: draft.amountPaidSoFar,
+          paymentLabel: draft.paymentLabel,
+          currency: body.currency?.trim() || "MXN",
+          paymentType,
+          suggestedPaymentType: paymentType === "parcialidades" ? "parcialidades" : null,
+          materialRequestId,
+          invoiceFirstCommitmentId,
+          assignedEngineerUserId,
+          status: asDraft ? "draft" : "awaitingEngineer",
+          createdByUserId: user.id,
+        },
+        include: orderInclude,
+      });
+
+      if (invoiceFirstCommitmentId && !asDraft) {
+        await tx.invoiceFirstCommitment.update({
+          where: { id: invoiceFirstCommitmentId },
+          data: { status: "in_payment" },
+        });
+      }
+
+      return created;
     });
 
     if (!asDraft) {

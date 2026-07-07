@@ -182,6 +182,7 @@ function NuevaOcWizard() {
   const searchParams = useSearchParams();
   const resumeOrderId = searchParams.get("orderId");
   const solicitudIdParam = searchParams.get("solicitudId");
+  const compromisoFacturaIdParam = searchParams.get("compromisoFacturaId");
   const initialStep = (Number(searchParams.get("step")) || 1) as Step;
 
   const [step, setStep] = useState<Step>(initialStep >= 1 && initialStep <= 3 ? initialStep : 1);
@@ -210,6 +211,7 @@ function NuevaOcWizard() {
   const [assignedEngineerId, setAssignedEngineerId] = useState("");
   const [paymentModality, setPaymentModality] = useState<PaymentType>("programado");
   const [materialRequestId, setMaterialRequestId] = useState<string | null>(solicitudIdParam);
+  const [invoiceFirstCommitmentId, setInvoiceFirstCommitmentId] = useState<string | null>(compromisoFacturaIdParam);
   const [solicitudBanner, setSolicitudBanner] = useState("");
   const [history, setHistory] = useState<{ at: string; text: string }[]>([]);
 
@@ -286,6 +288,40 @@ function NuevaOcWizard() {
             hydrateFromOrder(d.order);
           }
         }
+      } else if (compromisoFacturaIdParam) {
+        const cRes = await fetch(`/api/invoice-first-commitments/${compromisoFacturaIdParam}`, {
+          credentials: "include",
+        });
+        if (cRes.ok) {
+          const cd = (await cRes.json()) as {
+            commitment: {
+              id: string;
+              supplierId: string | null;
+              supplierName: string;
+              obraId: string | null;
+              totalAmount: number;
+              currency: string;
+              invoiceFolio: string;
+              invoiceDate: string;
+              comment: string;
+            };
+          };
+          const c = cd.commitment;
+          setInvoiceFirstCommitmentId(c.id);
+          if (c.supplierId) setSupplierId(c.supplierId);
+          setSupplierName(c.supplierName);
+          if (c.obraId) setObraId(c.obraId);
+          setTotalAmount(c.totalAmount > 0 ? formatAmountInput(c.totalAmount) : "");
+          setCurrency(c.currency);
+          setDocumentDate(c.invoiceDate.slice(0, 10));
+          setInternalReference(c.invoiceFolio);
+          setDescription(
+            [`Proceso C — Factura ${c.invoiceFolio}`, c.comment ? `Comentario: ${c.comment}` : ""]
+              .filter(Boolean)
+              .join("\n")
+          );
+          setSolicitudBanner(`Factura ${c.invoiceFolio} · Proceso C`);
+        }
       } else if (solicitudIdParam) {
         const sRes = await fetch(`/api/material-requests/${solicitudIdParam}`, { credentials: "include" });
         if (sRes.ok) {
@@ -315,7 +351,7 @@ function NuevaOcWizard() {
       }
       setLoading(false);
     })();
-  }, [resumeOrderId, solicitudIdParam, loadCatalogs, hydrateFromOrder]);
+  }, [resumeOrderId, solicitudIdParam, compromisoFacturaIdParam, loadCatalogs, hydrateFromOrder]);
 
   useEffect(() => {
     const s = Number(searchParams.get("step"));
@@ -352,6 +388,7 @@ function NuevaOcWizard() {
       internalReference,
       paymentType: paymentModality,
       materialRequestId,
+      invoiceFirstCommitmentId,
       assignedEngineerUserId: assignedEngineerId || null,
       asDraft: true,
     };

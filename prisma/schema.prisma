@@ -26,6 +26,9 @@ model User {
   solicitudAttachments  SolicitudAttachment[]
   directExpenseFiles    DirectExpenseFile[]
   directExpensePayments DirectExpensePayment[]
+  recurringCommitments  RecurringCommitment[]
+  invoiceFirstCommitments InvoiceFirstCommitment[] @relation("InvoiceFirstCreated")
+  invoiceFirstFiles       InvoiceFirstFile[]
 }
 
 model Session {
@@ -57,6 +60,8 @@ model Supplier {
   active          Boolean         @default(true)
   createdAt       DateTime        @default(now())
   orders          PurchaseOrder[]
+  recurringCommitments RecurringCommitment[]
+  invoiceFirstCommitments InvoiceFirstCommitment[]
 }
 
 model Obra {
@@ -72,6 +77,8 @@ model Obra {
   orders           PurchaseOrder[]
   materialRequests MaterialRequest[]
   directExpenses   DirectExpenseRequest[]
+  recurringCommitments RecurringCommitment[]
+  invoiceFirstCommitments InvoiceFirstCommitment[]
 }
 
 model PurchaseOrder {
@@ -103,6 +110,8 @@ model PurchaseOrder {
   sentToEngineerAt       DateTime?
   materialRequestId      String?         @unique
   materialRequest        MaterialRequest? @relation(fields: [materialRequestId], references: [id], onDelete: SetNull)
+  invoiceFirstCommitmentId String?       @unique
+  invoiceFirstCommitment InvoiceFirstCommitment? @relation(fields: [invoiceFirstCommitmentId], references: [id], onDelete: SetNull)
   createdAt              DateTime        @default(now())
   updatedAt              DateTime        @updatedAt
   comments               OrderComment[]
@@ -246,4 +255,67 @@ model SolicitudAttachment {
   uploadedByUserId  String
   uploadedBy        User                  @relation(fields: [uploadedByUserId], references: [id])
   createdAt         DateTime              @default(now())
+}
+
+// Proceso C — Factura primero (Dirección inicia; luego OC y flujo A).
+model InvoiceFirstCommitment {
+  id              String             @id @default(cuid())
+  invoiceFolio    String             @default("")
+  supplierId      String?
+  supplier        Supplier?          @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierName    String
+  obraId          String?
+  obra            Obra?              @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  totalAmount     Float
+  currency        String             @default("MXN")
+  invoiceDate     DateTime
+  comment         String             @default("")
+  status          String             @default("awaiting_oc")
+  createdByUserId String
+  createdBy       User               @relation("InvoiceFirstCreated", fields: [createdByUserId], references: [id])
+  ocRequestedAt   DateTime?
+  purchaseOrder   PurchaseOrder?
+  createdAt       DateTime           @default(now())
+  updatedAt       DateTime           @updatedAt
+  files           InvoiceFirstFile[]
+}
+
+model InvoiceFirstFile {
+  id               String               @id @default(cuid())
+  commitmentId     String
+  commitment       InvoiceFirstCommitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String               @default("")
+  fileData         Bytes?
+  mimeType         String               @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User                 @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime             @default(now())
+}
+
+model RecurringCommitment {
+  id                   String    @id @default(cuid())
+  supplierId           String?
+  supplier             Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplierName         String
+  concept              String
+  frequency            String
+  expectedReceptionDay Int
+  nextReceptionDate    DateTime
+  dueDate              DateTime
+  obraId               String?
+  obra                 Obra?     @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  costCenter           String    @default("")
+  currency             String    @default("MXN")
+  estimatedAmount      Float?
+  lifecycleStatus      String    @default("active")
+  workflowStatus       String    @default("pending")
+  notes                String    @default("")
+  active               Boolean   @default(true)
+  createdByUserId      String
+  createdBy            User      @relation(fields: [createdByUserId], references: [id])
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
 }

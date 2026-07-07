@@ -21,7 +21,7 @@ import {
   ordersForRole,
 } from "@/lib/dashboard/home-stats";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
-import type { DirectExpenseDto, MaterialRequestDto, MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto, SupplierDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, InvoiceFirstCommitmentDto, MaterialRequestDto, MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto, RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
 export function HomeDashboard() {
@@ -34,6 +34,8 @@ export function HomeDashboard() {
   const [recentMovements, setRecentMovements] = useState<MovementDto[]>([]);
   const [pendingMovements, setPendingMovements] = useState<PendingMovementDto[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
+  const [commitments, setCommitments] = useState<RecurringCommitmentDto[]>([]);
+  const [invoiceCommitments, setInvoiceCommitments] = useState<InvoiceFirstCommitmentDto[]>([]);
   const [initialLoading, setInitialLoading] = useState(true);
 
   const load = useCallback(async () => {
@@ -45,7 +47,7 @@ export function HomeDashboard() {
           ? "/api/material-requests?mine=1"
           : null;
 
-    const [oRes, ordRes, matRes, expRes, recentRes, pendingRes, supRes] = await Promise.all([
+    const [oRes, ordRes, matRes, expRes, recentRes, pendingRes, supRes, comRes, invRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       matUrl ? fetch(matUrl, { credentials: "include" }) : Promise.resolve(null),
@@ -57,8 +59,14 @@ export function HomeDashboard() {
         : Promise.resolve(null),
       fetch("/api/movimientos?vista=recientes&limit=5", { credentials: "include" }),
       fetch("/api/movimientos?vista=pendientes&limit=5", { credentials: "include" }),
-      user.role === "pagos"
+      user.role === "pagos" || user.role === "direccion"
         ? fetch("/api/suppliers", { credentials: "include" })
+        : Promise.resolve(null),
+      user.role === "pagos"
+        ? fetch("/api/recurring-commitments", { credentials: "include" })
+        : Promise.resolve(null),
+      user.role === "direccion" || user.role === "pagos" || user.role === "compras"
+        ? fetch("/api/invoice-first-commitments", { credentials: "include" })
         : Promise.resolve(null),
     ]);
     if (oRes.ok) {
@@ -88,6 +96,14 @@ export function HomeDashboard() {
     if (supRes?.ok) {
       const d = (await supRes.json()) as { suppliers: SupplierDto[] };
       setSuppliers(d.suppliers);
+    }
+    if (comRes?.ok) {
+      const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
+      setCommitments(d.commitments);
+    }
+    if (invRes?.ok) {
+      const d = (await invRes.json()) as { commitments: InvoiceFirstCommitmentDto[] };
+      setInvoiceCommitments(d.commitments);
     }
     setInitialLoading(false);
   }, [user]);
@@ -158,9 +174,11 @@ export function HomeDashboard() {
         orders={orders}
         obras={obras}
         suppliers={suppliers}
+        commitments={commitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
         onOrdersMutated={() => void load()}
+        onCommitmentsMutated={() => void load()}
       />
     );
   }
@@ -184,8 +202,11 @@ export function HomeDashboard() {
         userName={user.name}
         orders={orders}
         obras={obras}
+        suppliers={suppliers}
+        invoiceCommitments={invoiceCommitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
+        onCommitmentsMutated={() => void load()}
       />
     );
   }

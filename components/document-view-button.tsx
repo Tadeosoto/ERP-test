@@ -11,11 +11,13 @@ export function DocumentViewButton({ fileId, hint }: DocumentViewButtonProps) {
       href={`/api/files/${fileId}`}
       target="_blank"
       rel="noopener noreferrer"
-      className="btn-primary max-w-full"
+      className="btn-primary w-full max-w-none flex-wrap justify-center gap-x-2 gap-y-0.5 px-4 text-center text-sm sm:text-base"
     >
       <IconEye />
       <span>Ver documento</span>
-      <span className="font-normal text-orange-100">({hint})</span>
+      <span className="w-full basis-full font-normal text-orange-100 sm:w-auto sm:basis-auto">
+        ({hint})
+      </span>
     </a>
   );
 }
@@ -28,11 +30,13 @@ export function DocumentDownloadButton({ fileId }: DocumentDownloadButtonProps) 
   return (
     <a
       href={`/api/files/${fileId}?download=1`}
-      className="btn-secondary max-w-full"
+      className="btn-secondary w-full max-w-none flex-wrap justify-center gap-x-2 gap-y-0.5 px-4 text-center text-sm sm:text-base"
     >
       <IconDownload />
       <span>Descargar</span>
-      <span className="font-normal text-teal-700">(guarda el PDF en tu computadora)</span>
+      <span className="w-full basis-full font-normal text-teal-700 sm:w-auto sm:basis-auto">
+        (guarda el PDF en tu computadora)
+      </span>
     </a>
   );
 }

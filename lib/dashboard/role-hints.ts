@@ -1,4 +1,5 @@
 import { canRoleAdvance, INVOICE_UPLOAD_ROLES } from "@/lib/domain/flow";
+import { canAccountingResolveDifference, canAccountingValidate } from "@/lib/domain/transitions";
 import type { PurchaseOrderDto, Role } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
@@ -40,13 +41,23 @@ export function getHomePanelHint(role: Role, orders: PurchaseOrderDto[]): HomePa
     };
   }
 
-  if (role === "contabilidad" && pending) {
+  if (pending && canAccountingValidate(pending.status, role)) {
     return {
       target: "bandeja",
       title: "Tu tarea",
       message: "Valida OC, pago y factura aquí",
-      href: `/ordenes/${pending.id}`,
+      href: `/ordenes/${pending.id}#tarea`,
       actionLabel: "Validar",
+    };
+  }
+
+  if (pending && canAccountingResolveDifference(pending.status, role)) {
+    return {
+      target: "bandeja",
+      title: "Tu tarea",
+      message: "Revisa la diferencia y cierra el expediente",
+      href: `/ordenes/${pending.id}#tarea`,
+      actionLabel: "Resolver",
     };
   }
 

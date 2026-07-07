@@ -264,10 +264,19 @@ export async function POST(request: Request, ctx: Ctx) {
       if (!canAccountingValidate(status, role)) {
         return NextResponse.json({ error: "No puedes cerrar el expediente ahora." }, { status: 403 });
       }
-      const updated = await prisma.purchaseOrder.update({
-        where: { id },
-        data: { status: afterAccountingComplete() },
-        include: orderInclude,
+      const updated = await prisma.$transaction(async (tx) => {
+        const o = await tx.purchaseOrder.update({
+          where: { id },
+          data: { status: afterAccountingComplete() },
+          include: orderInclude,
+        });
+        if (order.invoiceFirstCommitmentId) {
+          await tx.invoiceFirstCommitment.update({
+            where: { id: order.invoiceFirstCommitmentId },
+            data: { status: "completed" },
+          });
+        }
+        return o;
       });
       const evt = NotificationEvents.orderCompleted(updated.title);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
@@ -365,6 +374,13 @@ export async function POST(request: Request, ctx: Ctx) {
           await tx.materialRequest.update({
             where: { id: order.materialRequestId },
             data: { status: "in_oc_process" },
+          });
+        }
+
+        if (order.invoiceFirstCommitmentId) {
+          await tx.invoiceFirstCommitment.update({
+            where: { id: order.invoiceFirstCommitmentId },
+            data: { status: "in_payment" },
           });
         }
 

@@ -106,9 +106,10 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         ],
       },
       {
-        heading: "Facturas",
+        heading: "Facturas y cierre",
         steps: [
           "También puedes subir la factura del proveedor si llega antes que Compras o Recepción.",
+          "Con factura recibida, valida que OC = pago = factura y cierra el expediente.",
         ],
       },
       {
@@ -132,6 +133,13 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         steps: [
           "Abre la OC desde Obras o Inicio cuando esté en «Esperando factura».",
           "En «Tu tarea» sube el PDF de la factura del proveedor.",
+        ],
+      },
+      {
+        heading: "Validación y cierre",
+        steps: [
+          "Cuando la OC esté en «Factura recibida», compara OC, comprobante y factura.",
+          "En «Tu tarea» valida y cierra el expediente o marca diferencia si algo no cuadra.",
         ],
       },
       {
