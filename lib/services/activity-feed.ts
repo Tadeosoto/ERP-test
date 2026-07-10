@@ -185,8 +185,47 @@ export async function fetchPendingMovements(
     })
     .filter((x): x is PendingMovementDto => x !== null);
 
+  const invoiceFirst = await prisma.invoiceFirstCommitment.findMany({
+    where: { status: { in: ["awaiting_oc", "oc_requested"] } },
+    include: { obra: true, purchaseOrder: true },
+    orderBy: { updatedAt: "desc" },
+    take: 100,
+  });
+
+  for (const c of invoiceFirst) {
+    if (c.status === "awaiting_oc") {
+      result.push({
+        id: `pending-ifc-${c.id}`,
+        role: "pagos",
+        description: `Proceso C: solicitar OC a Compras para la factura ${c.invoiceFolio}`,
+        orderId: c.id,
+        orderTitle: c.invoiceFolio,
+        obraId: c.obraId ?? "",
+        obraName: c.obra?.name ?? "Sin obra",
+        status: "awaitingPayment",
+        updatedAt: c.updatedAt.toISOString(),
+        href: `/compromisos-c/${c.id}`,
+      });
+    } else if (c.status === "oc_requested" && !c.purchaseOrder) {
+      result.push({
+        id: `pending-ifc-${c.id}`,
+        role: "compras",
+        description: `Proceso C: generar OC para la factura ${c.invoiceFolio}`,
+        orderId: c.id,
+        orderTitle: c.invoiceFolio,
+        obraId: c.obraId ?? "",
+        obraName: c.obra?.name ?? "Sin obra",
+        status: "awaitingPatyDeadline",
+        updatedAt: c.updatedAt.toISOString(),
+        href: `/ordenes/nueva?compromisoFacturaId=${c.id}`,
+      });
+    }
+  }
+
+  result.sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime());
+
   if (filters.role) {
-    result = result.filter((m) => canRoleAdvance(filters.role!, m.status));
+    result = result.filter((m) => canRoleAdvance(filters.role!, m.status) || m.role === filters.role);
   }
   if (filters.obraId) {
     result = result.filter((m) => m.obraId === filters.obraId);

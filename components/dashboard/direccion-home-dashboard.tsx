@@ -10,9 +10,15 @@ import {
   kpiMonthGrowth,
   pendingAuthorizationCount,
 } from "@/lib/dashboard/direccion-dashboard";
-import { expedienteKpis } from "@/lib/dashboard/direccion-expedientes";
+import { expedienteKpis, mergeExpedienteOrders } from "@/lib/dashboard/direccion-expedientes";
 import { ROLE_LABEL } from "@/lib/domain/labels";
-import type { MovementDto, ObraDto, PendingMovementDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type {
+  DirectExpenseDto,
+  MovementDto,
+  ObraDto,
+  PendingMovementDto,
+  PurchaseOrderDto,
+} from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
 
 function KpiCard({
@@ -71,22 +77,22 @@ export function DireccionHomeDashboard({
   userName,
   orders,
   obras,
+  expenses = [],
   recentMovements,
   pendingMovements,
 }: {
   userName: string;
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
+  expenses?: DirectExpenseDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
 }) {
-  const currency = orders[0]?.currency ?? "MXN";
-
   const kpis = useMemo(() => direccionKpiCounts(orders), [orders]);
-  const expKpis = useMemo(() => expedienteKpis(orders), [orders]);
   const growth = useMemo(() => kpiMonthGrowth(orders), [orders]);
   const pendingCount = useMemo(() => pendingAuthorizationCount(orders), [orders]);
-
+  const expedienteRows = useMemo(() => mergeExpedienteOrders(orders, expenses), [orders, expenses]);
+  const expKpis = useMemo(() => expedienteKpis(expedienteRows), [expedienteRows]);
   const tabCounts = useMemo(
     () => ({
       todos: expKpis.total,
@@ -96,6 +102,7 @@ export function DireccionHomeDashboard({
     }),
     [expKpis]
   );
+  const currency = orders[0]?.currency ?? "MXN";
 
   const growthText =
     growth === null
@@ -151,7 +158,7 @@ export function DireccionHomeDashboard({
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17.5rem] 2xl:grid-cols-[minmax(0,1fr)_19rem]">
         <DireccionExpedientesPanel
-          orders={orders}
+          orders={expedienteRows}
           obras={obras}
           compact
           showExport={false}

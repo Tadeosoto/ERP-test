@@ -1,7 +1,105 @@
 import { STATUS_LABEL, ROLE_LABEL } from "@/lib/domain/labels";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import type { PurchaseOrderDto, Role } from "@/lib/domain/types";
+import type { DirectExpenseDto, OrderStatus, PurchaseOrderDto, Role } from "@/lib/domain/types";
+import {
+  DIRECT_EXPENSE_STATUS_LABEL,
+  type DirectExpenseStatus,
+} from "@/lib/domain/solicitudes";
 import { isPendingAuthorization, isActivePartial } from "@/lib/dashboard/direccion-dashboard";
+
+/** Marcador en `internalReference` para filas sintéticas de gasto directo (Proceso B). */
+export const PROCESO_B_EXPEDIENTE_MARKER = "proceso-b";
+
+export function isProcesoBExpediente(order: PurchaseOrderDto): boolean {
+  return order.internalReference === PROCESO_B_EXPEDIENTE_MARKER;
+}
+
+export function expedienteFolioLabel(order: PurchaseOrderDto): string {
+  if (isProcesoBExpediente(order)) return "Sin folio";
+  return order.ocFolio.trim() || order.title;
+}
+
+function mapDirectExpenseStatusToOrderStatus(status: DirectExpenseStatus): OrderStatus {
+  switch (status) {
+    case "draft":
+      return "draft";
+    case "sent":
+      return "awaitingPayment";
+    case "paid":
+      return "paid";
+    case "awaiting_invoice":
+      return "awaitingInvoice";
+    case "invoice_received":
+      return "invoiceReceived";
+    case "difference":
+      return "difference";
+    case "completed":
+      return "completed";
+    default:
+      return "awaitingPayment";
+  }
+}
+
+/** Convierte un gasto directo en fila de expediente (sin folio OC). */
+export function mapDirectExpenseToExpedienteOrder(expense: DirectExpenseDto): PurchaseOrderDto {
+  return {
+    id: expense.id,
+    obraId: expense.obraId,
+    obraName: expense.obraName,
+    title: expense.category.trim() || "Gasto directo",
+    description: expense.justification,
+    supplierName: expense.supplierName,
+    supplierId: null,
+    ocFolio: "",
+    ocDate: null,
+    paymentTerms: "",
+    internalReference: PROCESO_B_EXPEDIENTE_MARKER,
+    documentDate: null,
+    assignedEngineerUserId: null,
+    assignedEngineerName: null,
+    materialRequestId: null,
+    totalAmount: expense.estimatedAmount,
+    amountPaidSoFar: expense.amountPaidSoFar,
+    amountRemaining: expense.amountRemaining,
+    currency: expense.currency,
+    paymentLabel: expense.paymentLabel,
+    paymentType: null,
+    suggestedPaymentType: null,
+    paymentDueDate: null,
+    status: mapDirectExpenseStatusToOrderStatus(expense.status),
+    sentToEngineerAt: expense.sentAt,
+    createdAt: expense.createdAt,
+    updatedAt: expense.updatedAt,
+    createdByName: expense.createdByName,
+    comments: [],
+    files: expense.files.map((f) => ({
+      id: f.id,
+      kind: f.kind as PurchaseOrderDto["files"][number]["kind"],
+      originalFileName: f.originalFileName,
+      mimeType: f.mimeType,
+      sizeBytes: f.sizeBytes,
+      createdAt: f.createdAt,
+    })),
+    paymentRecords: expense.paymentRecords.map((p) => ({
+      id: p.id,
+      amount: p.amount,
+      reference: p.reference,
+      notes: p.notes,
+      recordedByName: p.recordedByName,
+      createdAt: p.createdAt,
+    })),
+  };
+}
+
+export function mergeExpedienteOrders(
+  orders: PurchaseOrderDto[],
+  expenses: DirectExpenseDto[] = []
+): PurchaseOrderDto[] {
+  const mapped = expenses
+    .filter((e) => e.status !== "draft")
+    .map(mapDirectExpenseToExpedienteOrder);
+  return [...orders, ...mapped];
+}
 
 export type ExpedienteTab = "todos" | "completos" | "en_proceso" | "atencion";
 
@@ -77,6 +175,20 @@ export const EXPEDIENTE_AREA_OPTIONS: { value: Role | ""; label: string }[] = [
 
 /** Área que debe actuar según el estatus actual del expediente. */
 export function expedientePendingArea(order: PurchaseOrderDto): Role | null {
+  if (isProcesoBExpediente(order)) {
+    switch (order.status) {
+      case "awaitingPayment":
+        return "pagos";
+      case "paid":
+      case "awaitingInvoice":
+        return "recepcion";
+      case "invoiceReceived":
+      case "difference":
+        return "contabilidad";
+      default:
+        return null;
+    }
+  }
   switch (order.status) {
     case "awaitingEngineer":
     case "engineerRejected":
@@ -184,7 +296,15 @@ export function applyExpedienteFilters(
     const q = normalizeQuery(filters.search);
     if (q) {
       const haystack = normalizeQuery(
-        [o.ocFolio, o.title, o.supplierName, o.obraName, o.createdByName].join(" ")
+        [
+          expedienteFolioLabel(o),
+          o.ocFolio,
+          o.title,
+          o.supplierName,
+          o.obraName,
+          o.createdByName,
+          isProcesoBExpediente(o) ? "proceso b gasto directo sin folio" : "",
+        ].join(" ")
       );
       if (!haystack.includes(q)) return false;
     }
@@ -210,6 +330,38 @@ export function lastActivity(order: PurchaseOrderDto): ActivityEvent {
 }
 
 export function buildActivityHistory(order: PurchaseOrderDto): ActivityEvent[] {
+  if (isProcesoBExpediente(order)) {
+    const items: ActivityEvent[] = [
+      {
+        at: order.createdAt,
+        message: `Gasto directo creado por ${order.createdByName || "Ingeniería"}`,
+      },
+    ];
+    if (order.sentToEngineerAt) {
+      items.push({
+        at: order.sentToEngineerAt,
+        message: "Enviado a Administración para pago",
+      });
+    }
+    order.paymentRecords.forEach((p, i) => {
+      items.push({
+        at: p.createdAt,
+        message: `Pago ${i + 1} registrado por ${p.recordedByName}`,
+      });
+    });
+    for (const f of order.files) {
+      const label = FILE_KIND_LABEL[f.kind] ?? f.kind;
+      items.push({ at: f.createdAt, message: `${label} cargado` });
+    }
+    if (order.status === "awaitingInvoice") {
+      items.push({ at: order.updatedAt, message: DIRECT_EXPENSE_STATUS_LABEL.awaiting_invoice });
+    }
+    if (order.status === "completed") {
+      items.push({ at: order.updatedAt, message: "Expediente cerrado" });
+    }
+    return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }
+
   const items: ActivityEvent[] = [];
 
   items.push({
@@ -251,6 +403,23 @@ export function buildActivityHistory(order: PurchaseOrderDto): ActivityEvent[] {
 }
 
 export function expedienteStepDone(order: PurchaseOrderDto, key: (typeof EXPEDIENTE_PROCESS_STEPS)[number]["key"]): boolean {
+  if (isProcesoBExpediente(order)) {
+    switch (key) {
+      case "oc":
+        // Sin OC: el paso no aplica; se marca como listo al salir de borrador.
+        return order.status !== "draft";
+      case "aprobada":
+        return order.status !== "draft";
+      case "pagos":
+        return order.amountPaidSoFar > 0.01 || order.paymentRecords.length > 0;
+      case "factura":
+        return order.files.some((f) => f.kind === "factura");
+      case "contpaqi":
+        return order.status === "completed";
+      default:
+        return false;
+    }
+  }
   switch (key) {
     case "oc":
       return order.files.some((f) => f.kind === "oc_pdf") || order.status !== "draft";
@@ -290,8 +459,8 @@ export function exportExpedientesCsv(orders: PurchaseOrderDto[]): void {
   const rows = orders.map((o) => {
     const act = lastActivity(o);
     return [
-      o.ocFolio || o.title,
-      o.supplierName,
+      expedienteFolioLabel(o),
+      o.supplierName || "—",
       o.obraName,
       o.totalAmount.toFixed(2),
       o.amountPaidSoFar.toFixed(2),

@@ -9,6 +9,8 @@ function ccDireccion(roles: Role[]): Role[] {
 
 type NotifyInput = {
   orderId?: string | null;
+  directExpenseId?: string | null;
+  invoiceFirstCommitmentId?: string | null;
   type: string;
   message: string;
   userIds: string[];
@@ -20,6 +22,8 @@ export async function notifyUsers(input: NotifyInput): Promise<void> {
     data: input.userIds.map((userId) => ({
       userId,
       orderId: input.orderId || null,
+      directExpenseId: input.directExpenseId || null,
+      invoiceFirstCommitmentId: input.invoiceFirstCommitmentId || null,
       type: input.type,
       message: input.message,
     })),
@@ -34,7 +38,22 @@ export async function notifyByRoles(
 ): Promise<void> {
   const users = await prisma.user.findMany({ where: { role: { in: roles } } });
   await notifyUsers({
-    orderId: orderId ?? "",
+    orderId: orderId ?? null,
+    type,
+    message,
+    userIds: users.map((u) => u.id),
+  });
+}
+
+export async function notifyDirectExpenseByRoles(
+  directExpenseId: string,
+  type: string,
+  message: string,
+  roles: Role[]
+): Promise<void> {
+  const users = await prisma.user.findMany({ where: { role: { in: roles } } });
+  await notifyUsers({
+    directExpenseId,
     type,
     message,
     userIds: users.map((u) => u.id),
@@ -45,6 +64,21 @@ export async function notifyAllUsers(orderId: string, type: string, message: str
   const users = await prisma.user.findMany();
   await notifyUsers({
     orderId,
+    type,
+    message,
+    userIds: users.map((u) => u.id),
+  });
+}
+
+export async function notifyInvoiceFirstByRoles(
+  invoiceFirstCommitmentId: string,
+  type: string,
+  message: string,
+  roles: Role[]
+): Promise<void> {
+  const users = await prisma.user.findMany({ where: { role: { in: roles } } });
+  await notifyUsers({
+    invoiceFirstCommitmentId,
     type,
     message,
     userIds: users.map((u) => u.id),

@@ -6,6 +6,7 @@ import { CalloutBubble } from "@/components/ui/callout-bubble";
 import { ContabilidadHomeBottomColumns } from "@/components/dashboard/contabilidad-home-bottom-columns";
 import { ContabilidadHomeSidebar } from "@/components/dashboard/contabilidad-home-sidebar";
 import { ContabilidadRecentPaymentsPanel } from "@/components/dashboard/contabilidad-recent-payments-panel";
+import { PagosDirectExpensesPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import {
   CONTABILIDAD_HOME_KPI_CONFIG,
@@ -14,6 +15,7 @@ import {
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type {
+  DirectExpenseDto,
   MovementDto,
   ObraDto,
   PendingMovementDto,
@@ -122,6 +124,7 @@ export function ContabilidadRecepcionHomeDashboard({
   role,
   orders,
   obras,
+  expenses,
   recentMovements,
   pendingMovements,
 }: {
@@ -129,6 +132,7 @@ export function ContabilidadRecepcionHomeDashboard({
   role: Role;
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
+  expenses: DirectExpenseDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
 }) {
@@ -150,7 +154,7 @@ export function ContabilidadRecepcionHomeDashboard({
   const roleSubtitle =
     role === "contabilidad"
       ? "Consulta documentos, pagos y expedientes del sistema."
-      : "Consulta expedientes y sube facturas de las órdenes de compra.";
+      : "Consulta expedientes, sube facturas de OC y gastos directos (Proceso B).";
 
   return (
     <div className="home-dashboard flex flex-col gap-3 pb-4 sm:gap-3 lg:gap-3">
@@ -224,11 +228,13 @@ export function ContabilidadRecepcionHomeDashboard({
         <div className="flex flex-col gap-2 sm:flex-row">
           {role === "recepcion" ? (
             <>
+              <QuickActionButton href="/pagos#proceso-b" label="Gastos Proceso B" icon="pay" />
               <QuickActionButton href="/expedientes" label="Ver expedientes" icon="pending" />
               <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
             </>
           ) : (
             <>
+              <QuickActionButton href="/pagos#proceso-b" label="Gastos Proceso B" icon="pay" />
               <QuickActionButton href="/ordenes" label="Ver pagos" icon="pay" />
               <QuickActionButton href="/ordenes" label="Ver pendientes" icon="pending" />
               <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
@@ -248,6 +254,8 @@ export function ContabilidadRecepcionHomeDashboard({
           tailAlign="left"
         />
       )}
+
+      <PagosDirectExpensesPanel expenses={expenses} role={role} />
 
       <div className="flex min-w-0 flex-col gap-3 lg:flex-row lg:items-start lg:gap-4">
         <div className="flex min-w-0 flex-1 flex-col gap-3 lg:flex-[3]">

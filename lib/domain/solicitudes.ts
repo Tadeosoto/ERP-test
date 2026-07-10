@@ -67,6 +67,11 @@ export function canEditDirectExpense(status: DirectExpenseStatus, role: Role, ow
   return role === "ingeniero" && ownerId === userId && status === "draft";
 }
 
+/** Administración puede corregir datos si el expediente aún no está cerrado. */
+export function canCorrectDirectExpense(status: DirectExpenseStatus, role: Role): boolean {
+  return role === "pagos" && !["draft", "completed"].includes(status);
+}
+
 export function canSendDirectExpense(status: DirectExpenseStatus, role: Role, ownerId: string, userId: string): boolean {
   return role === "ingeniero" && ownerId === userId && status === "draft";
 }
@@ -79,8 +84,8 @@ export function directExpensePendingRole(status: DirectExpenseStatus): Role | nu
 export function directExpensePendingRoles(status: DirectExpenseStatus): Role[] {
   switch (status) {
     case "sent":
-    case "paid":
       return ["pagos"];
+    case "paid":
     case "awaiting_invoice":
       return ["pagos", "recepcion", "contabilidad"];
     case "invoice_received":
@@ -110,9 +115,9 @@ export function describeDirectExpenseGate(status: DirectExpenseStatus): string {
     case "sent":
       return "Administración debe registrar el pago y subir el comprobante.";
     case "paid":
-      return "Administración puede marcar «Esperando factura» o subir la factura.";
+      return "Administración, Recepción o Contabilidad pueden subir la factura del proveedor.";
     case "awaiting_invoice":
-      return "Recepción o Administración deben subir el PDF de la factura.";
+      return "Administración, Recepción o Contabilidad deben subir el PDF de la factura del proveedor.";
     case "invoice_received":
       return "Administración, Recepción o Contabilidad deben validar y cerrar el expediente.";
     case "difference":

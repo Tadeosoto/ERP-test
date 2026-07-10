@@ -8,7 +8,7 @@ import {
   mapInvoiceFirstCommitment,
 } from "@/lib/services/invoice-first-mappers";
 import { nextInvoiceFolio } from "@/lib/services/invoice-first-folio";
-import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications";
+import { NotificationEvents, notifyInvoiceFirstByRoles } from "@/lib/services/notifications";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
 export async function GET(request: Request) {
@@ -21,6 +21,9 @@ export async function GET(request: Request) {
     if (status) where.status = status;
     if (user.role === "pagos" && !status) {
       where.status = { in: ["awaiting_oc", "oc_requested"] };
+    }
+    if (user.role === "compras" && !status) {
+      where.status = { in: ["oc_requested", "in_payment", "completed"] };
     }
 
     const rows = await prisma.invoiceFirstCommitment.findMany({
@@ -108,7 +111,7 @@ export async function POST(request: Request) {
     });
 
     const evt = NotificationEvents.invoiceFirstRegistered(invoiceFolio, supplierName);
-    await notifyByRoles(null, evt.type, evt.message, evt.roles);
+    await notifyInvoiceFirstByRoles(row.id, evt.type, evt.message, evt.roles);
 
     return NextResponse.json({ commitment: mapInvoiceFirstCommitment(row) });
   } catch (e) {

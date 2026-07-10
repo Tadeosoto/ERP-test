@@ -195,6 +195,8 @@ export function mapSupplier(s: {
 export function mapNotification(n: {
   id: string;
   orderId: string | null;
+  directExpenseId?: string | null;
+  invoiceFirstCommitmentId?: string | null;
   type: string;
   message: string;
   read: boolean;
@@ -203,6 +205,8 @@ export function mapNotification(n: {
   return {
     id: n.id,
     orderId: n.orderId,
+    directExpenseId: n.directExpenseId ?? null,
+    invoiceFirstCommitmentId: n.invoiceFirstCommitmentId ?? null,
     type: n.type,
     message: n.message,
     read: n.read,

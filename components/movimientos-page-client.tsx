@@ -201,7 +201,7 @@ export function MovimientosPageClient({ variant, onRegisterRefresh }: Props) {
         {isPending &&
           pending.map((m) => (
             <li key={m.id} className="card p-4">
-              <Link href={`/ordenes/${m.orderId}`} className="flex gap-4">
+              <Link href={m.href ?? `/ordenes/${m.orderId}`} className="flex gap-4">
                 <RoleActivityIcon role={m.role} />
                 <div className="min-w-0 flex-1">
                   <p className="font-semibold text-zinc-900">Pendiente · {formatPendingRoles(m.status)}</p>

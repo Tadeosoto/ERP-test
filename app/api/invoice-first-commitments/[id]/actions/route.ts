@@ -8,7 +8,7 @@ import {
   invoiceFirstInclude,
   mapInvoiceFirstCommitment,
 } from "@/lib/services/invoice-first-mappers";
-import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications";
+import { NotificationEvents, notifyInvoiceFirstByRoles } from "@/lib/services/notifications";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -40,7 +40,7 @@ export async function POST(request: Request, ctx: Ctx) {
         include: invoiceFirstInclude,
       });
       const evt = NotificationEvents.invoiceFirstOcRequested(row.invoiceFolio);
-      await notifyByRoles(null, evt.type, evt.message, evt.roles);
+      await notifyInvoiceFirstByRoles(id, evt.type, evt.message, evt.roles);
       return NextResponse.json({ commitment: mapInvoiceFirstCommitment(updated) });
     }
 

@@ -13,8 +13,10 @@ import {
   EXPEDIENTE_TABS,
   expedienteAttentionAreaLabel,
   expedienteEstatus,
+  expedienteFolioLabel,
   exportExpedientesCsv,
   filterByExpedienteTab,
+  isProcesoBExpediente,
   lastActivity,
   paginateItems,
   totalPages,
@@ -222,7 +224,7 @@ export function DireccionExpedientesPanel({
               type="search"
               value={filters.search}
               onChange={(e) => setFilter("search", e.target.value)}
-              placeholder="Buscar expediente, OC o proveedor..."
+              placeholder="Buscar expediente, OC, sin folio o proveedor..."
               className="block w-full rounded-xl border border-zinc-200 bg-white py-2 pl-9 pr-3 text-sm"
             />
           </div>
@@ -276,9 +278,28 @@ export function DireccionExpedientesPanel({
                     }`}
                   >
                     <td className="px-3 py-2.5 sm:px-4" onClick={(e) => e.stopPropagation()}>
-                      <OcLink order={order} showPdfIcon className="text-sm" />
+                      {isProcesoBExpediente(order) ? (
+                        <div className="min-w-0">
+                          <Link
+                            href={`/solicitudes/gasto/${order.id}`}
+                            className="font-semibold text-teal-800 hover:underline"
+                          >
+                            {expedienteFolioLabel(order)}
+                          </Link>
+                          <p className="mt-0.5 truncate text-[11px] text-zinc-500">
+                            {order.title}
+                            <span className="ml-1 rounded bg-teal-50 px-1 py-0.5 text-[10px] font-semibold text-teal-700">
+                              Proceso B
+                            </span>
+                          </p>
+                        </div>
+                      ) : (
+                        <OcLink order={order} showPdfIcon className="text-sm" />
+                      )}
                     </td>
-                    <td className="max-w-[8rem] truncate px-3 py-2.5 text-zinc-700 sm:px-4">{order.supplierName}</td>
+                    <td className="max-w-[8rem] truncate px-3 py-2.5 text-zinc-700 sm:px-4">
+                      {order.supplierName || "—"}
+                    </td>
                     <td className="max-w-[7rem] truncate px-3 py-2.5 font-medium text-sky-800 sm:px-4">
                       {order.obraName}
                     </td>
@@ -307,12 +328,21 @@ export function DireccionExpedientesPanel({
                     </td>
                     {showAdminActions && (
                       <td className="px-3 py-2.5 text-right sm:px-4" onClick={(e) => e.stopPropagation()}>
-                        <OrderActionMenu
-                          order={order}
-                          onOrderMutated={onOrderMutated}
-                          primaryLabel="Ver"
-                          appearance="neutral"
-                        />
+                        {isProcesoBExpediente(order) ? (
+                          <Link
+                            href={`/solicitudes/gasto/${order.id}`}
+                            className="inline-flex rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                          >
+                            Ver
+                          </Link>
+                        ) : (
+                          <OrderActionMenu
+                            order={order}
+                            onOrderMutated={onOrderMutated}
+                            primaryLabel="Ver"
+                            appearance="neutral"
+                          />
+                        )}
                       </td>
                     )}
                   </tr>

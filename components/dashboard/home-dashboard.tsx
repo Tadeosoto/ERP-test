@@ -51,7 +51,11 @@ export function HomeDashboard() {
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       matUrl ? fetch(matUrl, { credentials: "include" }) : Promise.resolve(null),
-      user.role === "ingeniero" || user.role === "pagos"
+      user.role === "ingeniero" ||
+      user.role === "pagos" ||
+      user.role === "recepcion" ||
+      user.role === "contabilidad" ||
+      user.role === "direccion"
         ? fetch(
             user.role === "ingeniero" ? "/api/direct-expenses?mine=1" : "/api/direct-expenses",
             { credentials: "include" }
@@ -145,6 +149,7 @@ export function HomeDashboard() {
         orders={orders}
         obras={obras}
         materialRequests={materialRequests}
+        invoiceCommitments={invoiceCommitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
         onOrderMutated={() => void load()}
@@ -175,6 +180,8 @@ export function HomeDashboard() {
         obras={obras}
         suppliers={suppliers}
         commitments={commitments}
+        expenses={expenses}
+        invoiceCommitments={invoiceCommitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
         onOrdersMutated={() => void load()}
@@ -190,6 +197,7 @@ export function HomeDashboard() {
         role={user.role}
         orders={orders}
         obras={obras}
+        expenses={expenses}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
       />
@@ -202,6 +210,7 @@ export function HomeDashboard() {
         userName={user.name}
         orders={orders}
         obras={obras}
+        expenses={expenses}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
       />

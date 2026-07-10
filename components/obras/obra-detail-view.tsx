@@ -10,8 +10,9 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
-import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
+import { PagosProcesoBListPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
 
 function obraDisplayCode(obra: ObraDto): string {
   if (obra.code.trim()) return obra.code;
@@ -26,6 +27,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const { confirmDelete } = useConfirmDelete();
   const [obra, setObra] = useState<ObraDto | null>(null);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
+  const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -37,9 +39,10 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const [editActive, setEditActive] = useState(true);
 
   const load = useCallback(async () => {
-    const [oRes, ordRes] = await Promise.all([
+    const [oRes, ordRes, expRes] = await Promise.all([
       fetch(`/api/obras/${obraId}`, { credentials: "include" }),
       fetch(`/api/orders?obraId=${obraId}`, { credentials: "include" }),
+      fetch(`/api/direct-expenses?obraId=${obraId}&includeCompleted=1`, { credentials: "include" }),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obra: ObraDto };
@@ -57,6 +60,10 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
     if (ordRes.ok) {
       const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
+    }
+    if (expRes.ok) {
+      const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
+      setExpenses(d.expenses);
     }
     setLoading(false);
   }, [obraId]);
@@ -268,6 +275,16 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
       </div>
 
       <ObraOrdersPanel orders={orders} onOrderMutated={() => void load()} />
+
+      {expenses.length > 0 && (
+        <PagosProcesoBListPanel
+          expenses={expenses}
+          role={user?.role}
+          title="Gastos directos de esta obra (Proceso B)"
+          subtitle="Sin OC — visibles aunque no haya orden de compra"
+          emptyMessage="Esta obra no tiene gastos directos."
+        />
+      )}
     </div>
   );
 }

@@ -32,7 +32,10 @@ const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: 
 
 const pagosNav = [{ href: "/ordenes", label: "Órdenes de compra", icon: "orders" }] as const;
 
-const recepcionConsultaNav = [{ href: "/expedientes", label: "Expedientes", icon: "folder" }] as const;
+const recepcionConsultaNav = [
+  { href: "/pagos", label: "Pagos", icon: "pay" },
+  { href: "/expedientes", label: "Expedientes", icon: "folder" },
+] as const;
 
 const direccionNav = [
   { href: "/inicio", label: "Inicio", icon: "home" },

@@ -1,7 +1,6 @@
 "use client";
 
-import { Suspense, useEffect } from "react";
-import { useRouter } from "next/navigation";
+import { Suspense } from "react";
 import { DireccionPagosView } from "@/components/pagos/direccion-pagos-view";
 import { usePageRefreshRegister } from "@/components/app-shell";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -9,16 +8,9 @@ import { useSession } from "@/components/session-provider";
 
 function PagosPageInner() {
   const { user } = useSession();
-  const router = useRouter();
   const register = usePageRefreshRegister();
 
-  useEffect(() => {
-    if (user?.role === "recepcion") {
-      router.replace("/inicio");
-    }
-  }, [user, router]);
-
-  if (!user || user.role === "recepcion") {
+  if (!user) {
     return <LoadingScreen message="Cargando pagos" />;
   }
 

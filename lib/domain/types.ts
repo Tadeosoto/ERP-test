@@ -136,6 +136,8 @@ export interface ObraDto {
 export interface NotificationDto {
   id: string;
   orderId: string | null;
+  directExpenseId: string | null;
+  invoiceFirstCommitmentId: string | null;
   type: string;
   message: string;
   read: boolean;
@@ -173,6 +175,8 @@ export interface PendingMovementDto {
   obraName: string;
   status: OrderStatus;
   updatedAt: string;
+  /** Si existe, el panel de pendientes usa este enlace (p. ej. Proceso C). */
+  href?: string;
 }
 
 export interface SolicitudAttachmentDto {

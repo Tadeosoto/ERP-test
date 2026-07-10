@@ -15,12 +15,27 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const mine = searchParams.get("mine") === "1";
+    const obraId = searchParams.get("obraId");
+    const includeCompleted = searchParams.get("includeCompleted") === "1";
 
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
+    if (obraId) where.obraId = obraId;
     if (mine && user.role === "ingeniero") where.createdByUserId = user.id;
     if (user.role === "pagos" && !status) {
-      where.status = { in: ["sent", "paid", "awaiting_invoice"] };
+      where.status = {
+        in: includeCompleted
+          ? ["sent", "paid", "awaiting_invoice", "invoice_received", "difference", "completed"]
+          : ["sent", "paid", "awaiting_invoice", "invoice_received", "difference"],
+      };
+    }
+    // Dirección / recepción / contabilidad pueden consultar gastos de una obra o el listado.
+    if (
+      ["direccion", "recepcion", "contabilidad"].includes(user.role) &&
+      !status &&
+      !where.status
+    ) {
+      where.status = { not: "draft" };
     }
 
     const rows = await prisma.directExpenseRequest.findMany({

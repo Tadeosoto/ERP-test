@@ -160,15 +160,19 @@ model StoredFile {
 }
 
 model Notification {
-  id        String         @id @default(cuid())
-  userId    String
-  user      User           @relation(fields: [userId], references: [id], onDelete: Cascade)
-  orderId   String?
-  order     PurchaseOrder? @relation(fields: [orderId], references: [id], onDelete: SetNull)
-  type      String
-  message   String
-  read      Boolean        @default(false)
-  createdAt DateTime       @default(now())
+  id                        String                  @id @default(cuid())
+  userId                    String
+  user                      User                    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  orderId                   String?
+  order                     PurchaseOrder?          @relation(fields: [orderId], references: [id], onDelete: SetNull)
+  directExpenseId           String?
+  directExpense             DirectExpenseRequest?   @relation(fields: [directExpenseId], references: [id], onDelete: SetNull)
+  invoiceFirstCommitmentId  String?
+  invoiceFirstCommitment    InvoiceFirstCommitment? @relation(fields: [invoiceFirstCommitmentId], references: [id], onDelete: SetNull)
+  type                      String
+  message                   String
+  read                      Boolean                 @default(false)
+  createdAt                 DateTime                @default(now())
 }
 
 // Proceso A — Solicitud de material (Ingeniería inicia).
@@ -212,6 +216,7 @@ model DirectExpenseRequest {
   attachments       SolicitudAttachment[]
   files             DirectExpenseFile[]
   paymentRecords    DirectExpensePayment[]
+  notifications     Notification[]
 }
 
 model DirectExpensePayment {
@@ -278,6 +283,7 @@ model InvoiceFirstCommitment {
   createdAt       DateTime           @default(now())
   updatedAt       DateTime           @updatedAt
   files           InvoiceFirstFile[]
+  notifications   Notification[]
 }
 
 model InvoiceFirstFile {

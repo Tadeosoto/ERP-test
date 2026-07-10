@@ -3,8 +3,10 @@
 import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { OrderActionMenu } from "@/components/obras/order-action-menu";
+import { PagosProcesoBListPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
 import { OcLink } from "@/components/ui/oc-link";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useSession } from "@/components/session-provider";
 import {
   amountToPay,
   applyPagosFilters,
@@ -26,7 +28,7 @@ import {
   type DireccionPagoTab,
   type DireccionPagosFilters,
 } from "@/lib/dashboard/direccion-pagos";
-import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
 const PAGE_SIZE_OPTIONS = [8, 15, 25, 50] as const;
@@ -95,8 +97,10 @@ function KpiCard({
 }
 
 export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
+  const { user } = useSession();
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
+  const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DireccionPagoTab>("todos");
   const [filters, setFilters] = useState<DireccionPagosFilters>(EMPTY_FILTERS);
@@ -104,9 +108,10 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(15);
 
   const load = useCallback(async () => {
-    const [oRes, ordRes] = await Promise.all([
+    const [oRes, ordRes, expRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
+      fetch("/api/direct-expenses?includeCompleted=1", { credentials: "include" }),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
@@ -115,6 +120,10 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
     if (ordRes.ok) {
       const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
       setOrders(d.orders);
+    }
+    if (expRes.ok) {
+      const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
+      setExpenses(d.expenses);
     }
     setLoading(false);
   }, []);
@@ -173,9 +182,13 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Pagos</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Consulta y da seguimiento a los pagos del consorcio.
+          Consulta y da seguimiento a los pagos del consorcio (OC y gastos directos).
         </p>
       </div>
+
+      {(user?.role === "pagos" || user?.role === "direccion") && (
+        <PagosProcesoBListPanel expenses={expenses} role={user?.role} />
+      )}
 
       <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         <KpiCard

@@ -12,6 +12,12 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   awaiting_invoice: ["compras", "pagos", "recepcion"],
   invoice_uploaded: [...EXPEDIENTE_CLOSE_ROLES],
   order_difference: [...EXPEDIENTE_CLOSE_ROLES, "compras"],
+  direct_expense_sent: ["pagos"],
+  direct_expense_paid: ["pagos", "recepcion"],
+  direct_expense_awaiting_invoice: ["pagos", "recepcion"],
+  direct_expense_invoice: [...EXPEDIENTE_CLOSE_ROLES],
+  invoice_first_registered: ["pagos"],
+  invoice_first_oc_requested: ["compras"],
 };
 
 export function isNotificationActionable(n: NotificationDto, role: Role): boolean {
@@ -20,11 +26,27 @@ export function isNotificationActionable(n: NotificationDto, role: Role): boolea
   if (n.type === "payment_registered" && role === "compras") {
     return n.message.toLowerCase().includes("compras");
   }
+  if (n.type.startsWith("direct_expense_")) {
+    return Boolean(n.directExpenseId);
+  }
+  if (n.type.startsWith("invoice_first_")) {
+    return Boolean(n.invoiceFirstCommitmentId);
+  }
   return Boolean(n.orderId);
 }
 
 export function notificationActionHref(n: NotificationDto, role: Role): string | null {
-  if (!n.orderId || !isNotificationActionable(n, role)) return null;
+  if (!isNotificationActionable(n, role)) return null;
+  if (n.type.startsWith("direct_expense_") && n.directExpenseId) {
+    return `/solicitudes/gasto/${n.directExpenseId}`;
+  }
+  if (n.type.startsWith("invoice_first_") && n.invoiceFirstCommitmentId) {
+    if (n.type === "invoice_first_oc_requested" && role === "compras") {
+      return `/ordenes/nueva?compromisoFacturaId=${n.invoiceFirstCommitmentId}`;
+    }
+    return `/compromisos-c/${n.invoiceFirstCommitmentId}`;
+  }
+  if (!n.orderId) return null;
   return `/ordenes/${n.orderId}`;
 }
 
@@ -48,6 +70,18 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
     case "invoice_uploaded":
     case "order_difference":
       return "Validar expediente";
+    case "direct_expense_sent":
+      return "Registrar pago";
+    case "direct_expense_paid":
+      return "Continuar gasto";
+    case "direct_expense_awaiting_invoice":
+      return "Subir factura";
+    case "direct_expense_invoice":
+      return "Validar gasto";
+    case "invoice_first_registered":
+      return "Solicitar OC";
+    case "invoice_first_oc_requested":
+      return "Generar OC";
     default:
       return "Ir a la actividad";
   }

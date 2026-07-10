@@ -10,7 +10,7 @@ import {
 import { computePaymentLabel } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
-import { notifyByRoles } from "@/lib/services/notifications";
+import { notifyDirectExpenseByRoles } from "@/lib/services/notifications";
 import { saveDirectExpenseFile } from "@/lib/services/solicitud-files";
 import {
   directExpenseInclude,
@@ -38,6 +38,7 @@ export async function POST(request: Request, ctx: Ctx) {
       reference?: string;
       notes?: string;
       comment?: string;
+      expectInvoice?: boolean;
     };
 
     if (body.action === "send") {
@@ -54,8 +55,8 @@ export async function POST(request: Request, ctx: Ctx) {
         include: directExpenseInclude,
       });
 
-      await notifyByRoles(
-        "",
+      await notifyDirectExpenseByRoles(
+        id,
         "direct_expense_sent",
         `Solicitud de gasto directo para «${row.obra.name}». Administración: registra el pago.`,
         ["pagos"]
@@ -79,6 +80,12 @@ export async function POST(request: Request, ctx: Ctx) {
       }
       const fullyPaid = newPaid >= total - 0.01;
       const paymentLabel = computePaymentLabel(total, fullyPaid ? total : newPaid);
+      const expectInvoice = Boolean(body.expectInvoice);
+      const nextStatus = fullyPaid
+        ? expectInvoice
+          ? "awaiting_invoice"
+          : "paid"
+        : "sent";
 
       const updated = await prisma.$transaction(async (tx) => {
         await tx.directExpensePayment.create({
@@ -96,15 +103,22 @@ export async function POST(request: Request, ctx: Ctx) {
             estimatedAmount: total,
             amountPaidSoFar: fullyPaid ? total : newPaid,
             paymentLabel,
-            status: fullyPaid ? "paid" : "sent",
+            status: nextStatus,
           },
           include: directExpenseInclude,
         });
       });
 
-      if (fullyPaid) {
-        await notifyByRoles(
-          "",
+      if (fullyPaid && expectInvoice) {
+        await notifyDirectExpenseByRoles(
+          id,
+          "direct_expense_awaiting_invoice",
+          `Gasto directo «${row.obra.name}» pagado y espera factura.`,
+          ["recepcion", "pagos"]
+        );
+      } else if (fullyPaid) {
+        await notifyDirectExpenseByRoles(
+          id,
           "direct_expense_paid",
           `Gasto directo «${row.obra.name}» pagado. Sube comprobante y factura.`,
           ["pagos", "recepcion"]
@@ -123,11 +137,11 @@ export async function POST(request: Request, ctx: Ctx) {
         data: { status: "awaiting_invoice" },
         include: directExpenseInclude,
       });
-      await notifyByRoles(
-        "",
+      await notifyDirectExpenseByRoles(
+        id,
         "direct_expense_awaiting_invoice",
         `Gasto directo «${row.obra.name}» espera factura.`,
-        ["recepcion"]
+        ["recepcion", "pagos"]
       );
       return NextResponse.json({ expense: mapDirectExpense(updated) });
     }
@@ -189,14 +203,17 @@ export async function PUT(request: Request, ctx: Ctx) {
       return NextResponse.json({ error: "kind y file son requeridos." }, { status: 400 });
     }
 
-    const row = await prisma.directExpenseRequest.findUnique({ where: { id } });
+    const row = await prisma.directExpenseRequest.findUnique({
+      where: { id },
+      include: { obra: true },
+    });
     if (!row) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
 
     const status = row.status as DirectExpenseStatus;
     const role = asRole(user.role);
 
     if (kind === "comprobante_pago") {
-      if (role !== "pagos" || !["sent", "paid"].includes(status)) {
+      if (role !== "pagos" || !["sent", "paid", "awaiting_invoice"].includes(status)) {
         return NextResponse.json({ error: "No puedes subir comprobante ahora." }, { status: 403 });
       }
     } else if (kind === "factura") {
@@ -217,10 +234,10 @@ export async function PUT(request: Request, ctx: Ctx) {
     let newStatus = status;
     if (kind === "factura" && (status === "paid" || status === "awaiting_invoice")) {
       newStatus = "invoice_received";
-      await notifyByRoles(
-        "",
+      await notifyDirectExpenseByRoles(
+        id,
         "direct_expense_invoice",
-        `Factura recibida en gasto directo «${row.category || row.obraId}». Valida y cierra el expediente.`,
+        `Factura recibida en gasto directo «${row.obra.name}». Valida y cierra el expediente.`,
         EXPEDIENTE_CLOSE_ROLES
       );
     }

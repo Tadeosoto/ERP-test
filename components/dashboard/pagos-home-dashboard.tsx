@@ -12,7 +12,16 @@ import {
   pagosHomeKpiCounts,
 } from "@/lib/dashboard/pagos-dashboard";
 import { getHomePanelHint } from "@/lib/dashboard/role-hints";
+import { ProveedorModal } from "@/components/compras/proveedor-modal";
+import { NuevaObraModal } from "@/components/obras/nueva-obra-modal";
+import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
+import { RegistrarPagoModal } from "@/components/pagos/registrar-pago-modal";
+import { PagosDirectExpensesPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
+import { PagosProcesoCPanel } from "@/components/dashboard/pagos-proceso-c-panel";
+import { payableOrders } from "@/lib/pagos/registrar-pago-form";
 import type {
+  DirectExpenseDto,
+  InvoiceFirstCommitmentDto,
   MovementDto,
   ObraDto,
   PendingMovementDto,
@@ -20,11 +29,6 @@ import type {
   RecurringCommitmentDto,
   SupplierDto,
 } from "@/lib/domain/types";
-import { ProveedorModal } from "@/components/compras/proveedor-modal";
-import { NuevaObraModal } from "@/components/obras/nueva-obra-modal";
-import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
-import { RegistrarPagoModal } from "@/components/pagos/registrar-pago-modal";
-import { payableOrders } from "@/lib/pagos/registrar-pago-form";
 
 function KpiIcon({ name }: { name: (typeof PAGOS_HOME_KPI_CONFIG)[number]["icon"] }) {
   const cls = "h-5 w-5 lg:h-5 lg:w-5";
@@ -131,6 +135,8 @@ export function PagosHomeDashboard({
   obras,
   suppliers,
   commitments,
+  expenses = [],
+  invoiceCommitments = [],
   recentMovements,
   pendingMovements,
   onOrdersMutated,
@@ -141,6 +147,8 @@ export function PagosHomeDashboard({
   obras: ObraDto[];
   suppliers: SupplierDto[];
   commitments: RecurringCommitmentDto[];
+  expenses?: DirectExpenseDto[];
+  invoiceCommitments?: InvoiceFirstCommitmentDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
   onOrdersMutated?: () => void;
@@ -262,6 +270,9 @@ export function PagosHomeDashboard({
           tailAlign="left"
         />
       )}
+
+      <PagosProcesoCPanel commitments={invoiceCommitments} role="pagos" />
+      <PagosDirectExpensesPanel expenses={expenses} role="pagos" />
 
       <div className="flex min-w-0 flex-col gap-3 xl:flex-row xl:items-start xl:gap-4">
         <div

@@ -78,7 +78,7 @@ export function MovementsPanel({
           pendingItems.map((m) => (
             <li key={m.id}>
               <Link
-                href={`/ordenes/${m.orderId}`}
+                href={m.href ?? `/ordenes/${m.orderId}`}
                 className={`flex gap-2 rounded-lg border border-transparent transition ${compact ? "px-0.5 py-1" : "gap-3 rounded-xl p-1"} ${rowHover}`}
               >
                 <RoleActivityIcon role={m.role} size={compact ? "xs" : "sm"} />

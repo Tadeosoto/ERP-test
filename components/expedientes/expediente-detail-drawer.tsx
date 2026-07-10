@@ -7,7 +7,9 @@ import {
   EXPEDIENTE_ESTATUS_TONE,
   EXPEDIENTE_PROCESS_STEPS,
   expedienteEstatus,
+  expedienteFolioLabel,
   expedienteStepDone,
+  isProcesoBExpediente,
 } from "@/lib/dashboard/direccion-expedientes";
 import { PAYMENT_TYPE_TEXT, FILE_KIND_LABEL } from "@/lib/domain/labels";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
@@ -24,6 +26,10 @@ export function ExpedienteDetailDrawer({
   const history = buildActivityHistory(order);
   const paymentTotal = order.paymentRecords.length || (order.amountPaidSoFar > 0 ? 1 : 0);
   const paymentSlots = Math.max(paymentTotal, order.paymentType === "parcialidades" ? 2 : 1);
+  const procesoB = isProcesoBExpediente(order);
+  const detailHref = procesoB ? `/solicitudes/gasto/${order.id}` : `/ordenes/${order.id}`;
+  const fileHref = (fileId: string) =>
+    procesoB ? `/api/solicitud-files/${fileId}?download=1` : `/api/files/${fileId}?download=1`;
 
   return (
     <>
@@ -39,14 +45,24 @@ export function ExpedienteDetailDrawer({
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-4 py-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
-              <h2 className="text-lg font-bold text-zinc-900">{order.ocFolio || order.title}</h2>
+              <h2 className="text-lg font-bold text-zinc-900">
+                {procesoB ? expedienteFolioLabel(order) : order.ocFolio || order.title}
+              </h2>
+              {procesoB && (
+                <span className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-inset ring-teal-200">
+                  Proceso B
+                </span>
+              )}
               <span
                 className={`inline-flex rounded-full px-2.5 py-0.5 text-[11px] font-semibold ring-1 ring-inset ${EXPEDIENTE_ESTATUS_TONE[estatus]}`}
               >
                 {EXPEDIENTE_ESTATUS_LABEL[estatus]}
               </span>
             </div>
-            <p className="mt-1 truncate text-sm font-medium text-zinc-800">{order.supplierName}</p>
+            {procesoB && <p className="mt-1 truncate text-sm font-medium text-zinc-800">{order.title}</p>}
+            <p className={`truncate text-sm font-medium text-zinc-800 ${procesoB ? "mt-0.5" : "mt-1"}`}>
+              {order.supplierName || "Sin proveedor"}
+            </p>
             <p className="truncate text-xs text-sky-800">Obra: {order.obraName}</p>
           </div>
           <button
@@ -82,6 +98,7 @@ export function ExpedienteDetailDrawer({
             <div className="mt-3 flex items-center justify-between gap-1">
               {EXPEDIENTE_PROCESS_STEPS.map((step, i) => {
                 const done = expedienteStepDone(order, step.key);
+                const label = procesoB && step.key === "oc" ? "Sin OC" : step.label;
                 return (
                   <div key={step.key} className="flex min-w-0 flex-1 flex-col items-center gap-1">
                     <span
@@ -97,13 +114,7 @@ export function ExpedienteDetailDrawer({
                         i + 1
                       )}
                     </span>
-                    <span className="text-center text-[9px] leading-tight text-zinc-600">{step.label}</span>
-                    {i < EXPEDIENTE_PROCESS_STEPS.length - 1 && (
-                      <span
-                        className={`absolute hidden h-0.5 w-full ${done ? "bg-emerald-400" : "bg-zinc-200"}`}
-                        aria-hidden
-                      />
-                    )}
+                    <span className="text-center text-[9px] leading-tight text-zinc-600">{label}</span>
                   </div>
                 );
               })}
@@ -114,19 +125,27 @@ export function ExpedienteDetailDrawer({
             <h3 className="text-xs font-bold uppercase tracking-wide text-zinc-500">Información general</h3>
             <dl className="mt-2 grid grid-cols-2 gap-x-3 gap-y-2 text-xs">
               <div>
-                <dt className="text-zinc-500">Fecha OC</dt>
+                <dt className="text-zinc-500">{procesoB ? "Folio OC" : "Fecha OC"}</dt>
                 <dd className="font-medium text-zinc-800">
-                  {order.ocDate ? formatDateShort(order.ocDate) : formatDateShort(order.createdAt)}
+                  {procesoB
+                    ? "Sin folio"
+                    : order.ocDate
+                      ? formatDateShort(order.ocDate)
+                      : formatDateShort(order.createdAt)}
                 </dd>
               </div>
               <div>
                 <dt className="text-zinc-500">Proveedor</dt>
-                <dd className="truncate font-medium text-zinc-800">{order.supplierName}</dd>
+                <dd className="truncate font-medium text-zinc-800">{order.supplierName || "—"}</dd>
               </div>
               <div>
-                <dt className="text-zinc-500">Condición de pago</dt>
+                <dt className="text-zinc-500">{procesoB ? "Concepto" : "Condición de pago"}</dt>
                 <dd className="font-medium text-zinc-800">
-                  {order.paymentType ? PAYMENT_TYPE_TEXT[order.paymentType] : order.paymentTerms || "—"}
+                  {procesoB
+                    ? order.title
+                    : order.paymentType
+                      ? PAYMENT_TYPE_TEXT[order.paymentType]
+                      : order.paymentTerms || "—"}
                 </dd>
               </div>
               <div>
@@ -207,7 +226,7 @@ export function ExpedienteDetailDrawer({
                       <span className="text-[10px] text-zinc-500">{formatDateShort(f.createdAt)}</span>
                     </span>
                     <a
-                      href={`/api/files/${f.id}?download=1`}
+                      href={fileHref(f.id)}
                       className="shrink-0 rounded-lg p-2 text-violet-700 hover:bg-violet-50"
                       title="Descargar"
                     >
@@ -241,11 +260,14 @@ export function ExpedienteDetailDrawer({
         </div>
 
         <div className="flex shrink-0 flex-col gap-2 border-t border-zinc-100 px-4 py-4 sm:flex-row">
-          <Link href={`/ordenes/${order.id}`} className="btn-secondary flex-1 justify-center text-sm">
+          <Link href={detailHref} className="btn-secondary flex-1 justify-center text-sm">
             Ver expediente completo
           </Link>
-          <Link href={`/ordenes/${order.id}#pagos`} className="btn-primary flex-1 justify-center text-sm">
-            Ver pagos
+          <Link
+            href={procesoB ? detailHref : `${detailHref}#pagos`}
+            className="btn-primary flex-1 justify-center text-sm"
+          >
+            {procesoB ? "Abrir gasto" : "Ver pagos"}
           </Link>
         </div>
       </aside>
