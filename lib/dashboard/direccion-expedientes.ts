@@ -1,6 +1,6 @@
-import { STATUS_LABEL } from "@/lib/domain/labels";
+import { STATUS_LABEL, ROLE_LABEL } from "@/lib/domain/labels";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import type { PurchaseOrderDto } from "@/lib/domain/types";
+import type { PurchaseOrderDto, Role } from "@/lib/domain/types";
 import { isPendingAuthorization, isActivePartial } from "@/lib/dashboard/direccion-dashboard";
 
 export type ExpedienteTab = "todos" | "completos" | "en_proceso" | "atencion";
@@ -16,6 +16,7 @@ export type ExpedienteFilters = {
   obraId: string;
   supplier: string;
   estatus: string;
+  area: string;
   dateFrom: string;
   dateTo: string;
   search: string;
@@ -65,6 +66,42 @@ export function ordersInExpedientesModule(orders: PurchaseOrderDto[]): PurchaseO
   return orders.filter((o) => o.status !== "draft" || o.files.length > 0);
 }
 
+export const EXPEDIENTE_AREA_OPTIONS: { value: Role | ""; label: string }[] = [
+  { value: "", label: "Todas las áreas" },
+  { value: "ingeniero", label: ROLE_LABEL.ingeniero },
+  { value: "compras", label: ROLE_LABEL.compras },
+  { value: "pagos", label: ROLE_LABEL.pagos },
+  { value: "recepcion", label: ROLE_LABEL.recepcion },
+  { value: "contabilidad", label: ROLE_LABEL.contabilidad },
+];
+
+/** Área que debe actuar según el estatus actual del expediente. */
+export function expedientePendingArea(order: PurchaseOrderDto): Role | null {
+  switch (order.status) {
+    case "awaitingEngineer":
+    case "engineerRejected":
+      return "ingeniero";
+    case "awaitingPatyDeadline":
+      return "compras";
+    case "awaitingPayment":
+      return "pagos";
+    case "paid":
+    case "awaitingInvoice":
+      return "recepcion";
+    case "invoiceReceived":
+    case "difference":
+      return "contabilidad";
+    default:
+      return null;
+  }
+}
+
+export function expedienteAttentionAreaLabel(order: PurchaseOrderDto): string {
+  const role = expedientePendingArea(order);
+  if (!role) return "—";
+  return ROLE_LABEL[role];
+}
+
 export function expedienteEstatus(order: PurchaseOrderDto): ExpedienteEstatus {
   if (order.status === "completed") return "completado";
   if (order.status === "difference" || order.status === "engineerRejected") return "requiere_atencion";
@@ -74,7 +111,9 @@ export function expedienteEstatus(order: PurchaseOrderDto): ExpedienteEstatus {
 }
 
 export function expedienteRequiresAttention(order: PurchaseOrderDto): boolean {
-  return expedienteEstatus(order) === "requiere_atencion";
+  if (order.status === "completed" || order.status === "draft") return false;
+  if (order.status === "difference" || order.status === "engineerRejected") return true;
+  return expedientePendingArea(order) !== null;
 }
 
 export function expedienteKpis(orders: PurchaseOrderDto[]) {
@@ -86,11 +125,20 @@ export function expedienteKpis(orders: PurchaseOrderDto[]) {
     return e === "en_proceso" || e === "parcial" || e === "pendiente";
   });
 
+  const atencionPorArea = {
+    ingeniero: atencion.filter((o) => expedientePendingArea(o) === "ingeniero").length,
+    compras: atencion.filter((o) => expedientePendingArea(o) === "compras").length,
+    pagos: atencion.filter((o) => expedientePendingArea(o) === "pagos").length,
+    recepcion: atencion.filter((o) => expedientePendingArea(o) === "recepcion").length,
+    contabilidad: atencion.filter((o) => expedientePendingArea(o) === "contabilidad").length,
+  };
+
   return {
     total: base.length,
     completos: completos.length,
     enProceso: enProceso.length,
     atencion: atencion.length,
+    atencionPorArea,
   };
 }
 
@@ -127,6 +175,7 @@ export function applyExpedienteFilters(
     if (filters.obraId && o.obraId !== filters.obraId) return false;
     if (filters.supplier && o.supplierName !== filters.supplier) return false;
     if (filters.estatus && expedienteEstatus(o) !== filters.estatus) return false;
+    if (filters.area && expedientePendingArea(o) !== filters.area) return false;
 
     const activity = lastActivity(o).at.slice(0, 10);
     if (filters.dateFrom && activity && activity < filters.dateFrom) return false;

@@ -81,6 +81,50 @@ export function partialOrdersForSidebar(orders: PurchaseOrderDto[]): PurchaseOrd
   return orders.filter(isActivePartial).slice(0, 5);
 }
 
+export function agregarFacturaKpis(commitments: InvoiceFirstCommitmentDto[]): {
+  pendientesExpediente: number;
+  aprobadasMes: number;
+  rechazadas: number;
+} {
+  const month = new Date().toISOString().slice(0, 7);
+  const pendientes = commitments.filter((c) => c.status === "awaiting_oc" || c.status === "oc_requested");
+  const aprobadasMes = commitments.filter((c) => c.createdAt.slice(0, 7) === month);
+  return {
+    pendientesExpediente: pendientes.length,
+    aprobadasMes: aprobadasMes.length,
+    rechazadas: 0,
+  };
+}
+
+export function invoiceFirstAlerts(commitments: InvoiceFirstCommitmentDto[]): {
+  id: string;
+  tone: "amber" | "red" | "violet" | "orange";
+  message: string;
+}[] {
+  const alerts: { id: string; tone: "amber" | "red" | "violet" | "orange"; message: string }[] = [];
+  const stale = commitments.filter((c) => {
+    if (c.status !== "awaiting_oc") return false;
+    const days = (Date.now() - new Date(c.createdAt).getTime()) / (1000 * 60 * 60 * 24);
+    return days > 3;
+  });
+  if (stale.length > 0) {
+    alerts.push({
+      id: "stale-invoice",
+      tone: "amber",
+      message: `${stale.length} factura${stale.length === 1 ? "" : "s"} sin revisar más de 3 días — Requieren atención`,
+    });
+  }
+  const sinObra = commitments.filter((c) => !c.obraId && c.status === "awaiting_oc");
+  if (sinObra.length > 0) {
+    alerts.push({
+      id: "no-obra",
+      tone: "violet",
+      message: `${sinObra.length} factura${sinObra.length === 1 ? "" : "s"} sin obra asignada — Asignar obra correspondiente`,
+    });
+  }
+  return alerts;
+}
+
 export function partialPaymentLabel(order: PurchaseOrderDto): string {
   const paid = orderPaymentTotal(order);
   const total = order.totalAmount;

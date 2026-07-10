@@ -39,6 +39,7 @@ const direccionNav = [
   { href: "/obras", label: "Obras", icon: "grid" },
   { href: "/pagos", label: "Pagos", icon: "pay" },
   { href: "/expedientes", label: "Expedientes", icon: "folder" },
+  { href: "/agregar-factura", label: "Agregar Factura", icon: "invoice" },
   { href: "/proveedores", label: "Proveedores", icon: "suppliers" },
   { href: "/reportes", label: "Reportes", icon: "reports" },
   { href: "/flujo", label: "Mapa del proceso", icon: "flow", shortLabel: "Mapa" },
@@ -148,6 +149,17 @@ function NavIcon({ name }: { name: string }) {
         />
       </svg>
     );
+  if (name === "invoice")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+        />
+      </svg>
+    );
   if (name === "reports")
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -167,6 +179,7 @@ function navActive(pathname: string | null, href: string, searchParams: URLSearc
   const estado = searchParams.get("estado");
   if (href === "/inicio") return pathname === "/inicio";
   if (href === "/expedientes") return pathname.startsWith("/expedientes");
+  if (href === "/agregar-factura") return pathname.startsWith("/agregar-factura");
   if (href === "/pagos") return pathname.startsWith("/pagos");
   if (href === "/ordenes") return pathname === "/ordenes";
   if (href === "/obras?estado=pago") {

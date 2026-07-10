@@ -59,13 +59,13 @@ export function HomeDashboard() {
         : Promise.resolve(null),
       fetch("/api/movimientos?vista=recientes&limit=5", { credentials: "include" }),
       fetch("/api/movimientos?vista=pendientes&limit=5", { credentials: "include" }),
-      user.role === "pagos" || user.role === "direccion"
+      user.role === "pagos"
         ? fetch("/api/suppliers", { credentials: "include" })
         : Promise.resolve(null),
       user.role === "pagos"
         ? fetch("/api/recurring-commitments", { credentials: "include" })
         : Promise.resolve(null),
-      user.role === "direccion" || user.role === "pagos" || user.role === "compras"
+      user.role === "pagos" || user.role === "compras"
         ? fetch("/api/invoice-first-commitments", { credentials: "include" })
         : Promise.resolve(null),
     ]);
@@ -202,11 +202,8 @@ export function HomeDashboard() {
         userName={user.name}
         orders={orders}
         obras={obras}
-        suppliers={suppliers}
-        invoiceCommitments={invoiceCommitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
-        onCommitmentsMutated={() => void load()}
       />
     );
   }

@@ -46,6 +46,7 @@ export async function POST(request: Request) {
       supplierId?: string | null;
       supplierName?: string;
       obraId?: string | null;
+      invoiceFolio?: string;
       totalAmount?: number;
       currency?: string;
       invoiceDate?: string;
@@ -63,6 +64,17 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El monto total debe ser mayor a cero." }, { status: 400 });
     }
 
+    const folioInput = body.invoiceFolio?.trim() ?? "";
+    let invoiceFolio = folioInput || (await nextInvoiceFolio());
+    if (folioInput) {
+      const dup = await prisma.invoiceFirstCommitment.findFirst({
+        where: { invoiceFolio: folioInput },
+      });
+      if (dup) {
+        return NextResponse.json({ error: "Ya existe una factura con ese número." }, { status: 400 });
+      }
+    }
+
     let supplierName = body.supplierName?.trim() ?? "";
     if (body.supplierId) {
       const supplier = await prisma.supplier.findUnique({ where: { id: body.supplierId } });
@@ -78,8 +90,6 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Obra no encontrada." }, { status: 400 });
       }
     }
-
-    const invoiceFolio = await nextInvoiceFolio();
 
     const row = await prisma.invoiceFirstCommitment.create({
       data: {
