@@ -5,15 +5,21 @@ import { useMemo } from "react";
 import { DireccionExpedientesPanel } from "@/components/expedientes/direccion-expedientes-panel";
 import { DireccionHomeSidebar } from "@/components/dashboard/direccion-home-sidebar";
 import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
+import { useSession } from "@/components/session-provider";
 import {
   direccionKpiCounts,
   kpiMonthGrowth,
   pendingAuthorizationCount,
 } from "@/lib/dashboard/direccion-dashboard";
-import { expedienteKpis, mergeExpedienteOrders } from "@/lib/dashboard/direccion-expedientes";
+import {
+  canShowExpedienteAdminActions,
+  expedienteKpis,
+  mergeExpedienteOrders,
+} from "@/lib/dashboard/direccion-expedientes";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type {
   DirectExpenseDto,
+  InvoiceFirstCommitmentDto,
   MovementDto,
   ObraDto,
   PendingMovementDto,
@@ -78,6 +84,7 @@ export function DireccionHomeDashboard({
   orders,
   obras,
   expenses = [],
+  invoiceCommitments = [],
   recentMovements,
   pendingMovements,
 }: {
@@ -85,13 +92,18 @@ export function DireccionHomeDashboard({
   orders: PurchaseOrderDto[];
   obras: ObraDto[];
   expenses?: DirectExpenseDto[];
+  invoiceCommitments?: InvoiceFirstCommitmentDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
 }) {
+  const { user } = useSession();
   const kpis = useMemo(() => direccionKpiCounts(orders), [orders]);
   const growth = useMemo(() => kpiMonthGrowth(orders), [orders]);
   const pendingCount = useMemo(() => pendingAuthorizationCount(orders), [orders]);
-  const expedienteRows = useMemo(() => mergeExpedienteOrders(orders, expenses), [orders, expenses]);
+  const expedienteRows = useMemo(
+    () => mergeExpedienteOrders(orders, expenses, invoiceCommitments),
+    [orders, expenses, invoiceCommitments]
+  );
   const expKpis = useMemo(() => expedienteKpis(expedienteRows), [expedienteRows]);
   const tabCounts = useMemo(
     () => ({
@@ -103,6 +115,7 @@ export function DireccionHomeDashboard({
     [expKpis]
   );
   const currency = orders[0]?.currency ?? "MXN";
+  const showAdminActions = canShowExpedienteAdminActions(user?.role);
 
   const growthText =
     growth === null
@@ -162,6 +175,7 @@ export function DireccionHomeDashboard({
           obras={obras}
           compact
           showExport={false}
+          showAdminActions={showAdminActions}
           defaultTab="todos"
           tabCounts={tabCounts}
         />

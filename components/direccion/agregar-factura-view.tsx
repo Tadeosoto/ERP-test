@@ -1,12 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
+import { AgregarFacturaCommitmentsList } from "@/components/direccion/agregar-factura-commitments-list";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { DireccionHomeSidebar } from "@/components/dashboard/direccion-home-sidebar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { usePageRefreshRegister } from "@/components/app-shell";
-import { agregarFacturaKpis, invoiceFirstAlerts } from "@/lib/dashboard/direccion-proceso-c-dashboard";
+import {
+  agregarFacturaKpis,
+  invoiceFirstAlerts,
+  type AgregarFacturaKpiKey,
+} from "@/lib/dashboard/direccion-proceso-c-dashboard";
 import type {
   InvoiceFirstCommitmentDto,
   MovementDto,
@@ -58,24 +63,40 @@ function SummaryCard({
   value,
   accent,
   iconBg,
+  active,
+  onClick,
 }: {
   label: string;
   value: number;
   accent: string;
   iconBg: string;
+  active?: boolean;
+  onClick: () => void;
 }) {
   return (
-    <div className={`rounded-2xl border border-zinc-200/80 border-l-4 p-4 shadow-sm ${accent}`}>
+    <button
+      type="button"
+      onClick={onClick}
+      className={`w-full rounded-2xl border border-l-4 p-4 text-left shadow-sm transition hover:shadow-md ${accent} ${
+        active ? "ring-2 ring-violet-400 ring-offset-1" : "border-zinc-200/80"
+      }`}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
           <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+            <path
+              strokeLinecap="round"
+              strokeLinejoin="round"
+              strokeWidth={2}
+              d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
+            />
           </svg>
         </span>
         <span className="text-2xl font-bold tabular-nums text-zinc-900">{value}</span>
       </div>
       <p className="mt-2 text-xs font-semibold leading-snug text-zinc-800">{label}</p>
-    </div>
+      <p className="mt-1 text-[11px] font-medium text-violet-700">Ver listado →</p>
+    </button>
   );
 }
 
@@ -93,13 +114,14 @@ export function AgregarFacturaView() {
   const [commitments, setCommitments] = useState<InvoiceFirstCommitmentDto[]>([]);
   const [recentMovements, setRecentMovements] = useState<MovementDto[]>([]);
   const [pendingMovements, setPendingMovements] = useState<PendingMovementDto[]>([]);
+  const [activeKpi, setActiveKpi] = useState<AgregarFacturaKpiKey | null>("pendientes");
 
   const load = useCallback(async () => {
     const [oRes, sRes, ordRes, invRes, recentRes, pendingRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/suppliers", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
-      fetch("/api/invoice-first-commitments", { credentials: "include" }),
+      fetch("/api/invoice-first-commitments?includeAll=1", { credentials: "include" }),
       fetch("/api/movimientos?vista=recientes&limit=5", { credentials: "include" }),
       fetch("/api/movimientos?vista=pendientes&limit=5", { credentials: "include" }),
     ]);
@@ -137,6 +159,16 @@ export function AgregarFacturaView() {
 
   const kpis = useMemo(() => agregarFacturaKpis(commitments), [commitments]);
   const extraAlerts = useMemo(() => invoiceFirstAlerts(commitments), [commitments]);
+
+  function selectKpi(key: AgregarFacturaKpiKey) {
+    const next = activeKpi === key ? null : key;
+    setActiveKpi(next);
+    if (next) {
+      window.setTimeout(() => {
+        document.getElementById("agregar-factura-lista")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }, 50);
+    }
+  }
 
   function resetForm() {
     setForm({ ...EMPTY_FORM, invoiceDate: new Date().toISOString().slice(0, 10) });
@@ -204,6 +236,7 @@ export function AgregarFacturaView() {
 
       showSuccess(`Solicitud ${data.commitment.invoiceFolio} enviada. Administración fue notificada.`);
       resetForm();
+      setActiveKpi("pendientes");
       await load();
     } catch (err) {
       const msg = err instanceof Error ? err.message : "Error al guardar.";
@@ -231,20 +264,35 @@ export function AgregarFacturaView() {
           value={kpis.pendientesExpediente}
           accent="border-l-violet-400 bg-violet-50/35"
           iconBg="bg-violet-100 text-violet-800"
+          active={activeKpi === "pendientes"}
+          onClick={() => selectKpi("pendientes")}
         />
         <SummaryCard
           label="Solicitudes registradas este mes"
           value={kpis.aprobadasMes}
           accent="border-l-orange-400 bg-orange-50/40"
           iconBg="bg-orange-100 text-orange-700"
+          active={activeKpi === "mes"}
+          onClick={() => selectKpi("mes")}
         />
         <SummaryCard
           label="Facturas rechazadas"
           value={kpis.rechazadas}
           accent="border-l-sky-400 bg-sky-50/35"
           iconBg="bg-sky-100 text-sky-800"
+          active={activeKpi === "rechazadas"}
+          onClick={() => selectKpi("rechazadas")}
         />
       </div>
+
+      {activeKpi && (
+        <AgregarFacturaCommitmentsList
+          kpiKey={activeKpi}
+          commitments={commitments}
+          onClose={() => setActiveKpi(null)}
+          onMutated={() => void load()}
+        />
+      )}
 
       <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17.5rem] 2xl:grid-cols-[minmax(0,1fr)_19rem]">
         <section className="rounded-2xl border border-zinc-200 bg-white p-4 shadow-sm sm:p-5">

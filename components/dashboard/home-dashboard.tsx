@@ -71,7 +71,9 @@ export function HomeDashboard() {
         : Promise.resolve(null),
       user.role === "pagos" || user.role === "compras"
         ? fetch("/api/invoice-first-commitments", { credentials: "include" })
-        : Promise.resolve(null),
+        : user.role === "direccion"
+          ? fetch("/api/invoice-first-commitments?includeAll=1", { credentials: "include" })
+          : Promise.resolve(null),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
@@ -211,6 +213,7 @@ export function HomeDashboard() {
         orders={orders}
         obras={obras}
         expenses={expenses}
+        invoiceCommitments={invoiceCommitments}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
       />

@@ -110,12 +110,20 @@ export function DireccionCommitmentsPanel({
                     {c.lastPaymentAt ? formatDateShort(c.lastPaymentAt) : "—"}
                   </td>
                   <td className="px-4 py-2.5 text-right">
-                    <Link
-                      href={`/compromisos-c/${c.id}`}
-                      className="inline-flex rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100"
-                    >
-                      Ver seguimiento
-                    </Link>
+                    <div className="inline-flex flex-wrap items-center justify-end gap-1.5">
+                      <Link
+                        href={`/compromisos-c/${c.id}`}
+                        className="inline-flex rounded-lg border border-violet-200 bg-violet-50 px-3 py-1.5 text-xs font-semibold text-violet-800 hover:bg-violet-100"
+                      >
+                        Ver
+                      </Link>
+                      <Link
+                        href={`/compromisos-c/${c.id}?edit=1`}
+                        className="inline-flex rounded-lg border border-zinc-200 bg-white px-3 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
+                      >
+                        Editar
+                      </Link>
+                    </div>
                   </td>
                 </tr>
               ))

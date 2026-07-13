@@ -17,12 +17,13 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
 
+    const includeAll = searchParams.get("includeAll") === "1";
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
-    if (user.role === "pagos" && !status) {
+    if (user.role === "pagos" && !status && !includeAll) {
       where.status = { in: ["awaiting_oc", "oc_requested"] };
     }
-    if (user.role === "compras" && !status) {
+    if (user.role === "compras" && !status && !includeAll) {
       where.status = { in: ["oc_requested", "in_payment", "completed"] };
     }
 

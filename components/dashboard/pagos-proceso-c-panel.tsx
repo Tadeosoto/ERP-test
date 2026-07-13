@@ -73,18 +73,30 @@ export function PagosProcesoCPanel({
                 </p>
               )}
             </Link>
-            <Link
-              href={
-                role === "compras" && c.status === "oc_requested"
-                  ? `/ordenes/nueva?compromisoFacturaId=${c.id}`
-                  : `/compromisos-c/${c.id}`
-              }
-              className={`btn-primary shrink-0 bg-violet-700 hover:bg-violet-800 ${
-                compact ? "px-2.5 py-1 text-[11px]" : "text-xs"
-              }`}
-            >
-              {actionFor(role, c.status)}
-            </Link>
+            <div className="flex shrink-0 flex-wrap gap-1.5">
+              <Link
+                href={
+                  role === "compras" && c.status === "oc_requested"
+                    ? `/ordenes/nueva?compromisoFacturaId=${c.id}`
+                    : `/compromisos-c/${c.id}`
+                }
+                className={`btn-primary shrink-0 bg-violet-700 hover:bg-violet-800 ${
+                  compact ? "px-2.5 py-1 text-[11px]" : "text-xs"
+                }`}
+              >
+                {actionFor(role, c.status)}
+              </Link>
+              {(role === "pagos" || role === "direccion") && (
+                <Link
+                  href={`/compromisos-c/${c.id}?edit=1`}
+                  className={`rounded-lg border border-zinc-200 bg-white font-semibold text-zinc-700 hover:bg-zinc-50 ${
+                    compact ? "px-2.5 py-1 text-[11px]" : "px-2.5 py-1.5 text-xs"
+                  }`}
+                >
+                  Editar
+                </Link>
+              )}
+            </div>
           </li>
         ))}
       </ul>

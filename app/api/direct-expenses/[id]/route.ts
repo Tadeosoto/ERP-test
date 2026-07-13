@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
   canCorrectDirectExpense,
+  canDeleteDirectExpense,
   canEditDirectExpense,
   type DirectExpenseStatus,
 } from "@/lib/domain/solicitudes";
@@ -125,6 +126,28 @@ export async function PATCH(request: Request, ctx: Ctx) {
     });
 
     return NextResponse.json({ expense: mapDirectExpense(updated) });
+  } catch (e) {
+    return apiErrorResponse(e);
+  }
+}
+
+export async function DELETE(_request: Request, ctx: Ctx) {
+  try {
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
+    if (!canDeleteDirectExpense(role)) {
+      return NextResponse.json(
+        { error: "Solo Dirección o Administración pueden eliminar este gasto." },
+        { status: 403 }
+      );
+    }
+
+    const { id } = await ctx.params;
+    const row = await prisma.directExpenseRequest.findUnique({ where: { id } });
+    if (!row) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
+
+    await prisma.directExpenseRequest.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);
   }

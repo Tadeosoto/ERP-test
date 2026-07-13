@@ -86,14 +86,54 @@ export function agregarFacturaKpis(commitments: InvoiceFirstCommitmentDto[]): {
   aprobadasMes: number;
   rechazadas: number;
 } {
-  const month = new Date().toISOString().slice(0, 7);
-  const pendientes = commitments.filter((c) => c.status === "awaiting_oc" || c.status === "oc_requested");
-  const aprobadasMes = commitments.filter((c) => c.createdAt.slice(0, 7) === month);
   return {
-    pendientesExpediente: pendientes.length,
-    aprobadasMes: aprobadasMes.length,
-    rechazadas: 0,
+    pendientesExpediente: filterAgregarFacturaKpi(commitments, "pendientes").length,
+    aprobadasMes: filterAgregarFacturaKpi(commitments, "mes").length,
+    rechazadas: filterAgregarFacturaKpi(commitments, "rechazadas").length,
   };
+}
+
+export type AgregarFacturaKpiKey = "pendientes" | "mes" | "rechazadas";
+
+export const AGREGAR_FACTURA_KPI_META: Record<
+  AgregarFacturaKpiKey,
+  { title: string; empty: string; description: string }
+> = {
+  pendientes: {
+    title: "Facturas pendientes de abrir expediente",
+    description: "Esperan que Administración solicite la OC a Compras. Puedes editar o eliminar mientras no haya OC.",
+    empty: "No hay facturas pendientes de abrir expediente.",
+  },
+  mes: {
+    title: "Solicitudes registradas este mes",
+    description: "Todas las facturas Proceso C dadas de alta en el mes en curso.",
+    empty: "No hay solicitudes registradas este mes.",
+  },
+  rechazadas: {
+    title: "Facturas rechazadas",
+    description: "Facturas Proceso C que fueron rechazadas o canceladas.",
+    empty: "No hay facturas rechazadas. El rechazo formal aún no está habilitado en este flujo.",
+  },
+};
+
+export function filterAgregarFacturaKpi(
+  commitments: InvoiceFirstCommitmentDto[],
+  key: AgregarFacturaKpiKey
+): InvoiceFirstCommitmentDto[] {
+  const month = new Date().toISOString().slice(0, 7);
+  switch (key) {
+    case "pendientes":
+      return commitments.filter((c) => c.status === "awaiting_oc" || c.status === "oc_requested");
+    case "mes":
+      return commitments
+        .filter((c) => c.createdAt.slice(0, 7) === month)
+        .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    case "rechazadas":
+      // No hay estatus de rechazo en Proceso C todavía.
+      return [];
+    default:
+      return [];
+  }
 }
 
 export function invoiceFirstAlerts(commitments: InvoiceFirstCommitmentDto[]): {

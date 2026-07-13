@@ -21,6 +21,25 @@ export function canCreateOcFromInvoiceFirst(status: InvoiceFirstStatus, role: Ro
   return role === "compras" && status === "oc_requested";
 }
 
+/** Dirección y Administración pueden corregir datos del compromiso. */
+export function canEditInvoiceFirstCommitment(role: Role): boolean {
+  return role === "direccion" || role === "pagos";
+}
+
+/**
+ * Dirección y Administración pueden borrar si aún no hay OC vinculada.
+ * Con OC ya creada hay que gestionar la orden por separado.
+ */
+export function canDeleteInvoiceFirstCommitment(
+  role: Role,
+  status: InvoiceFirstStatus,
+  hasPurchaseOrder: boolean
+): boolean {
+  if (!(role === "direccion" || role === "pagos")) return false;
+  if (hasPurchaseOrder) return false;
+  return status === "awaiting_oc" || status === "oc_requested";
+}
+
 export function invoiceFirstAwaitingOcCount(status: InvoiceFirstStatus): boolean {
   return status === "awaiting_oc" || status === "oc_requested";
 }

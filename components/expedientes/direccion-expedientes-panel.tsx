@@ -3,9 +3,16 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { OrderActionMenu } from "@/components/obras/order-action-menu";
+import { useSession } from "@/components/session-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { OcLink } from "@/components/ui/oc-link";
 import {
   applyExpedienteFilters,
+  canDeleteProcesoBExpediente,
+  canDeleteProcesoCExpediente,
+  canEditProcesoBExpediente,
+  canEditProcesoCExpediente,
   EXPEDIENTE_AREA_OPTIONS,
   EXPEDIENTE_ESTATUS_LABEL,
   EXPEDIENTE_ESTATUS_OPTIONS,
@@ -17,6 +24,7 @@ import {
   exportExpedientesCsv,
   filterByExpedienteTab,
   isProcesoBExpediente,
+  isProcesoCExpediente,
   lastActivity,
   paginateItems,
   totalPages,
@@ -47,6 +55,134 @@ function ExpedienteStatusBadge({ order }: { order: PurchaseOrderDto }) {
     >
       {EXPEDIENTE_ESTATUS_LABEL[key]}
     </span>
+  );
+}
+
+const actionBtnClass =
+  "inline-flex rounded-lg border border-zinc-200 bg-white px-2 py-1 text-[11px] font-semibold text-zinc-700 hover:bg-zinc-50 disabled:opacity-40";
+const dangerBtnClass =
+  "inline-flex rounded-lg border border-red-200 bg-white px-2 py-1 text-[11px] font-semibold text-red-700 hover:bg-red-50 disabled:opacity-40";
+
+function ExpedienteAdminActions({
+  order,
+  onOrderMutated,
+}: {
+  order: PurchaseOrderDto;
+  onOrderMutated?: () => void;
+}) {
+  const { user } = useSession();
+  const { confirmDelete } = useConfirmDelete();
+  const { showSuccess, showError } = useFeedback();
+  const [busy, setBusy] = useState(false);
+  const role = user?.role;
+
+  if (isProcesoBExpediente(order)) {
+    const canEdit = canEditProcesoBExpediente(order, role);
+    const canDelete = canDeleteProcesoBExpediente(role);
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Link href={`/solicitudes/gasto/${order.id}`} className={actionBtnClass}>
+          Ver
+        </Link>
+        {canEdit && (
+          <Link href={`/solicitudes/gasto/${order.id}?edit=1`} className={actionBtnClass}>
+            Editar
+          </Link>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            disabled={busy}
+            className={dangerBtnClass}
+            onClick={async () => {
+              const ok = await confirmDelete({
+                title: "¿Eliminar gasto directo?",
+                message: `Se eliminará el expediente «${order.title}» (Proceso B). Esta acción no se puede deshacer.`,
+                confirmLabel: "Eliminar",
+              });
+              if (!ok) return;
+              setBusy(true);
+              try {
+                const res = await fetch(`/api/direct-expenses/${order.id}`, {
+                  method: "DELETE",
+                  credentials: "include",
+                });
+                const data = (await res.json().catch(() => ({}))) as { error?: string };
+                if (!res.ok) {
+                  showError(data.error ?? "No se pudo eliminar el gasto.");
+                  return;
+                }
+                showSuccess("Gasto eliminado.");
+                onOrderMutated?.();
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Eliminar
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  if (isProcesoCExpediente(order)) {
+    const canEdit = canEditProcesoCExpediente(role);
+    const canDelete = canDeleteProcesoCExpediente(order, role);
+    return (
+      <div className="flex flex-wrap items-center justify-end gap-1">
+        <Link href={`/compromisos-c/${order.id}`} className={actionBtnClass}>
+          Ver
+        </Link>
+        {canEdit && (
+          <Link href={`/compromisos-c/${order.id}?edit=1`} className={actionBtnClass}>
+            Editar
+          </Link>
+        )}
+        {canDelete && (
+          <button
+            type="button"
+            disabled={busy}
+            className={dangerBtnClass}
+            onClick={async () => {
+              const ok = await confirmDelete({
+                title: "¿Eliminar factura (Proceso C)?",
+                message: `Se eliminará el compromiso «${expedienteFolioLabel(order)}». Solo es posible si aún no hay OC vinculada.`,
+                confirmLabel: "Eliminar",
+              });
+              if (!ok) return;
+              setBusy(true);
+              try {
+                const res = await fetch(`/api/invoice-first-commitments/${order.id}`, {
+                  method: "DELETE",
+                  credentials: "include",
+                });
+                const data = (await res.json().catch(() => ({}))) as { error?: string };
+                if (!res.ok) {
+                  showError(data.error ?? "No se pudo eliminar el compromiso.");
+                  return;
+                }
+                showSuccess("Compromiso eliminado.");
+                onOrderMutated?.();
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Eliminar
+          </button>
+        )}
+      </div>
+    );
+  }
+
+  return (
+    <OrderActionMenu
+      order={order}
+      onOrderMutated={onOrderMutated}
+      primaryLabel="Ver"
+      appearance="neutral"
+    />
   );
 }
 
@@ -293,6 +429,21 @@ export function DireccionExpedientesPanel({
                             </span>
                           </p>
                         </div>
+                      ) : isProcesoCExpediente(order) ? (
+                        <div className="min-w-0">
+                          <Link
+                            href={`/compromisos-c/${order.id}`}
+                            className="font-semibold text-violet-800 hover:underline"
+                          >
+                            {expedienteFolioLabel(order)}
+                          </Link>
+                          <p className="mt-0.5 truncate text-[11px] text-zinc-500">
+                            {order.title}
+                            <span className="ml-1 rounded bg-violet-50 px-1 py-0.5 text-[10px] font-semibold text-violet-700">
+                              Proceso C
+                            </span>
+                          </p>
+                        </div>
                       ) : (
                         <OcLink order={order} showPdfIcon className="text-sm" />
                       )}
@@ -328,21 +479,7 @@ export function DireccionExpedientesPanel({
                     </td>
                     {showAdminActions && (
                       <td className="px-3 py-2.5 text-right sm:px-4" onClick={(e) => e.stopPropagation()}>
-                        {isProcesoBExpediente(order) ? (
-                          <Link
-                            href={`/solicitudes/gasto/${order.id}`}
-                            className="inline-flex rounded-lg border border-zinc-200 bg-white px-2.5 py-1.5 text-xs font-semibold text-zinc-700 hover:bg-zinc-50"
-                          >
-                            Ver
-                          </Link>
-                        ) : (
-                          <OrderActionMenu
-                            order={order}
-                            onOrderMutated={onOrderMutated}
-                            primaryLabel="Ver"
-                            appearance="neutral"
-                          />
-                        )}
+                        <ExpedienteAdminActions order={order} onOrderMutated={onOrderMutated} />
                       </td>
                     )}
                   </tr>

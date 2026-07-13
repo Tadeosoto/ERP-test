@@ -10,6 +10,7 @@ import {
   expedienteFolioLabel,
   expedienteStepDone,
   isProcesoBExpediente,
+  isProcesoCExpediente,
 } from "@/lib/dashboard/direccion-expedientes";
 import { PAYMENT_TYPE_TEXT, FILE_KIND_LABEL } from "@/lib/domain/labels";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
@@ -27,9 +28,18 @@ export function ExpedienteDetailDrawer({
   const paymentTotal = order.paymentRecords.length || (order.amountPaidSoFar > 0 ? 1 : 0);
   const paymentSlots = Math.max(paymentTotal, order.paymentType === "parcialidades" ? 2 : 1);
   const procesoB = isProcesoBExpediente(order);
-  const detailHref = procesoB ? `/solicitudes/gasto/${order.id}` : `/ordenes/${order.id}`;
+  const procesoC = isProcesoCExpediente(order);
+  const detailHref = procesoB
+    ? `/solicitudes/gasto/${order.id}`
+    : procesoC
+      ? `/compromisos-c/${order.id}`
+      : `/ordenes/${order.id}`;
   const fileHref = (fileId: string) =>
-    procesoB ? `/api/solicitud-files/${fileId}?download=1` : `/api/files/${fileId}?download=1`;
+    procesoB
+      ? `/api/solicitud-files/${fileId}?download=1`
+      : procesoC
+        ? `/api/invoice-first-files/${fileId}?download=1`
+        : `/api/files/${fileId}?download=1`;
 
   return (
     <>
@@ -46,11 +56,16 @@ export function ExpedienteDetailDrawer({
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-2">
               <h2 className="text-lg font-bold text-zinc-900">
-                {procesoB ? expedienteFolioLabel(order) : order.ocFolio || order.title}
+                {procesoB || procesoC ? expedienteFolioLabel(order) : order.ocFolio || order.title}
               </h2>
               {procesoB && (
                 <span className="inline-flex rounded-full bg-teal-50 px-2 py-0.5 text-[11px] font-semibold text-teal-800 ring-1 ring-inset ring-teal-200">
                   Proceso B
+                </span>
+              )}
+              {procesoC && (
+                <span className="inline-flex rounded-full bg-violet-50 px-2 py-0.5 text-[11px] font-semibold text-violet-800 ring-1 ring-inset ring-violet-200">
+                  Proceso C
                 </span>
               )}
               <span
@@ -59,8 +74,10 @@ export function ExpedienteDetailDrawer({
                 {EXPEDIENTE_ESTATUS_LABEL[estatus]}
               </span>
             </div>
-            {procesoB && <p className="mt-1 truncate text-sm font-medium text-zinc-800">{order.title}</p>}
-            <p className={`truncate text-sm font-medium text-zinc-800 ${procesoB ? "mt-0.5" : "mt-1"}`}>
+            {(procesoB || procesoC) && (
+              <p className="mt-1 truncate text-sm font-medium text-zinc-800">{order.title}</p>
+            )}
+            <p className={`truncate text-sm font-medium text-zinc-800 ${procesoB || procesoC ? "mt-0.5" : "mt-1"}`}>
               {order.supplierName || "Sin proveedor"}
             </p>
             <p className="truncate text-xs text-sky-800">Obra: {order.obraName}</p>

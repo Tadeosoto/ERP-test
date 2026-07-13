@@ -1,22 +1,86 @@
 import { STATUS_LABEL, ROLE_LABEL } from "@/lib/domain/labels";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import type { DirectExpenseDto, OrderStatus, PurchaseOrderDto, Role } from "@/lib/domain/types";
+import type {
+  DirectExpenseDto,
+  InvoiceFirstCommitmentDto,
+  OrderStatus,
+  PurchaseOrderDto,
+  Role,
+} from "@/lib/domain/types";
 import {
   DIRECT_EXPENSE_STATUS_LABEL,
   type DirectExpenseStatus,
 } from "@/lib/domain/solicitudes";
+import {
+  canDeleteInvoiceFirstCommitment,
+  canEditInvoiceFirstCommitment,
+  type InvoiceFirstStatus,
+} from "@/lib/domain/proceso-c";
+import { canCorrectDirectExpense, canDeleteDirectExpense } from "@/lib/domain/solicitudes";
 import { isPendingAuthorization, isActivePartial } from "@/lib/dashboard/direccion-dashboard";
 
 /** Marcador en `internalReference` para filas sintéticas de gasto directo (Proceso B). */
 export const PROCESO_B_EXPEDIENTE_MARKER = "proceso-b";
+/** Marcador para facturas primero (Proceso C). */
+export const PROCESO_C_EXPEDIENTE_MARKER = "proceso-c";
 
 export function isProcesoBExpediente(order: PurchaseOrderDto): boolean {
   return order.internalReference === PROCESO_B_EXPEDIENTE_MARKER;
 }
 
+export function isProcesoCExpediente(order: PurchaseOrderDto): boolean {
+  return order.internalReference === PROCESO_C_EXPEDIENTE_MARKER;
+}
+
 export function expedienteFolioLabel(order: PurchaseOrderDto): string {
   if (isProcesoBExpediente(order)) return "Sin folio";
+  if (isProcesoCExpediente(order)) return order.ocFolio.trim() || "Sin folio";
   return order.ocFolio.trim() || order.title;
+}
+
+/** Roles que ven la columna Acciones en Expedientes. */
+export function canShowExpedienteAdminActions(role: Role | undefined): boolean {
+  return role === "pagos" || role === "direccion";
+}
+
+function orderStatusToDirectExpenseStatus(status: OrderStatus): DirectExpenseStatus {
+  switch (status) {
+    case "draft":
+      return "draft";
+    case "awaitingPayment":
+      return "sent";
+    case "paid":
+      return "paid";
+    case "awaitingInvoice":
+      return "awaiting_invoice";
+    case "invoiceReceived":
+      return "invoice_received";
+    case "difference":
+      return "difference";
+    case "completed":
+      return "completed";
+    default:
+      return "sent";
+  }
+}
+
+export function canEditProcesoBExpediente(order: PurchaseOrderDto, role: Role | undefined): boolean {
+  if (!role || !isProcesoBExpediente(order)) return false;
+  return canCorrectDirectExpense(orderStatusToDirectExpenseStatus(order.status), role);
+}
+
+export function canDeleteProcesoBExpediente(role: Role | undefined): boolean {
+  return Boolean(role && canDeleteDirectExpense(role));
+}
+
+export function canEditProcesoCExpediente(role: Role | undefined): boolean {
+  return Boolean(role && canEditInvoiceFirstCommitment(role));
+}
+
+export function canDeleteProcesoCExpediente(order: PurchaseOrderDto, role: Role | undefined): boolean {
+  if (!role || !isProcesoCExpediente(order)) return false;
+  const status = (order.paymentTerms || "awaiting_oc") as InvoiceFirstStatus;
+  return canDeleteInvoiceFirstCommitment(role, status, Boolean(order.materialRequestId));
 }
 
 function mapDirectExpenseStatusToOrderStatus(status: DirectExpenseStatus): OrderStatus {
@@ -93,12 +157,73 @@ export function mapDirectExpenseToExpedienteOrder(expense: DirectExpenseDto): Pu
 
 export function mergeExpedienteOrders(
   orders: PurchaseOrderDto[],
-  expenses: DirectExpenseDto[] = []
+  expenses: DirectExpenseDto[] = [],
+  invoiceCommitments: InvoiceFirstCommitmentDto[] = []
 ): PurchaseOrderDto[] {
-  const mapped = expenses
+  const mappedB = expenses
     .filter((e) => e.status !== "draft")
     .map(mapDirectExpenseToExpedienteOrder);
-  return [...orders, ...mapped];
+  const mappedC = invoiceCommitments.map(mapInvoiceFirstToExpedienteOrder);
+  return [...orders, ...mappedB, ...mappedC];
+}
+
+function mapInvoiceFirstStatusToOrderStatus(status: InvoiceFirstStatus): OrderStatus {
+  switch (status) {
+    case "awaiting_oc":
+    case "oc_requested":
+      return "awaitingPayment";
+    case "in_payment":
+      return "paid";
+    case "completed":
+      return "completed";
+    default:
+      return "awaitingPayment";
+  }
+}
+
+/** Convierte un compromiso Proceso C en fila de expediente. */
+export function mapInvoiceFirstToExpedienteOrder(c: InvoiceFirstCommitmentDto): PurchaseOrderDto {
+  return {
+    id: c.id,
+    obraId: c.obraId ?? "",
+    obraName: c.obraName ?? "Sin obra",
+    title: `Factura ${c.invoiceFolio}`,
+    description: c.comment,
+    supplierName: c.supplierName,
+    supplierId: c.supplierId,
+    ocFolio: c.invoiceFolio,
+    ocDate: c.invoiceDate,
+    paymentTerms: c.status,
+    internalReference: PROCESO_C_EXPEDIENTE_MARKER,
+    documentDate: c.invoiceDate,
+    assignedEngineerUserId: null,
+    assignedEngineerName: null,
+    /** Reutilizado: id de OC vinculada (si existe) para reglas de borrado. */
+    materialRequestId: c.purchaseOrderId,
+    totalAmount: c.displayTotal,
+    amountPaidSoFar: c.amountPaidSoFar,
+    amountRemaining: c.amountRemaining,
+    currency: c.currency,
+    paymentLabel: c.amountRemaining > 0.01 ? "pendiente" : "saldada",
+    paymentType: null,
+    suggestedPaymentType: null,
+    paymentDueDate: null,
+    status: mapInvoiceFirstStatusToOrderStatus(c.status),
+    sentToEngineerAt: c.ocRequestedAt,
+    createdAt: c.createdAt,
+    updatedAt: c.updatedAt,
+    createdByName: c.createdByName,
+    comments: [],
+    files: c.files.map((f) => ({
+      id: f.id,
+      kind: "factura" as const,
+      originalFileName: f.originalFileName,
+      mimeType: f.mimeType,
+      sizeBytes: f.sizeBytes,
+      createdAt: f.createdAt,
+    })),
+    paymentRecords: [],
+  };
 }
 
 export type ExpedienteTab = "todos" | "completos" | "en_proceso" | "atencion";

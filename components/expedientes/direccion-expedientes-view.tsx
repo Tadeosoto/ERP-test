@@ -6,11 +6,17 @@ import { DireccionExpedientesPanel } from "@/components/expedientes/direccion-ex
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
 import {
+  canShowExpedienteAdminActions,
   expedienteKpis,
   mergeExpedienteOrders,
   type ExpedienteTab,
 } from "@/lib/dashboard/direccion-expedientes";
-import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type {
+  DirectExpenseDto,
+  InvoiceFirstCommitmentDto,
+  ObraDto,
+  PurchaseOrderDto,
+} from "@/lib/domain/types";
 
 function SummaryKpi({
   label,
@@ -66,6 +72,7 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
   const { user } = useSession();
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
+  const [invoiceCommitments, setInvoiceCommitments] = useState<InvoiceFirstCommitmentDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [defaultTab, setDefaultTab] = useState<ExpedienteTab>("todos");
@@ -73,10 +80,11 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
   const [panelKey, setPanelKey] = useState(0);
 
   const load = useCallback(async () => {
-    const [oRes, ordRes, expRes] = await Promise.all([
+    const [oRes, ordRes, expRes, invRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       fetch("/api/direct-expenses?includeCompleted=1", { credentials: "include" }),
+      fetch("/api/invoice-first-commitments?includeAll=1", { credentials: "include" }),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
@@ -90,6 +98,10 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
       const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
       setExpenses(d.expenses);
     }
+    if (invRes.ok) {
+      const d = (await invRes.json()) as { commitments: InvoiceFirstCommitmentDto[] };
+      setInvoiceCommitments(d.commitments);
+    }
     setLoading(false);
   }, []);
 
@@ -98,8 +110,11 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
     onRegisterRefresh?.(() => void load());
   }, [load, onRegisterRefresh]);
 
-  const showAdminActions = user?.role === "pagos";
-  const expedienteRows = useMemo(() => mergeExpedienteOrders(orders, expenses), [orders, expenses]);
+  const showAdminActions = canShowExpedienteAdminActions(user?.role);
+  const expedienteRows = useMemo(
+    () => mergeExpedienteOrders(orders, expenses, invoiceCommitments),
+    [orders, expenses, invoiceCommitments]
+  );
 
   const handleOrderDeleted = useCallback(() => {
     setSelectedId(null);
@@ -134,7 +149,8 @@ export function DireccionExpedientesView({ onRegisterRefresh }: { onRegisterRefr
       <div>
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Expedientes</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Consulta el estatus documental de órdenes de compra y gastos directos (Proceso B, sin folio OC).
+          Consulta el estatus documental de órdenes de compra, gastos directos (Proceso B) y facturas primero
+          (Proceso C).
         </p>
       </div>
 

@@ -67,9 +67,14 @@ export function canEditDirectExpense(status: DirectExpenseStatus, role: Role, ow
   return role === "ingeniero" && ownerId === userId && status === "draft";
 }
 
-/** Administración puede corregir datos si el expediente aún no está cerrado. */
+/** Administración y Dirección pueden corregir datos del gasto (incluido completado, p. ej. datos erróneos). */
 export function canCorrectDirectExpense(status: DirectExpenseStatus, role: Role): boolean {
-  return role === "pagos" && !["draft", "completed"].includes(status);
+  return (role === "pagos" || role === "direccion") && status !== "draft";
+}
+
+/** Dirección y Administración pueden eliminar gastos (p. ej. creados por error). */
+export function canDeleteDirectExpense(role: Role): boolean {
+  return role === "pagos" || role === "direccion";
 }
 
 export function canSendDirectExpense(status: DirectExpenseStatus, role: Role, ownerId: string, userId: string): boolean {
