@@ -144,25 +144,28 @@ function buildMenuEntries(
     entries.push({ kind: "separator" });
   }
 
-  if (role === "pagos") {
-    const canPay = canRegisterPayment(order.status, role);
-    const canReceipt = canUploadPaymentReceipt(order.status, role) && !hasPaymentReceipt(order);
-    const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
+  if (role === "pagos" || role === "direccion") {
+    if (role === "pagos") {
+      const canPay = canRegisterPayment(order.status, role);
+      const canReceipt = canUploadPaymentReceipt(order.status, role) && !hasPaymentReceipt(order);
 
-    entries.push({
-      kind: "link",
-      label: "Registrar pago",
-      href: `${base}#pagos`,
-      icon: "pay",
-      disabled: !canPay,
-    });
-    entries.push({
-      kind: "link",
-      label: hasPaymentReceipt(order) ? "Ver comprobante" : "Subir comprobante",
-      href: `${base}#tarea`,
-      icon: "receipt",
-      disabled: !canReceipt && !hasPaymentReceipt(order),
-    });
+      entries.push({
+        kind: "link",
+        label: "Registrar pago",
+        href: `${base}#pagos`,
+        icon: "pay",
+        disabled: !canPay,
+      });
+      entries.push({
+        kind: "link",
+        label: hasPaymentReceipt(order) ? "Ver comprobante" : "Subir comprobante",
+        href: `${base}#tarea`,
+        icon: "receipt",
+        disabled: !canReceipt && !hasPaymentReceipt(order),
+      });
+    }
+
+    const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
     entries.push({
       kind: "action",
       label: "Eliminar OC / expediente",

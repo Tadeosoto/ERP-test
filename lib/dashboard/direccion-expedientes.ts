@@ -80,7 +80,12 @@ export function canEditProcesoCExpediente(role: Role | undefined): boolean {
 export function canDeleteProcesoCExpediente(order: PurchaseOrderDto, role: Role | undefined): boolean {
   if (!role || !isProcesoCExpediente(order)) return false;
   const status = (order.paymentTerms || "awaiting_oc") as InvoiceFirstStatus;
-  return canDeleteInvoiceFirstCommitment(role, status, Boolean(order.materialRequestId));
+  return canDeleteInvoiceFirstCommitment(
+    role,
+    status,
+    Boolean(order.materialRequestId),
+    order.amountPaidSoFar
+  );
 }
 
 function mapDirectExpenseStatusToOrderStatus(status: DirectExpenseStatus): OrderStatus {

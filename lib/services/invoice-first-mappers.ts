@@ -68,7 +68,9 @@ function mapFile(f: InvoiceFirstFile): InvoiceFirstFileDto {
 export function mapInvoiceFirstCommitment(r: InvoiceFirstWithRelations): InvoiceFirstCommitmentDto {
   const order = r.purchaseOrder;
   const paid = order?.amountPaidSoFar ?? 0;
-  const total = order?.totalAmount ?? r.totalAmount;
+  const commitmentTotal = r.totalAmount;
+  const orderTotal = order?.totalAmount ?? 0;
+  const total = orderTotal > 0.01 ? orderTotal : commitmentTotal;
   const lastPayment =
     order?.paymentRecords[0]?.createdAt.toISOString() ??
     (paid > 0 ? order?.updatedAt.toISOString() ?? null : null);

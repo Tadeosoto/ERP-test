@@ -27,17 +27,17 @@ export function canEditInvoiceFirstCommitment(role: Role): boolean {
 }
 
 /**
- * Dirección y Administración pueden borrar si aún no hay OC vinculada.
- * Con OC ya creada hay que gestionar la orden por separado.
+ * Dirección y Administración pueden borrar facturas Proceso C
+ * mientras no haya pagos registrados (aunque exista OC vinculada sin pagar).
  */
 export function canDeleteInvoiceFirstCommitment(
   role: Role,
-  status: InvoiceFirstStatus,
-  hasPurchaseOrder: boolean
+  _status: InvoiceFirstStatus,
+  _hasPurchaseOrder: boolean,
+  amountPaidSoFar = 0
 ): boolean {
   if (!(role === "direccion" || role === "pagos")) return false;
-  if (hasPurchaseOrder) return false;
-  return status === "awaiting_oc" || status === "oc_requested";
+  return amountPaidSoFar <= 0.01;
 }
 
 export function invoiceFirstAwaitingOcCount(status: InvoiceFirstStatus): boolean {

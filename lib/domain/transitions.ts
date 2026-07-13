@@ -176,7 +176,7 @@ export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
 }
 
 export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar: number): boolean {
-  if (isAdministration(role)) return true;
+  if (role === "pagos" || role === "direccion") return true;
   if (role !== "compras") return false;
   if (amountPaidSoFar > 0.01) return false;
   return !COMPRAS_LOCKED_STATUSES.includes(status);

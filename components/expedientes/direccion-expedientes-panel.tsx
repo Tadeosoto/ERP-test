@@ -33,6 +33,7 @@ import {
   type ExpedienteTab,
 } from "@/lib/dashboard/direccion-expedientes";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import { canDeleteOrder } from "@/lib/domain/transitions";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
 const PAGE_SIZE_OPTIONS = [8, 15, 25, 50] as const;
@@ -147,7 +148,7 @@ function ExpedienteAdminActions({
             onClick={async () => {
               const ok = await confirmDelete({
                 title: "¿Eliminar factura (Proceso C)?",
-                message: `Se eliminará el compromiso «${expedienteFolioLabel(order)}». Solo es posible si aún no hay OC vinculada.`,
+                message: `Se eliminará el compromiso «${expedienteFolioLabel(order)}». Si tiene una OC sin pagos, también se eliminará.`,
                 confirmLabel: "Eliminar",
               });
               if (!ok) return;
@@ -177,12 +178,48 @@ function ExpedienteAdminActions({
   }
 
   return (
-    <OrderActionMenu
-      order={order}
-      onOrderMutated={onOrderMutated}
-      primaryLabel="Ver"
-      appearance="neutral"
-    />
+    <div className="flex flex-wrap items-center justify-end gap-1">
+      <OrderActionMenu
+        order={order}
+        onOrderMutated={onOrderMutated}
+        primaryLabel="Ver"
+        appearance="neutral"
+      />
+      {(role === "pagos" || role === "direccion") &&
+        canDeleteOrder(order.status, role, order.amountPaidSoFar) && (
+          <button
+            type="button"
+            disabled={busy}
+            className={dangerBtnClass}
+            onClick={async () => {
+              const ok = await confirmDelete({
+                title: "¿Eliminar expediente?",
+                message: `Se eliminará la orden «${expedienteFolioLabel(order)}» y su expediente asociado.`,
+                confirmLabel: "Eliminar",
+              });
+              if (!ok) return;
+              setBusy(true);
+              try {
+                const res = await fetch(`/api/orders/${order.id}`, {
+                  method: "DELETE",
+                  credentials: "include",
+                });
+                const data = (await res.json().catch(() => ({}))) as { error?: string };
+                if (!res.ok) {
+                  showError(data.error ?? "No se pudo eliminar el expediente.");
+                  return;
+                }
+                showSuccess("Expediente eliminado.");
+                onOrderMutated?.();
+              } finally {
+                setBusy(false);
+              }
+            }}
+          >
+            Eliminar
+          </button>
+        )}
+    </div>
   );
 }
 

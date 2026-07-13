@@ -166,18 +166,25 @@ export async function DELETE(_request: Request, ctx: Ctx) {
 
     const status = row.status as InvoiceFirstStatus;
     const hasPo = Boolean(row.purchaseOrder);
-    if (!canDeleteInvoiceFirstCommitment(role, status, hasPo)) {
+    const amountPaid = row.purchaseOrder?.amountPaidSoFar ?? 0;
+    if (!canDeleteInvoiceFirstCommitment(role, status, hasPo, amountPaid)) {
       return NextResponse.json(
         {
-          error: hasPo
-            ? "No se puede borrar: ya tiene una OC vinculada. Gestiona o elimina la orden primero."
-            : "No tienes permiso para borrar esta factura.",
+          error:
+            amountPaid > 0.01
+              ? "No se puede borrar: ya hay pagos registrados en la OC vinculada."
+              : "No tienes permiso para borrar esta factura.",
         },
         { status: 403 }
       );
     }
 
-    await prisma.invoiceFirstCommitment.delete({ where: { id } });
+    await prisma.$transaction(async (tx) => {
+      if (row.purchaseOrder) {
+        await tx.purchaseOrder.delete({ where: { id: row.purchaseOrder.id } });
+      }
+      await tx.invoiceFirstCommitment.delete({ where: { id } });
+    });
     return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);

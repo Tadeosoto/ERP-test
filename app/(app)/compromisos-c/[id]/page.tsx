@@ -216,7 +216,8 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
     ? canDeleteInvoiceFirstCommitment(
         user.role,
         commitment.status,
-        Boolean(commitment.purchaseOrderId)
+        Boolean(commitment.purchaseOrderId),
+        commitment.amountPaidSoFar
       )
     : false;
 

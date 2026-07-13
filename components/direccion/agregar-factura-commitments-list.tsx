@@ -41,7 +41,8 @@ function RowActions({
     ? canDeleteInvoiceFirstCommitment(
         role,
         commitment.status,
-        Boolean(commitment.purchaseOrderId)
+        Boolean(commitment.purchaseOrderId),
+        commitment.amountPaidSoFar
       )
     : false;
 
@@ -63,7 +64,7 @@ function RowActions({
           onClick={async () => {
             const ok = await confirmDelete({
               title: "¿Eliminar factura?",
-              message: `Se eliminará «${commitment.invoiceFolio}» (${commitment.supplierName}). Solo es posible si aún no hay OC vinculada.`,
+              message: `Se eliminará «${commitment.invoiceFolio}» (${commitment.supplierName}). Si tiene OC sin pagos, también se eliminará.`,
               confirmLabel: "Eliminar",
             });
             if (!ok) return;
