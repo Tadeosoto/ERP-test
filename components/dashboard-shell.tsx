@@ -28,6 +28,12 @@ const consultaNav = [
   { href: "/expedientes", label: "Expedientes", icon: "folder" },
 ] as const;
 
+const pagosConsultaNav = [
+  { href: "/pagos", label: "Pagos", icon: "pay" },
+  { href: "/facturas", label: "Facturas", icon: "invoice" },
+  { href: "/expedientes", label: "Expedientes", icon: "folder" },
+] as const;
+
 const ingenieroNav = [{ href: "/solicitudes/nueva", label: "Solicitudes", icon: "solicitudes" }] as const;
 
 const pagosNav = [{ href: "/ordenes", label: "Órdenes de compra", icon: "orders" }] as const;
@@ -55,10 +61,12 @@ type NavItem =
   | (typeof pagosNav)[number]
   | (typeof direccionNav)[number]
   | (typeof consultaNav)[number]
+  | (typeof pagosConsultaNav)[number]
   | (typeof recepcionConsultaNav)[number];
 
 function consultaNavForRole(role: Role) {
   if (role === "recepcion") return recepcionConsultaNav;
+  if (role === "pagos") return pagosConsultaNav;
   return consultaNav;
 }
 
@@ -183,6 +191,7 @@ function navActive(pathname: string | null, href: string, searchParams: URLSearc
   if (href === "/inicio") return pathname === "/inicio";
   if (href === "/expedientes") return pathname.startsWith("/expedientes");
   if (href === "/agregar-factura") return pathname.startsWith("/agregar-factura");
+  if (href === "/facturas") return pathname.startsWith("/facturas") || pathname.startsWith("/compromisos-c");
   if (href === "/pagos") return pathname.startsWith("/pagos");
   if (href === "/ordenes") return pathname === "/ordenes";
   if (href === "/obras?estado=pago") {
@@ -305,6 +314,7 @@ export function DashboardShell({
     pathname === "/proveedores" ||
     pathname === "/reportes" ||
     pathname === "/pagos" ||
+    pathname === "/facturas" ||
     pathname === "/expedientes" ||
     (pathname?.startsWith("/obras/") ?? false);
   const contentWidth = isWideLayout ? "max-w-none" : "max-w-7xl";

@@ -7,6 +7,7 @@ import { useSession } from "@/components/session-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import {
+  canActAsCompras,
   canComprasEditOrder,
   canDeleteOrder,
   canRegisterPayment,
@@ -114,9 +115,8 @@ function buildMenuEntries(
   const hasOcPdf = order.files.some((f) => f.kind === "oc_pdf");
   const entries: MenuEntry[] = [];
 
-  if (role === "compras") {
+  if (role && canActAsCompras(role)) {
     const canEdit = canComprasEditOrder(order.status, role);
-    const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
     const canUpload = canUploadOcPdf(order.status, role);
 
     entries.push({
@@ -133,14 +133,17 @@ function buildMenuEntries(
       icon: "ocPdf",
       disabled: !canUpload,
     });
-    entries.push({
-      kind: "action",
-      label: "Eliminar OC",
-      icon: "delete",
-      onClick: onDelete,
-      danger: true,
-      disabled: !canDel,
-    });
+    if (role === "compras") {
+      const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
+      entries.push({
+        kind: "action",
+        label: "Eliminar OC",
+        icon: "delete",
+        onClick: onDelete,
+        danger: true,
+        disabled: !canDel,
+      });
+    }
     entries.push({ kind: "separator" });
   }
 

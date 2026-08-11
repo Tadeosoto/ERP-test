@@ -175,18 +175,42 @@ export function proveedoresFrecuentes(
 
 export function documentosRecientes(
   orders: PurchaseOrderDto[],
-  limit = 3
-): { id: string; label: string; sub: string; at: string }[] {
-  return [...orders]
-    .filter((o) => o.files.length > 0)
-    .sort((a, b) => new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime())
-    .slice(0, limit)
-    .map((o) => ({
-      id: o.id,
-      label: o.ocFolio ? `${o.ocFolio} · ${o.supplierName}` : `${o.title} · ${o.supplierName}`,
-      sub: o.obraName,
-      at: o.updatedAt,
-    }));
+  limit = 8
+): {
+  id: string;
+  orderId: string;
+  label: string;
+  sub: string;
+  at: string;
+  kind: string;
+  fileId: string;
+}[] {
+  const rows: {
+    id: string;
+    orderId: string;
+    label: string;
+    sub: string;
+    at: string;
+    kind: string;
+    fileId: string;
+  }[] = [];
+
+  for (const o of orders) {
+    for (const f of o.files) {
+      if (f.kind !== "factura" && f.kind !== "comprobante_pago") continue;
+      rows.push({
+        id: f.id,
+        orderId: o.id,
+        fileId: f.id,
+        kind: f.kind,
+        label: f.kind === "factura" ? `Factura · ${f.originalFileName}` : `Comprobante · ${f.originalFileName}`,
+        sub: o.ocFolio ? `${o.ocFolio} · ${o.supplierName}` : o.supplierName,
+        at: f.createdAt,
+      });
+    }
+  }
+
+  return rows.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()).slice(0, limit);
 }
 
 export function contabilidadPrimaryAction(

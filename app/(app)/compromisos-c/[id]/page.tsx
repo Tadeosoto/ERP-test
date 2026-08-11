@@ -15,6 +15,7 @@ import {
   canEditInvoiceFirstCommitment,
   describeInvoiceFirstGate,
 } from "@/lib/domain/proceso-c";
+import { canActAsCompras } from "@/lib/domain/transitions";
 import type { InvoiceFirstCommitmentDto, ObraDto, PurchaseOrderDto, SupplierDto } from "@/lib/domain/types";
 import {
   formatAmountInput,
@@ -421,7 +422,7 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
             Solicitar OC a Compras
           </button>
         )}
-        {user?.role === "compras" && commitment.status === "oc_requested" && !commitment.purchaseOrderId && (
+        {user && canActAsCompras(user.role) && commitment.status === "oc_requested" && !commitment.purchaseOrderId && (
           <Link
             href={`/ordenes/nueva?compromisoFacturaId=${commitment.id}`}
             className="btn-primary inline-flex items-center"

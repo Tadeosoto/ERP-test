@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { CalloutBubble } from "@/components/ui/callout-bubble";
+import { ComprasHomeDashboard } from "@/components/dashboard/compras-home-dashboard";
 import { PagosPendingPaymentsPanel } from "@/components/dashboard/pagos-pending-payments-panel";
 import { PagosRecurringCommitmentsPanel } from "@/components/dashboard/pagos-recurring-commitments-panel";
 import { PagosHomeSidebar } from "@/components/dashboard/pagos-home-sidebar";
@@ -22,6 +23,7 @@ import { payableOrders } from "@/lib/pagos/registrar-pago-form";
 import type {
   DirectExpenseDto,
   InvoiceFirstCommitmentDto,
+  MaterialRequestDto,
   MovementDto,
   ObraDto,
   PendingMovementDto,
@@ -127,6 +129,7 @@ function QuickActionButton({
   );
 }
 
+type WorkspaceTab = "administracion" | "compras";
 type HomeTab = "pagos" | "compromisos";
 
 export function PagosHomeDashboard({
@@ -137,6 +140,7 @@ export function PagosHomeDashboard({
   commitments,
   expenses = [],
   invoiceCommitments = [],
+  materialRequests = [],
   recentMovements,
   pendingMovements,
   onOrdersMutated,
@@ -149,12 +153,14 @@ export function PagosHomeDashboard({
   commitments: RecurringCommitmentDto[];
   expenses?: DirectExpenseDto[];
   invoiceCommitments?: InvoiceFirstCommitmentDto[];
+  materialRequests?: MaterialRequestDto[];
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
   onOrdersMutated?: () => void;
   onCommitmentsMutated?: () => void;
 }) {
   const [hintDismissed, setHintDismissed] = useState(false);
+  const [workspaceTab, setWorkspaceTab] = useState<WorkspaceTab>("administracion");
   const [mainTab, setMainTab] = useState<HomeTab>("pagos");
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
   const [pagoModalOrderId, setPagoModalOrderId] = useState<string | null>(null);
@@ -191,6 +197,18 @@ export function PagosHomeDashboard({
     setCompromisoModalOpen(true);
   }
 
+  const workspaceBtn = (tab: WorkspaceTab, label: string) => (
+    <button
+      type="button"
+      onClick={() => setWorkspaceTab(tab)}
+      className={`flex min-w-0 flex-1 items-center justify-center rounded-lg px-3 py-2.5 text-sm font-semibold transition ${
+        workspaceTab === tab ? "bg-white text-zinc-900 shadow-sm" : "text-zinc-600 hover:text-zinc-900"
+      }`}
+    >
+      {label}
+    </button>
+  );
+
   const tabBtn = (tab: HomeTab, label: string, badge?: string) => (
     <button
       type="button"
@@ -216,10 +234,29 @@ export function PagosHomeDashboard({
         </h1>
         <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
           <RoleActivityIcon role="pagos" size="sm" />
-          <span>Administración — Registra pagos y da seguimiento al catálogo del sistema.</span>
+          <span>Administración — Pagos, catálogo y también las funciones de Compras.</span>
         </p>
       </header>
 
+      <div className="flex gap-1 rounded-xl bg-zinc-100 p-1">
+        {workspaceBtn("administracion", "Administración")}
+        {workspaceBtn("compras", "Compras")}
+      </div>
+
+      {workspaceTab === "compras" ? (
+        <ComprasHomeDashboard
+          embedded
+          userName={userName}
+          orders={orders}
+          obras={obras}
+          materialRequests={materialRequests}
+          invoiceCommitments={invoiceCommitments}
+          recentMovements={recentMovements}
+          pendingMovements={pendingMovements}
+          onOrderMutated={onOrdersMutated}
+        />
+      ) : (
+        <>
       <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-3 lg:grid-cols-5 lg:gap-3">
         {PAGOS_HOME_KPI_CONFIG.map((cfg) => (
           <Link
@@ -315,6 +352,8 @@ export function PagosHomeDashboard({
           <PagosHomeSidebar recentMovements={recentMovements} pendingMovements={pendingMovements} />
         </div>
       </div>
+        </>
+      )}
 
       <RegistrarPagoModal
         open={pagoModalOpen}
@@ -339,10 +378,12 @@ export function PagosHomeDashboard({
 
       <CompromisoRecurrenteModal
         open={compromisoModalOpen}
-        onClose={() => setCompromisoModalOpen(false)}
+        onClose={() => {
+          setCompromisoModalOpen(false);
+          setEditingCommitment(null);
+        }}
         onSaved={() => onCommitmentsMutated?.()}
         suppliers={suppliers}
-        obras={obras.filter((o) => o.active)}
         editing={editingCommitment}
       />
     </div>

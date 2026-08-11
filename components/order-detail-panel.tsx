@@ -2,11 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import {
-  DocumentDownloadButton,
-  DocumentViewButton,
-  FILE_VIEW_HINT,
-} from "@/components/document-view-button";
 import { FilePickButton } from "@/components/file-pick-button";
 import {
   IconBanknote,
@@ -26,6 +21,7 @@ import {
 import {
   canAccountingResolveDifference,
   canAccountingValidate,
+  canActAsCompras,
   canComprasEditOrder,
   canDeleteOrder,
   canDeleteOrderFile,
@@ -39,7 +35,6 @@ import {
   canUploadPaymentReceipt,
 } from "@/lib/domain/transitions";
 import {
-  FILE_KIND_LABEL,
   PAYMENT_LABEL_TEXT,
   PAYMENT_TYPE_TEXT,
 } from "@/lib/domain/labels";
@@ -51,6 +46,7 @@ import {
 } from "@/lib/process-feedback";
 import type { PaymentType, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatAmountInput, formatDate, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
+import { OrderDocumentsTable } from "@/components/order-documents-table";
 
 export function OrderDetailPanel({
   order,
@@ -269,35 +265,15 @@ export function OrderDetailPanel({
     order.files.length > 0 ? (
       <div id="documentos" className="card scroll-mt-24 p-6">
         <h2 className="text-xl font-semibold">Documentos</h2>
-        <ul className="mt-4 space-y-3">
-          {order.files.map((f) => (
-            <li
-              key={f.id}
-              className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-orange-100 bg-orange-50/50 px-4 py-3"
-            >
-              <span className="text-base font-medium text-zinc-800">
-                {FILE_KIND_LABEL[f.kind] ?? f.kind}: {f.originalFileName}
-              </span>
-              <div className="flex w-full flex-col gap-2 sm:w-80 sm:shrink-0">
-                <DocumentViewButton
-                  fileId={f.id}
-                  hint={FILE_VIEW_HINT[f.kind] ?? "abre el PDF en el navegador"}
-                />
-                <DocumentDownloadButton fileId={f.id} />
-                {user && canDeleteOrderFile(user.role) && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="text-left text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
-                    onClick={() => void deleteFile(f.id, f.originalFileName)}
-                  >
-                    Eliminar archivo
-                  </button>
-                )}
-              </div>
-            </li>
-          ))}
-        </ul>
+        <p className="mt-1 text-sm text-zinc-500">
+          Todos los archivos del expediente, con la fecha en que se subieron.
+        </p>
+        <OrderDocumentsTable
+          files={order.files}
+          canDelete={Boolean(user && canDeleteOrderFile(user.role))}
+          busy={busy}
+          onDelete={(fileId, fileName) => void deleteFile(fileId, fileName)}
+        />
       </div>
     ) : null;
 
@@ -382,7 +358,7 @@ export function OrderDetailPanel({
       <div id="tarea" className="card scroll-mt-24 border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
         <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
 
-        {user.role === "compras" && (
+        {canActAsCompras(user.role) && (
           <div className="mt-4 flex flex-wrap gap-3">
             {canComprasEditOrder(order.status, user.role) ? (
               <Link href={`/ordenes/nueva?orderId=${order.id}`} className="btn-secondary">
@@ -398,22 +374,23 @@ export function OrderDetailPanel({
                 Editar OC
               </span>
             )}
-            {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) ? (
-              <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
-                Eliminar OC
-              </button>
-            ) : (
-              <span
-                className="btn-danger inline-flex cursor-not-allowed opacity-50"
-                title={
-                  order.amountPaidSoFar > 0.01
-                    ? "No se puede eliminar: ya hay pagos registrados"
-                    : "No se puede eliminar en este estado"
-                }
-              >
-                Eliminar OC
-              </span>
-            )}
+            {user.role === "compras" &&
+              (canDeleteOrder(order.status, user.role, order.amountPaidSoFar) ? (
+                <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
+                  Eliminar OC
+                </button>
+              ) : (
+                <span
+                  className="btn-danger inline-flex cursor-not-allowed opacity-50"
+                  title={
+                    order.amountPaidSoFar > 0.01
+                      ? "No se puede eliminar: ya hay pagos registrados"
+                      : "No se puede eliminar en este estado"
+                  }
+                >
+                  Eliminar OC
+                </span>
+              ))}
           </div>
         )}
 
@@ -427,7 +404,7 @@ export function OrderDetailPanel({
           </div>
         )}
 
-        {canUploadOcPdf(order.status, user.role) && user.role === "compras" && (
+        {canUploadOcPdf(order.status, user.role) && (
           <div className="mt-4 space-y-3">
             <p className="text-base text-zinc-700">
               {order.status === "engineerRejected"

@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import { canCreateMaterialRequest } from "@/lib/domain/solicitudes";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
+import { canActAsCompras } from "@/lib/domain/transitions";
 import {
   mapMaterialRequest,
   materialRequestInclude,
@@ -19,7 +20,7 @@ export async function GET(request: Request) {
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (mine && user.role === "ingeniero") where.createdByUserId = user.id;
-    if (user.role === "compras" && !status) {
+    if (canActAsCompras(asRole(user.role)) && !status) {
       where.status = { in: ["sent", "in_oc_process"] };
     }
 

@@ -10,6 +10,7 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
+import { canCreateOrder } from "@/lib/domain/transitions";
 import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { PagosProcesoBListPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
@@ -209,7 +210,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            {user?.role === "compras" && obra.active && (
+            {user && canCreateOrder(user.role) && obra.active && (
               <Link href={`/ordenes/nueva?obraId=${obra.id}`} className="btn-primary text-sm">
                 <IconPlus />
                 Nueva orden en esta obra

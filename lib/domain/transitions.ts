@@ -118,8 +118,13 @@ export function engineerApproveNextStatus(
   return { status, paymentType };
 }
 
+/** Compras (Paty) o Administración (Rosa) actuando con capacidades de Compras. */
+export function canActAsCompras(role: Role): boolean {
+  return role === "compras" || role === "pagos";
+}
+
 export function canCreateOrder(role: Role): boolean {
-  return role === "compras";
+  return canActAsCompras(role);
 }
 
 export function canCreateObra(role: Role): boolean {
@@ -140,6 +145,11 @@ export function canManageRecurringCommitments(role: Role): boolean {
   return role === "pagos";
 }
 
+/** Contabilidad, Recepción y Administración pueden consultar factura y comprobante. */
+export function canConsultPaymentDocuments(role: Role): boolean {
+  return role === "pagos" || role === "recepcion" || role === "contabilidad";
+}
+
 export function canDeleteObra(role: Role): boolean {
   return isAdministration(role);
 }
@@ -153,7 +163,7 @@ export function canDeletePayment(role: Role): boolean {
 }
 
 export function canConfigureObra(role: Role): boolean {
-  return role === "ingeniero" || role === "compras";
+  return role === "ingeniero" || canActAsCompras(role);
 }
 
 export function canUpdateDraftOrder(status: OrderStatus, role: Role): boolean {
@@ -169,9 +179,9 @@ const COMPRAS_LOCKED_STATUSES: OrderStatus[] = [
   "difference",
 ];
 
-/** Compras (Paty) puede editar la OC mientras no haya entrado a pago ni cierre documental. */
+/** Compras / Administración pueden editar la OC mientras no haya entrado a pago ni cierre documental. */
 export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
-  if (role !== "compras") return false;
+  if (!canActAsCompras(role)) return false;
   return !COMPRAS_LOCKED_STATUSES.includes(status);
 }
 
@@ -183,11 +193,19 @@ export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar:
 }
 
 export function canSendToEngineer(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && status === "draft";
+  return canActAsCompras(role) && status === "draft";
+}
+
+/** Compras / Administración: OC borrador enviada directo a pago (Proceso B, sin Ingeniería). */
+export function canSendToAdministration(status: OrderStatus, role: Role): boolean {
+  return canActAsCompras(role) && status === "draft";
 }
 
 export function canUploadOcPdf(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && (status === "draft" || status === "engineerRejected" || status === "awaitingEngineer");
+  return (
+    canActAsCompras(role) &&
+    (status === "draft" || status === "engineerRejected" || status === "awaitingEngineer")
+  );
 }
 
 export function canEngineerAct(status: OrderStatus, role: Role): boolean {
@@ -195,7 +213,7 @@ export function canEngineerAct(status: OrderStatus, role: Role): boolean {
 }
 
 export function canSetPaymentDeadline(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && status === "awaitingPatyDeadline";
+  return canActAsCompras(role) && status === "awaitingPatyDeadline";
 }
 
 export function canRegisterPayment(status: OrderStatus, role: Role): boolean {
@@ -207,7 +225,7 @@ export function canUploadPaymentReceipt(status: OrderStatus, role: Role): boolea
 }
 
 export function canMarkAwaitingInvoice(status: OrderStatus, role: Role): boolean {
-  return role === "compras" && status === "paid";
+  return canActAsCompras(role) && status === "paid";
 }
 
 export function canUploadInvoice(status: OrderStatus, role: Role): boolean {

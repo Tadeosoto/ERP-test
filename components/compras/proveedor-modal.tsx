@@ -95,7 +95,7 @@ const TAX_REGIMES = [
   "626 - Régimen Simplificado de Confianza",
 ];
 
-const PAYMENT_TERMS = ["Contado", "15 días", "30 días", "45 días", "60 días", "90 días"];
+const PAYMENT_TERMS = ["Contado", "15 días", "30 días", "45 días", "60 días", "90 días", "Indefinida"];
 
 function Field({
   label,

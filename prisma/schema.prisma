@@ -29,6 +29,7 @@ model User {
   recurringCommitments  RecurringCommitment[]
   invoiceFirstCommitments InvoiceFirstCommitment[] @relation("InvoiceFirstCreated")
   invoiceFirstFiles       InvoiceFirstFile[]
+  recurringCommitmentFiles RecurringCommitmentFile[]
 }
 
 model Session {
@@ -169,9 +170,13 @@ model Notification {
   directExpense             DirectExpenseRequest?   @relation(fields: [directExpenseId], references: [id], onDelete: SetNull)
   invoiceFirstCommitmentId  String?
   invoiceFirstCommitment    InvoiceFirstCommitment? @relation(fields: [invoiceFirstCommitmentId], references: [id], onDelete: SetNull)
+  recurringCommitmentId     String?
+  recurringCommitment       RecurringCommitment?    @relation(fields: [recurringCommitmentId], references: [id], onDelete: SetNull)
   type                      String
   message                   String
   read                      Boolean                 @default(false)
+  requiresAcknowledgement   Boolean                 @default(false)
+  acknowledged              Boolean                 @default(false)
   createdAt                 DateTime                @default(now())
 }
 
@@ -302,9 +307,9 @@ model InvoiceFirstFile {
 }
 
 model RecurringCommitment {
-  id                   String    @id @default(cuid())
+  id                   String                    @id @default(cuid())
   supplierId           String?
-  supplier             Supplier? @relation(fields: [supplierId], references: [id], onDelete: SetNull)
+  supplier             Supplier?                 @relation(fields: [supplierId], references: [id], onDelete: SetNull)
   supplierName         String
   concept              String
   frequency            String
@@ -312,16 +317,33 @@ model RecurringCommitment {
   nextReceptionDate    DateTime
   dueDate              DateTime
   obraId               String?
-  obra                 Obra?     @relation(fields: [obraId], references: [id], onDelete: SetNull)
-  costCenter           String    @default("")
-  currency             String    @default("MXN")
+  obra                 Obra?                     @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  costCenter           String                    @default("")
+  currency             String                    @default("MXN")
   estimatedAmount      Float?
-  lifecycleStatus      String    @default("active")
-  workflowStatus       String    @default("pending")
-  notes                String    @default("")
-  active               Boolean   @default(true)
+  lifecycleStatus      String                    @default("active")
+  workflowStatus       String                    @default("pending")
+  notes                String                    @default("")
+  active               Boolean                   @default(true)
   createdByUserId      String
-  createdBy            User      @relation(fields: [createdByUserId], references: [id])
-  createdAt            DateTime  @default(now())
-  updatedAt            DateTime  @updatedAt
+  createdBy            User                      @relation(fields: [createdByUserId], references: [id])
+  createdAt            DateTime                  @default(now())
+  updatedAt            DateTime                  @updatedAt
+  files                RecurringCommitmentFile[]
+  notifications        Notification[]
+}
+
+model RecurringCommitmentFile {
+  id               String              @id @default(cuid())
+  commitmentId     String
+  commitment       RecurringCommitment @relation(fields: [commitmentId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String              @default("")
+  fileData         Bytes?
+  mimeType         String              @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User                @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime            @default(now())
 }

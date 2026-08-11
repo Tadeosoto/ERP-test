@@ -8,7 +8,7 @@ import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
-import { canComprasEditOrder } from "@/lib/domain/transitions";
+import { canComprasEditOrder, canCreateOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
@@ -20,9 +20,12 @@ const PAYMENT_TERMS = [
   "30 días después de recibir factura",
   "45 días",
   "60 días",
+  "Indefinida",
 ];
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
+/** Destino especial: OC sin paso de Ingeniería → Administración. */
+const DEST_PROCESO_B = "__proceso_b__";
 
 type Step = 1 | 2 | 3;
 
@@ -221,6 +224,8 @@ function NuevaOcWizard() {
     if (s) return s.displayName;
     return supplierName;
   }, [suppliers, supplierId, supplierName]);
+  const isProcesoB = assignedEngineerId === DEST_PROCESO_B;
+  const engineerUserIdForApi = isProcesoB ? null : assignedEngineerId || null;
 
   const loadCatalogs = useCallback(async () => {
     const [oRes, sRes, uRes] = await Promise.all([
@@ -361,10 +366,10 @@ function NuevaOcWizard() {
     else if (obras[0] && !obraId) setObraId(obras[0].id);
   }, [obras, obraId, searchParams]);
 
-  if (user && user.role !== "compras") {
+  if (user && !canCreateOrder(user.role)) {
     return (
       <div className="card p-8">
-        <p className="text-base">Solo Compras (Paty) puede crear órdenes de compra.</p>
+        <p className="text-base">Solo Compras o Administración pueden crear órdenes de compra.</p>
         <Link href="/inicio" className="mt-4 inline-block text-orange-700 underline">
           Volver
         </Link>
@@ -389,7 +394,7 @@ function NuevaOcWizard() {
       paymentType: paymentModality,
       materialRequestId,
       invoiceFirstCommitmentId,
-      assignedEngineerUserId: assignedEngineerId || null,
+      assignedEngineerUserId: engineerUserIdForApi,
       asDraft: true,
     };
 
@@ -507,17 +512,40 @@ function NuevaOcWizard() {
     }
   }
 
-  async function sendToEngineer() {
+  async function sendOrder() {
     if (!orderId) {
       showError("Guarda la orden antes de enviar.");
       return;
     }
     if (!assignedEngineerId) {
-      showError("Selecciona un ingeniero responsable.");
+      showError("Selecciona a quién enviar la OC.");
       return;
     }
     setBusy(true);
     try {
+      if (isProcesoB) {
+        await fetch(`/api/orders/${orderId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ assignedEngineerUserId: null, paymentType: paymentModality }),
+        });
+
+        const res = await fetch(`/api/orders/${orderId}/actions`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({ action: "send_to_administration" }),
+        });
+        const data = (await res.json()) as { order?: PurchaseOrderDto; error?: string };
+        if (!res.ok) throw new Error(data.error ?? "Error al enviar a Administración.");
+
+        showSuccess("La OC fue enviada a Administración (Proceso B).", () => {
+          router.push(`/ordenes/${orderId}`);
+        });
+        return;
+      }
+
       await fetch(`/api/orders/${orderId}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
@@ -611,8 +639,8 @@ function NuevaOcWizard() {
               Siguiente →
             </button>
           ) : (
-            <button type="button" className="btn-primary" onClick={() => void sendToEngineer()} disabled={busy}>
-              Enviar a Ingeniería →
+            <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
+              {isProcesoB ? "Enviar a administración →" : "Enviar a Ingeniería →"}
             </button>
           )}
         </div>
@@ -1017,20 +1045,33 @@ function NuevaOcWizard() {
                         {eng.name} (Ingeniería)
                       </option>
                     ))}
+                    <option value={DEST_PROCESO_B}>Proceso B</option>
                   </select>
-                  <p className="mt-1 text-xs text-zinc-500">Responsable de revisar y aprobar esta OC.</p>
+                  <p className="mt-1 text-xs text-zinc-500">
+                    {isProcesoB
+                      ? "La OC se enviará directo a Administración, sin paso de Ingeniería."
+                      : "Responsable de revisar y aprobar esta OC."}
+                  </p>
                 </label>
               </section>
 
               <section className="rounded-2xl border border-sky-100 bg-sky-50/50 p-5">
                 <h2 className="text-sm font-bold text-sky-900">¿Qué ocurrirá después de enviar?</h2>
                 <ul className="mt-3 space-y-2 text-sm text-sky-900">
-                  {[
-                    "Se notificará a Ingeniería.",
-                    'La OC cambiará a estado "Pendiente aprobación".',
-                    "Ingeniería podrá aprobar o solicitar corrección.",
-                    "Todas las acciones quedarán registradas en la bitácora.",
-                  ].map((t) => (
+                  {(isProcesoB
+                    ? [
+                        "Se notificará a Administración.",
+                        "La OC omitirá el paso de Ingeniería (Proceso B).",
+                        "Administración podrá continuar con el pago según la modalidad indicada.",
+                        "Todas las acciones quedarán registradas en la bitácora.",
+                      ]
+                    : [
+                        "Se notificará a Ingeniería.",
+                        'La OC cambiará a estado "Pendiente aprobación".',
+                        "Ingeniería podrá aprobar o solicitar corrección.",
+                        "Todas las acciones quedarán registradas en la bitácora.",
+                      ]
+                  ).map((t) => (
                     <li key={t} className="flex items-start gap-2">
                       <span className="mt-0.5 text-emerald-600">✓</span>
                       {t}
@@ -1076,8 +1117,8 @@ function NuevaOcWizard() {
                   Siguiente →
                 </button>
               ) : (
-                <button type="button" className="btn-primary" onClick={() => void sendToEngineer()} disabled={busy}>
-                  Enviar a Ingeniería →
+                <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
+                  {isProcesoB ? "Enviar a administración →" : "Enviar a Ingeniería →"}
                 </button>
               )}
             </div>
@@ -1093,8 +1134,10 @@ function NuevaOcWizard() {
           totalAmount={parseAmountInput(totalAmount)}
           hasPdf={Boolean(uploadedPdf || pdfFile)}
           statusLabel="BORRADOR"
-          nextStatus={step === 3 ? "PENDIENTE APROBACIÓN" : undefined}
-          nextRole={step === 3 ? "INGENIERÍA" : undefined}
+          nextStatus={
+            step === 3 ? (isProcesoB ? "EN ADMINISTRACIÓN" : "PENDIENTE APROBACIÓN") : undefined
+          }
+          nextRole={step === 3 ? (isProcesoB ? "ADMINISTRACIÓN" : "INGENIERÍA") : undefined}
         />
       </div>
     </div>

@@ -1,9 +1,9 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { createDraftOrder } from "@/lib/domain/transitions";
+import { createDraftOrder, canCreateOrder } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications";
-import { mapOrder, orderInclude } from "@/lib/services/mappers";
+import { asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType } from "@/lib/domain/types";
 
@@ -31,8 +31,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const user = await requireSessionUser();
-    if (user.role !== "compras") {
-      return NextResponse.json({ error: "Solo Compras (Paty) puede crear órdenes." }, { status: 403 });
+    if (!canCreateOrder(asRole(user.role))) {
+      return NextResponse.json(
+        { error: "Solo Compras o Administración pueden crear órdenes." },
+        { status: 403 }
+      );
     }
 
     const body = (await request.json()) as {

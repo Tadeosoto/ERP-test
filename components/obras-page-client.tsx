@@ -15,6 +15,7 @@ import {
   parseOrderListFilter,
 } from "@/lib/dashboard/order-filters";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import { canCreateOrder } from "@/lib/domain/transitions";
 import { filterObras, filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils";
 
 export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
@@ -87,7 +88,7 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
             Detalle de obras y órdenes. Usa los filtros o busca por nombre.
           </p>
         </div>
-        {user?.role === "compras" && (
+        {user && canCreateOrder(user.role) && (
           <Link href="/ordenes/nueva" className="btn-primary">
             <IconPlus />
             Nueva orden
@@ -193,7 +194,7 @@ export function ObrasPageClient({ onRegisterRefresh }: { onRegisterRefresh?: (fn
         {ordersByObra.length === 0 ? (
           <p className="card py-12 text-center text-base text-zinc-500">
             No hay órdenes en esta vista.
-            {user?.role === "compras" && (
+            {user && canCreateOrder(user.role) && (
               <>
                 {" "}
                 <Link href="/ordenes/nueva" className="font-medium text-orange-700 underline">

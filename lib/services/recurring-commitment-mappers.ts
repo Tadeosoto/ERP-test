@@ -1,15 +1,27 @@
-import type { RecurringCommitmentDto } from "@/lib/domain/types";
+import type { RecurringCommitmentDto, RecurringCommitmentFileDto } from "@/lib/domain/types";
 import type { Prisma } from "@prisma/client";
 
 export const recurringCommitmentInclude = {
   supplier: true,
   obra: true,
   createdBy: true,
+  files: { orderBy: { createdAt: "desc" as const } },
 } satisfies Prisma.RecurringCommitmentInclude;
 
 export type RecurringCommitmentRow = Prisma.RecurringCommitmentGetPayload<{
   include: typeof recurringCommitmentInclude;
 }>;
+
+function mapFile(f: RecurringCommitmentRow["files"][number]): RecurringCommitmentFileDto {
+  return {
+    id: f.id,
+    kind: f.kind,
+    originalFileName: f.originalFileName,
+    mimeType: f.mimeType,
+    sizeBytes: f.sizeBytes,
+    createdAt: f.createdAt.toISOString(),
+  };
+}
 
 export function mapRecurringCommitment(row: RecurringCommitmentRow): RecurringCommitmentDto {
   return {
@@ -33,5 +45,6 @@ export function mapRecurringCommitment(row: RecurringCommitmentRow): RecurringCo
     createdByName: row.createdBy.name,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
+    files: row.files.map(mapFile),
   };
 }

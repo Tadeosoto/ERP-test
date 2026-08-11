@@ -174,19 +174,17 @@ export function PagosRecurringCommitmentsPanel({
       <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
         <table className="w-full table-fixed border-collapse text-left">
           <colgroup>
-            <col className="w-[28%]" />
-            <col className="w-[11%]" />
-            <col className="w-[16%]" />
+            <col className="w-[32%]" />
             <col className="w-[14%]" />
+            <col className="w-[22%]" />
+            <col className="w-[18%]" />
             <col className="w-[14%]" />
-            <col className="w-[9%]" />
           </colgroup>
           <thead className="sticky top-0 z-10 bg-orange-50/95 backdrop-blur-sm">
             <tr className="border-b border-orange-100">
               <th className={th}>Proveedor / Concepto</th>
               <th className={th}>Frecuencia</th>
-              <th className={th}>Próx. recepción</th>
-              <th className={th}>Vence</th>
+              <th className={th}>Fecha límite</th>
               <th className={th}>Estado</th>
               <th className={`${th} text-right`}>Acción</th>
             </tr>
@@ -194,7 +192,7 @@ export function PagosRecurringCommitmentsPanel({
           <tbody>
             {pageItems.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-4 py-12 text-center text-sm text-zinc-500">
+                <td colSpan={5} className="px-4 py-12 text-center text-sm text-zinc-500">
                   No hay compromisos registrados. Crea el primero con «+ Nuevo compromiso».
                 </td>
               </tr>
@@ -219,12 +217,6 @@ export function PagosRecurringCommitmentsPanel({
                     </td>
                     <td className="px-2 py-2.5 text-xs text-zinc-700">
                       {COMMITMENT_FREQUENCY_LABEL[c.frequency as CommitmentFrequency] ?? c.frequency}
-                    </td>
-                    <td className="px-2 py-2.5 text-xs">
-                      <p className="font-medium tabular-nums text-zinc-800">
-                        {formatDateShort(c.nextReceptionDate)}
-                      </p>
-                      <p className="text-[11px] text-zinc-500">{relativeDayLabel(c.nextReceptionDate)}</p>
                     </td>
                     <td className="px-2 py-2.5 text-xs">
                       <p className="font-medium tabular-nums text-zinc-800">{formatDateShort(c.dueDate)}</p>
@@ -261,7 +253,7 @@ export function PagosRecurringCommitmentsPanel({
                 <p className="font-semibold text-zinc-900">{c.supplierName}</p>
                 <p className="text-xs text-zinc-500">{c.concept}</p>
                 <p className="mt-1 text-xs text-zinc-600">
-                  Próx. {formatDateShort(c.nextReceptionDate)} · Vence {formatDateShort(c.dueDate)}
+                  Vence {formatDateShort(c.dueDate)} · {relativeDayLabel(c.dueDate)}
                 </p>
                 <span
                   className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[10px] font-semibold ring-1 ring-inset ${COMMITMENT_WORKFLOW_TONE[wf]}`}

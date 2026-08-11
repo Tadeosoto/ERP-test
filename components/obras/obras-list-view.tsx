@@ -9,7 +9,7 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
-import { canCreateObra } from "@/lib/domain/transitions";
+import { canCreateObra, canCreateOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { filterObras, sortByCreatedAtDesc } from "@/lib/list-utils";
@@ -144,7 +144,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
               {showCreate ? "Cerrar formulario" : "Nueva obra"}
             </button>
           )}
-          {user?.role === "compras" && (
+          {user && canCreateOrder(user.role) && (
             <Link href="/ordenes/nueva" className="btn-primary">
               <IconPlus />
               Nueva OC

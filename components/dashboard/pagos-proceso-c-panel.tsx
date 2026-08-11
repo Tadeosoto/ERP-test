@@ -4,11 +4,12 @@ import Link from "next/link";
 import { useMemo } from "react";
 import type { InvoiceFirstCommitmentDto, Role } from "@/lib/domain/types";
 import { INVOICE_FIRST_STATUS_LABEL } from "@/lib/domain/proceso-c";
+import { canActAsCompras } from "@/lib/domain/transitions";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
 function actionFor(role: Role, status: InvoiceFirstCommitmentDto["status"]): string {
   if (role === "pagos" && status === "awaiting_oc") return "Solicitar OC";
-  if (role === "compras" && status === "oc_requested") return "Generar OC";
+  if (canActAsCompras(role) && status === "oc_requested") return "Generar OC";
   return "Ver detalle";
 }
 
@@ -23,8 +24,11 @@ export function PagosProcesoCPanel({
   compact?: boolean;
 }) {
   const pending = useMemo(() => {
-    if (role === "pagos") return commitments.filter((c) => c.status === "awaiting_oc");
-    if (role === "compras") {
+    if (role === "pagos") {
+      // En vista Administración: solicitar OC. La cola "Generar OC" vive en la pestaña Compras.
+      return commitments.filter((c) => c.status === "awaiting_oc");
+    }
+    if (canActAsCompras(role)) {
       return commitments.filter((c) => c.status === "oc_requested" && !c.purchaseOrderId);
     }
     return [];
@@ -76,7 +80,7 @@ export function PagosProcesoCPanel({
             <div className="flex shrink-0 flex-wrap gap-1.5">
               <Link
                 href={
-                  role === "compras" && c.status === "oc_requested"
+                  canActAsCompras(role) && c.status === "oc_requested"
                     ? `/ordenes/nueva?compromisoFacturaId=${c.id}`
                     : `/compromisos-c/${c.id}`
                 }

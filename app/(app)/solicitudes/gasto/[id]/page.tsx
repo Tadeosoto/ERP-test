@@ -385,7 +385,7 @@ function DirectExpenseDetailInner() {
             ) : (
               <ul className="mt-2 space-y-1">
                 {comprobantes.map((f) => (
-                  <li key={f.id}>
+                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-2">
                     <a
                       href={`/api/solicitud-files/${f.id}?kind=expense`}
                       target="_blank"
@@ -393,6 +393,12 @@ function DirectExpenseDetailInner() {
                       className="text-sm font-medium text-teal-800 hover:underline"
                     >
                       {f.originalFileName}
+                    </a>
+                    <a
+                      href={`/api/solicitud-files/${f.id}?kind=expense&download=1`}
+                      className="text-xs font-semibold text-teal-700 hover:underline"
+                    >
+                      Descargar
                     </a>
                   </li>
                 ))}
@@ -406,7 +412,7 @@ function DirectExpenseDetailInner() {
             ) : (
               <ul className="mt-2 space-y-1">
                 {facturas.map((f) => (
-                  <li key={f.id}>
+                  <li key={f.id} className="flex flex-wrap items-center justify-between gap-2">
                     <a
                       href={`/api/solicitud-files/${f.id}?kind=expense`}
                       target="_blank"
@@ -414,6 +420,12 @@ function DirectExpenseDetailInner() {
                       className="text-sm font-medium text-violet-800 hover:underline"
                     >
                       {f.originalFileName}
+                    </a>
+                    <a
+                      href={`/api/solicitud-files/${f.id}?kind=expense&download=1`}
+                      className="text-xs font-semibold text-teal-700 hover:underline"
+                    >
+                      Descargar
                     </a>
                   </li>
                 ))}

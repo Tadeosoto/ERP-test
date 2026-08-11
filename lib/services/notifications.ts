@@ -106,6 +106,11 @@ export const NotificationEvents = {
     message: `Ingeniería aprobó «${orderTitle}» como pago programado. Paty: indica la fecha límite.`,
     roles: ccDireccion(["compras"] as Role[]),
   }),
+  sentProcesoB: (orderTitle: string) => ({
+    type: "order_sent_proceso_b",
+    message: `Compras envió «${orderTitle}» por Proceso B a Administración (sin paso de Ingeniería).`,
+    roles: ccDireccion(["pagos"] as Role[]),
+  }),
   engineerRejected: (orderTitle: string) => ({
     type: "engineer_rejected",
     message: `Ingeniería solicitó correcciones en «${orderTitle}».`,

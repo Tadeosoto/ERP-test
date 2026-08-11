@@ -85,10 +85,7 @@ export function ContabilidadHomeBottomColumns({ orders }: { orders: PurchaseOrde
           ) : (
             docs.map((d) => (
               <li key={d.id}>
-                <Link
-                  href={`/ordenes/${d.id}#documentos`}
-                  className="flex items-start gap-2 rounded-xl border border-transparent px-2 py-2 transition hover:border-violet-100 hover:bg-violet-50/40"
-                >
+                <div className="flex items-start gap-2 rounded-xl border border-transparent px-2 py-2 transition hover:border-violet-100 hover:bg-violet-50/40">
                   <span className="mt-0.5 inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-lg bg-violet-100 text-violet-700">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
                       <path
@@ -100,11 +97,32 @@ export function ContabilidadHomeBottomColumns({ orders }: { orders: PurchaseOrde
                     </svg>
                   </span>
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-xs font-semibold text-zinc-800">{d.label}</span>
+                    <Link
+                      href={`/ordenes/${d.orderId}#documentos`}
+                      className="block truncate text-xs font-semibold text-zinc-800 hover:underline"
+                    >
+                      {d.label}
+                    </Link>
                     <span className="block truncate text-[11px] text-zinc-500">{d.sub}</span>
                     <span className="mt-0.5 block text-[10px] text-violet-700">{formatDateTime(d.at)}</span>
+                    <span className="mt-1 flex gap-2">
+                      <a
+                        href={`/api/files/${d.fileId}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[10px] font-semibold text-orange-700 hover:underline"
+                      >
+                        Ver
+                      </a>
+                      <a
+                        href={`/api/files/${d.fileId}?download=1`}
+                        className="text-[10px] font-semibold text-teal-700 hover:underline"
+                      >
+                        Descargar
+                      </a>
+                    </span>
                   </span>
-                </Link>
+                </div>
               </li>
             ))
           )}

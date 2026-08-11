@@ -231,33 +231,40 @@ export function ExpedienteDetailDrawer({
               {order.files.length === 0 ? (
                 <li className="text-xs text-zinc-400">Sin documentos cargados.</li>
               ) : (
-                order.files.map((f) => (
-                  <li
-                    key={f.id}
-                    className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-3 py-2"
-                  >
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-xs font-semibold text-zinc-800">
-                        {FILE_KIND_LABEL[f.kind] ?? f.originalFileName}
-                      </span>
-                      <span className="text-[10px] text-zinc-500">{formatDateShort(f.createdAt)}</span>
-                    </span>
-                    <a
-                      href={fileHref(f.id)}
-                      className="shrink-0 rounded-lg p-2 text-violet-700 hover:bg-violet-50"
-                      title="Descargar"
+                <>
+                  {order.files.slice(0, 5).map((f) => (
+                    <li
+                      key={f.id}
+                      className="flex items-center justify-between gap-2 rounded-lg border border-zinc-100 px-3 py-2"
                     >
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                        <path
-                          strokeLinecap="round"
-                          strokeLinejoin="round"
-                          strokeWidth={2}
-                          d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
-                        />
-                      </svg>
-                    </a>
-                  </li>
-                ))
+                      <span className="min-w-0 flex-1">
+                        <span className="block truncate text-xs font-semibold text-zinc-800">
+                          {FILE_KIND_LABEL[f.kind] ?? f.originalFileName}
+                        </span>
+                        <span className="text-[10px] text-zinc-500">{formatDateShort(f.createdAt)}</span>
+                      </span>
+                      <a
+                        href={fileHref(f.id)}
+                        className="shrink-0 rounded-lg p-2 text-violet-700 hover:bg-violet-50"
+                        title="Descargar"
+                      >
+                        <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+                          <path
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                            strokeWidth={2}
+                            d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4"
+                          />
+                        </svg>
+                      </a>
+                    </li>
+                  ))}
+                  {order.files.length > 5 && (
+                    <li className="px-1 text-[10px] text-zinc-500">
+                      +{order.files.length - 5} más en el expediente completo
+                    </li>
+                  )}
+                </>
               )}
             </ul>
           </section>

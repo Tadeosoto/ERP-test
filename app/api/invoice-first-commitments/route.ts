@@ -20,11 +20,13 @@ export async function GET(request: Request) {
     const includeAll = searchParams.get("includeAll") === "1";
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
-    if (user.role === "pagos" && !status && !includeAll) {
-      where.status = { in: ["awaiting_oc", "oc_requested"] };
-    }
-    if (user.role === "compras" && !status && !includeAll) {
-      where.status = { in: ["oc_requested", "in_payment", "completed"] };
+    if (!status && !includeAll) {
+      if (user.role === "pagos") {
+        // Administración: colas propias + cola de Compras (OC por generar).
+        where.status = { in: ["awaiting_oc", "oc_requested", "in_payment", "completed"] };
+      } else if (user.role === "compras") {
+        where.status = { in: ["oc_requested", "in_payment", "completed"] };
+      }
     }
 
     const rows = await prisma.invoiceFirstCommitment.findMany({

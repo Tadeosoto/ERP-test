@@ -41,7 +41,7 @@ export function HomeDashboard() {
   const load = useCallback(async () => {
     if (!user) return;
     const matUrl =
-      user.role === "compras"
+      user.role === "compras" || user.role === "pagos"
         ? "/api/material-requests"
         : user.role === "ingeniero"
           ? "/api/material-requests?mine=1"
@@ -184,6 +184,7 @@ export function HomeDashboard() {
         commitments={commitments}
         expenses={expenses}
         invoiceCommitments={invoiceCommitments}
+        materialRequests={materialRequests}
         recentMovements={recentMovements}
         pendingMovements={pendingMovements}
         onOrdersMutated={() => void load()}

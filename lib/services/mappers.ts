@@ -197,9 +197,12 @@ export function mapNotification(n: {
   orderId: string | null;
   directExpenseId?: string | null;
   invoiceFirstCommitmentId?: string | null;
+  recurringCommitmentId?: string | null;
   type: string;
   message: string;
   read: boolean;
+  requiresAcknowledgement?: boolean;
+  acknowledged?: boolean;
   createdAt: Date;
 }): NotificationDto {
   return {
@@ -207,9 +210,12 @@ export function mapNotification(n: {
     orderId: n.orderId,
     directExpenseId: n.directExpenseId ?? null,
     invoiceFirstCommitmentId: n.invoiceFirstCommitmentId ?? null,
+    recurringCommitmentId: n.recurringCommitmentId ?? null,
     type: n.type,
     message: n.message,
     read: n.read,
+    requiresAcknowledgement: Boolean(n.requiresAcknowledgement),
+    acknowledged: Boolean(n.acknowledged),
     createdAt: n.createdAt.toISOString(),
   };
 }

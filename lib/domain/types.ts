@@ -138,9 +138,12 @@ export interface NotificationDto {
   orderId: string | null;
   directExpenseId: string | null;
   invoiceFirstCommitmentId: string | null;
+  recurringCommitmentId: string | null;
   type: string;
   message: string;
   read: boolean;
+  requiresAcknowledgement: boolean;
+  acknowledged: boolean;
   createdAt: string;
 }
 
@@ -247,6 +250,15 @@ export interface DirectExpenseDto {
   paymentRecords: DirectExpensePaymentDto[];
 }
 
+export interface RecurringCommitmentFileDto {
+  id: string;
+  kind: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
 export interface RecurringCommitmentDto {
   id: string;
   supplierId: string | null;
@@ -268,6 +280,7 @@ export interface RecurringCommitmentDto {
   createdByName: string;
   createdAt: string;
   updatedAt: string;
+  files: RecurringCommitmentFileDto[];
 }
 
 export interface InvoiceFirstFileDto {

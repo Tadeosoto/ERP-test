@@ -93,3 +93,8 @@ export function toDateInputValue(date: Date): string {
   const d = String(date.getDate()).padStart(2, "0");
   return `${y}-${m}-${d}`;
 }
+
+export const RECURRING_DUE_REMINDER_TYPE = "recurring_due_reminder";
+
+/** Avisos diarios a Administración a partir de este umbral (días antes del vencimiento). */
+export const RECURRING_DUE_REMINDER_DAYS = 3;

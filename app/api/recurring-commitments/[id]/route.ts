@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  defaultDueFromReception,
-  nextReceptionFromDay,
-  parseIsoDateInput,
-} from "@/lib/domain/recurring-commitments";
+import { parseIsoDateInput } from "@/lib/domain/recurring-commitments";
 import { canManageRecurringCommitments } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
@@ -35,14 +31,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
       supplierName?: string;
       concept?: string;
       frequency?: string;
-      expectedReceptionDay?: number;
       dueDate?: string | null;
-      nextReceptionDate?: string | null;
-      obraId?: string | null;
-      costCenter?: string;
       currency?: string;
       estimatedAmount?: number | null;
-      lifecycleStatus?: string;
       workflowStatus?: string;
       notes?: string;
     };
@@ -57,13 +48,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
       supplierName = supplier.commercialName || supplier.legalName;
     }
 
-    const day = body.expectedReceptionDay ?? existing.expectedReceptionDay;
-    const nextReception =
-      parseIsoDateInput(body.nextReceptionDate ?? "") ??
-      nextReceptionFromDay(day, new Date(existing.nextReceptionDate));
-    const due =
-      parseIsoDateInput(body.dueDate ?? "") ??
-      defaultDueFromReception(nextReception);
+    const due = parseIsoDateInput(body.dueDate ?? "") ?? existing.dueDate;
+    const day = due instanceof Date ? due.getDate() : new Date(due).getDate();
+    const dueDate = due instanceof Date ? due : new Date(due);
 
     const row = await prisma.recurringCommitment.update({
       where: { id },
@@ -73,10 +60,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
         concept: body.concept?.trim() ?? existing.concept,
         frequency: body.frequency ?? existing.frequency,
         expectedReceptionDay: day,
-        nextReceptionDate: nextReception,
-        dueDate: due,
-        obraId: body.obraId !== undefined ? body.obraId : existing.obraId,
-        costCenter: body.costCenter?.trim() ?? existing.costCenter,
+        nextReceptionDate: dueDate,
+        dueDate,
         currency: body.currency?.trim() || existing.currency,
         estimatedAmount:
           body.estimatedAmount !== undefined
@@ -84,7 +69,6 @@ export async function PATCH(request: Request, ctx: Ctx) {
               ? body.estimatedAmount
               : null
             : existing.estimatedAmount,
-        lifecycleStatus: body.lifecycleStatus ?? existing.lifecycleStatus,
         workflowStatus: body.workflowStatus ?? existing.workflowStatus,
         notes: body.notes !== undefined ? body.notes.slice(0, 200) : existing.notes,
       },

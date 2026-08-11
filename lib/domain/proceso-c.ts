@@ -1,4 +1,5 @@
 import type { Role } from "./types";
+import { canActAsCompras } from "./transitions";
 
 export type InvoiceFirstStatus = "awaiting_oc" | "oc_requested" | "in_payment" | "completed";
 
@@ -18,7 +19,7 @@ export function canRequestOcForInvoiceFirst(status: InvoiceFirstStatus, role: Ro
 }
 
 export function canCreateOcFromInvoiceFirst(status: InvoiceFirstStatus, role: Role): boolean {
-  return role === "compras" && status === "oc_requested";
+  return canActAsCompras(role) && status === "oc_requested";
 }
 
 /** Dirección y Administración pueden corregir datos del compromiso. */

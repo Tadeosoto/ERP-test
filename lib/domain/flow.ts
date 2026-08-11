@@ -96,7 +96,8 @@ export function getPendingRoles(status: OrderStatus): Role[] {
     case "engineerRejected":
     case "awaitingPatyDeadline":
     case "paid":
-      return ["compras"];
+      /** Compras y Administración (puede actuar como Compras). */
+      return ["compras", "pagos"];
     case "awaitingPayment":
       return ["pagos"];
     case "awaitingInvoice":

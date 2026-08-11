@@ -29,6 +29,7 @@ export function ComprasHomeDashboard({
   recentMovements,
   pendingMovements,
   onOrderMutated,
+  embedded = false,
 }: {
   userName: string;
   orders: PurchaseOrderDto[];
@@ -38,6 +39,8 @@ export function ComprasHomeDashboard({
   recentMovements: MovementDto[];
   pendingMovements: PendingMovementDto[];
   onOrderMutated?: () => void;
+  /** Cuando se embebe en el inicio de Administración (sin saludo duplicado). */
+  embedded?: boolean;
 }) {
   const [activeTab, setActiveTab] = useState<ComprasOrderTab>("all");
   const [hintDismissed, setHintDismissed] = useState(false);
@@ -57,13 +60,27 @@ export function ComprasHomeDashboard({
         <header className="shrink-0">
           <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <div className="min-w-0 flex-1">
-              <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
-                ¡Hola, {userName.split(" ")[0]}!
-              </h1>
-              <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
-                <RoleActivityIcon role="compras" size="sm" />
-                <span>Compras — Registra la OC con PDF tras negociar con proveedores.</span>
-              </p>
+              {embedded ? (
+                <>
+                  <h2 className="text-lg font-bold text-zinc-900 sm:text-xl">Módulo Compras</h2>
+                  <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
+                    <RoleActivityIcon role="compras" size="sm" />
+                    <span>
+                      Como Administración puedes crear OCs, subir PDFs y avanzar las tareas de Compras.
+                    </span>
+                  </p>
+                </>
+              ) : (
+                <>
+                  <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
+                    ¡Hola, {userName.split(" ")[0]}!
+                  </h1>
+                  <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
+                    <RoleActivityIcon role="compras" size="sm" />
+                    <span>Compras — Registra la OC con PDF tras negociar con proveedores.</span>
+                  </p>
+                </>
+              )}
             </div>
             <Link href="/ordenes/nueva" className="btn-primary h-11 min-h-11 w-full shrink-0 text-sm sm:w-auto">
               <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>

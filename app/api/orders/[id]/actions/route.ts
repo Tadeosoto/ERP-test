@@ -13,6 +13,7 @@ import {
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
+  canSendToAdministration,
   canSendToEngineer,
   canSetPaymentDeadline,
   computePaymentLabel,
@@ -395,6 +396,87 @@ export async function POST(request: Request, ctx: Ctx) {
         userIds: [engineerId],
       });
       await notifyByRoles(id, "order_sent_engineer", `OC «${updated.title}» pendiente de aprobación.`, ["ingeniero"]);
+
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "send_to_administration") {
+      if (!canSendToAdministration(status, role)) {
+        return NextResponse.json(
+          { error: "No puedes enviar esta orden a Administración en el estado actual." },
+          { status: 403 }
+        );
+      }
+
+      const hasPdf = await prisma.storedFile.findFirst({
+        where: { orderId: id, kind: "oc_pdf" },
+      });
+      if (!hasPdf) {
+        return NextResponse.json({ error: "Debes adjuntar el PDF de la OC antes de enviar." }, { status: 400 });
+      }
+
+      if (order.totalAmount <= 0) {
+        return NextResponse.json({ error: "El monto total de la OC debe ser mayor a cero." }, { status: 400 });
+      }
+
+      const paymentType = asPaymentType(order.paymentType) ?? asPaymentType(order.suggestedPaymentType);
+      if (!paymentType) {
+        return NextResponse.json(
+          { error: "Indica la modalidad de pago (inmediato, 30 días o parcialidades) antes de enviar." },
+          { status: 400 }
+        );
+      }
+
+      const { status: nextStatus } = engineerApproveNextStatus(paymentType);
+
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.orderComment.create({
+          data: {
+            orderId: id,
+            authorId: user.id,
+            body: `OC enviada por Proceso B a Administración (sin aprobación de Ingeniería) · ${paymentType}`,
+            kind: "approval",
+          },
+        });
+
+        const po = await tx.purchaseOrder.update({
+          where: { id },
+          data: {
+            status: nextStatus,
+            paymentType,
+            assignedEngineerUserId: null,
+            sentToEngineerAt: null,
+          },
+          include: orderInclude,
+        });
+
+        if (order.materialRequestId) {
+          await tx.materialRequest.update({
+            where: { id: order.materialRequestId },
+            data: { status: "in_oc_process" },
+          });
+        }
+
+        if (order.invoiceFirstCommitmentId) {
+          await tx.invoiceFirstCommitment.update({
+            where: { id: order.invoiceFirstCommitmentId },
+            data: { status: "in_payment" },
+          });
+        }
+
+        return po;
+      });
+
+      const evt = NotificationEvents.sentProcesoB(updated.title);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      if (nextStatus === "awaitingPatyDeadline") {
+        await notifyByRoles(
+          id,
+          "engineer_approved_programado",
+          `«${updated.title}» (Proceso B) requiere fecha límite de pago.`,
+          ["compras", "pagos"]
+        );
+      }
 
       return NextResponse.json({ order: mapOrder(updated) });
     }

@@ -22,6 +22,9 @@ export function isPdf(file: File): boolean {
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
+/** Tipos con un solo documento vigente (reemplazo al subir de nuevo). */
+const REPLACE_ON_UPLOAD: ReadonlySet<FileKind> = new Set(["oc_pdf", "factura"]);
+
 export async function saveOrderFile(input: {
   orderId: string;
   kind: FileKind;
@@ -31,10 +34,18 @@ export async function saveOrderFile(input: {
   if (!isPdf(input.file)) throw new Error("Solo se permiten archivos PDF.");
   if (input.file.size > MAX_BYTES) throw new Error("El archivo supera el límite de 15 MB.");
 
-  // Reemplazar PDF del mismo tipo (p. ej. nueva versión de la OC).
-  await prisma.storedFile.deleteMany({
-    where: { orderId: input.orderId, kind: input.kind },
-  });
+  // OC / factura: una versión vigente. Comprobantes y complementos: se acumulan (abonos).
+  if (REPLACE_ON_UPLOAD.has(input.kind)) {
+    const previous = await prisma.storedFile.findMany({
+      where: { orderId: input.orderId, kind: input.kind },
+    });
+    for (const prev of previous) {
+      await removeStoredFileFromDisk(prev.storagePath);
+    }
+    await prisma.storedFile.deleteMany({
+      where: { orderId: input.orderId, kind: input.kind },
+    });
+  }
 
   const buffer = Buffer.from(await input.file.arrayBuffer());
 

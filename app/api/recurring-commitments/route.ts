@@ -1,10 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import {
-  defaultDueFromReception,
-  nextReceptionFromDay,
-  parseIsoDateInput,
-} from "@/lib/domain/recurring-commitments";
+import { parseIsoDateInput } from "@/lib/domain/recurring-commitments";
 import { canManageRecurringCommitments } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
@@ -19,7 +15,7 @@ export async function GET() {
     await requireSessionUser();
     const rows = await prisma.recurringCommitment.findMany({
       where: { active: true },
-      orderBy: [{ nextReceptionDate: "asc" }, { supplierName: "asc" }],
+      orderBy: [{ dueDate: "asc" }, { supplierName: "asc" }],
       include: recurringCommitmentInclude,
     });
     return NextResponse.json({ commitments: rows.map(mapRecurringCommitment) });
@@ -41,13 +37,9 @@ export async function POST(request: Request) {
       supplierName?: string;
       concept?: string;
       frequency?: string;
-      expectedReceptionDay?: number;
       dueDate?: string | null;
-      obraId?: string | null;
-      costCenter?: string;
       currency?: string;
       estimatedAmount?: number | null;
-      lifecycleStatus?: string;
       workflowStatus?: string;
       notes?: string;
     };
@@ -58,9 +50,9 @@ export async function POST(request: Request) {
     if (!body.frequency?.trim()) {
       return NextResponse.json({ error: "La frecuencia es requerida." }, { status: 400 });
     }
-    const day = Number(body.expectedReceptionDay);
-    if (!Number.isFinite(day) || day < 1 || day > 31) {
-      return NextResponse.json({ error: "Selecciona un día de recepción válido." }, { status: 400 });
+    const due = parseIsoDateInput(body.dueDate ?? "");
+    if (!due) {
+      return NextResponse.json({ error: "Indica la fecha límite de pago." }, { status: 400 });
     }
 
     let supplierName = body.supplierName?.trim() ?? "";
@@ -76,8 +68,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "Selecciona un proveedor." }, { status: 400 });
     }
 
-    const nextReception = nextReceptionFromDay(day);
-    const due = parseIsoDateInput(body.dueDate ?? "") ?? defaultDueFromReception(nextReception);
+    const day = due.getDate();
 
     const row = await prisma.recurringCommitment.create({
       data: {
@@ -86,16 +77,16 @@ export async function POST(request: Request) {
         concept: body.concept.trim(),
         frequency: body.frequency,
         expectedReceptionDay: day,
-        nextReceptionDate: nextReception,
+        nextReceptionDate: due,
         dueDate: due,
-        obraId: body.obraId ?? null,
-        costCenter: body.costCenter?.trim() ?? "",
+        obraId: null,
+        costCenter: "",
         currency: body.currency?.trim() || "MXN",
         estimatedAmount:
           body.estimatedAmount != null && Number.isFinite(body.estimatedAmount)
             ? body.estimatedAmount
             : null,
-        lifecycleStatus: body.lifecycleStatus === "paused" ? "paused" : "active",
+        lifecycleStatus: "active",
         workflowStatus: "pending",
         notes: (body.notes ?? "").slice(0, 200),
         createdByUserId: user.id,
