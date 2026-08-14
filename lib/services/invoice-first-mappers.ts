@@ -19,6 +19,7 @@ export const invoiceFirstInclude = {
   obra: true,
   createdBy: true,
   files: true,
+  expediente: { select: { id: true, folio: true, name: true } },
   purchaseOrder: {
     select: {
       id: true,
@@ -40,6 +41,7 @@ type InvoiceFirstWithRelations = InvoiceFirstCommitment & {
   obra: Obra | null;
   createdBy: User;
   files: InvoiceFirstFile[];
+  expediente?: { id: string; folio: string; name: string } | null;
   purchaseOrder?: {
     id: string;
     ocFolio: string;
@@ -101,6 +103,9 @@ export function mapInvoiceFirstCommitment(r: InvoiceFirstWithRelations): Invoice
     createdAt: r.createdAt.toISOString(),
     updatedAt: r.updatedAt.toISOString(),
     files: r.files.map(mapFile),
+    expedienteId: r.expedienteId ?? null,
+    expedienteFolio: r.expediente?.folio ?? null,
+    expedienteName: r.expediente?.name ?? null,
   };
 }
 

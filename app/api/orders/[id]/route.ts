@@ -59,6 +59,8 @@ export async function PATCH(request: Request, ctx: Ctx) {
       currency?: string;
       paymentType?: PaymentType | null;
       assignedEngineerUserId?: string | null;
+      processKind?: "a" | "c" | null;
+      expedienteId?: string | null;
     };
 
     const supplierName = body.supplierName?.trim() ?? order.supplierName;
@@ -95,6 +97,12 @@ export async function PATCH(request: Request, ctx: Ctx) {
           body.assignedEngineerUserId !== undefined
             ? body.assignedEngineerUserId
             : order.assignedEngineerUserId,
+        processKind:
+          body.processKind === "a" || body.processKind === "c"
+            ? body.processKind
+            : order.processKind,
+        expedienteId:
+          body.expedienteId !== undefined ? body.expedienteId || null : order.expedienteId,
       },
       include: orderInclude,
     });

@@ -294,7 +294,7 @@ export function OrderDetailPanel({
       <div className="card p-6">
         <h2 className="text-xl font-semibold">Avance en el proceso</h2>
         <div className="mt-4 overflow-x-auto pb-2">
-          <ProcessFlowDiagram status={order.status} />
+          <ProcessFlowDiagram status={order.status} processKind={order.processKind} />
         </div>
       </div>
 

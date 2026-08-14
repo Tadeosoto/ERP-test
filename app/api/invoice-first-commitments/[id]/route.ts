@@ -61,6 +61,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       currency?: string;
       invoiceDate?: string;
       comment?: string;
+      expedienteId?: string | null;
     };
 
     const data: Record<string, unknown> = {};
@@ -136,6 +137,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     if (body.comment !== undefined) {
       data.comment = body.comment.trim();
+    }
+
+    if (body.expedienteId !== undefined) {
+      data.expedienteId = body.expedienteId || null;
     }
 
     const updated = await prisma.invoiceFirstCommitment.update({

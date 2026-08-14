@@ -1,6 +1,8 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
+import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { FilePickButton } from "@/components/file-pick-button";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -12,7 +14,7 @@ import {
   type CommitmentWorkflowStatus,
 } from "@/lib/domain/recurring-commitments";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import type { RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
+import type { ObraDto, RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
 import { formatAmountInput, formatDateShort, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 const inputCls =
@@ -49,6 +51,7 @@ type FormState = {
   estimatedAmount: string;
   workflowStatus: CommitmentWorkflowStatus;
   notes: string;
+  expedienteId: string;
 };
 
 const EMPTY: FormState = {
@@ -60,6 +63,7 @@ const EMPTY: FormState = {
   estimatedAmount: "",
   workflowStatus: "pending",
   notes: "",
+  expedienteId: "",
 };
 
 function commitmentToForm(c: RecurringCommitmentDto): FormState {
@@ -72,6 +76,7 @@ function commitmentToForm(c: RecurringCommitmentDto): FormState {
     estimatedAmount: c.estimatedAmount != null ? formatAmountInput(c.estimatedAmount) : "",
     workflowStatus: c.workflowStatus as CommitmentWorkflowStatus,
     notes: c.notes,
+    expedienteId: c.expedienteId ?? "",
   };
 }
 
@@ -81,18 +86,21 @@ export function CompromisoRecurrenteModal({
   onSaved,
   suppliers,
   editing,
+  obras = [],
 }: {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
   suppliers: SupplierDto[];
   editing?: RecurringCommitmentDto | null;
+  obras?: ObraDto[];
 }) {
   const { showSuccess, showError } = useFeedback();
   const [form, setForm] = useState<FormState>(EMPTY);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [files, setFiles] = useState(editing?.files ?? []);
+  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
 
   const isEdit = Boolean(editing);
 
@@ -162,6 +170,7 @@ export function CompromisoRecurrenteModal({
       estimatedAmount: form.estimatedAmount ? parseAmountInput(form.estimatedAmount) : null,
       workflowStatus: form.workflowStatus,
       notes: form.notes.slice(0, 200),
+      expedienteId: form.expedienteId || null,
     };
 
     setBusy(true);
@@ -190,6 +199,16 @@ export function CompromisoRecurrenteModal({
   if (!open) return null;
 
   return (
+    <>
+    <NuevoExpedienteModal
+      open={nuevoExpedienteOpen}
+      onClose={() => setNuevoExpedienteOpen(false)}
+      obras={obras}
+      onSaved={(e) => {
+        setForm((f) => ({ ...f, expedienteId: e.id }));
+        setNuevoExpedienteOpen(false);
+      }}
+    />
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
       <button
         type="button"
@@ -343,6 +362,16 @@ export function CompromisoRecurrenteModal({
               <p className="mt-1 text-right text-[11px] text-zinc-400">{form.notes.length}/200</p>
             </Field>
 
+            <div>
+              <ExpedienteCombobox
+                value={form.expedienteId}
+                onChange={(id) => setForm((f) => ({ ...f, expedienteId: id }))}
+                allowCreate
+                onCreateClick={() => setNuevoExpedienteOpen(true)}
+                label="Expediente (contenedor)"
+              />
+            </div>
+
             {isEdit && (
               <section className="rounded-2xl border border-zinc-200 p-4">
                 <h3 className="text-sm font-bold text-zinc-900">Documentos (factura y pago)</h3>
@@ -419,5 +448,6 @@ export function CompromisoRecurrenteModal({
         </div>
       </div>
     </div>
+    </>
   );
 }

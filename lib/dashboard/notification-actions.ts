@@ -11,6 +11,7 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   deadline_set: ["pagos"],
   payment_registered: ["compras", "pagos"],
   order_sent_proceso_b: ["pagos"],
+  order_sent_proceso_c: ["pagos"],
   recurring_due_reminder: ["pagos"],
   awaiting_invoice: ["compras", "pagos", "recepcion"],
   invoice_uploaded: [...EXPEDIENTE_CLOSE_ROLES],
@@ -68,6 +69,7 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
     case "engineer_approved":
     case "deadline_set":
     case "order_sent_proceso_b":
+    case "order_sent_proceso_c":
       return "Registrar pago";
     case "recurring_due_reminder":
       return "Ver compromisos";

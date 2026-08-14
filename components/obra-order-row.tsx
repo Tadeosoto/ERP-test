@@ -105,7 +105,7 @@ export function ObraOrderRow({ order }: { order: PurchaseOrderDto }) {
             {formatMoney(order.amountPaidSoFar, order.currency)} pagado de{" "}
             {formatMoney(order.totalAmount, order.currency)}
           </p>
-          <ProcessFlowDiagram status={order.status} />
+          <ProcessFlowDiagram status={order.status} processKind={order.processKind} />
           <Link href={`/ordenes/${order.id}`} className="btn-primary">
             <IconClipboard />
             Ver detalle y tareas

@@ -8,7 +8,7 @@ import { SystemStatusLegend } from "@/components/ui/system-status-legend";
 import { RoleLegend } from "@/components/ui/role-legend";
 import { ObraOrderRow } from "@/components/obra-order-row";
 import { LoadingScreen } from "@/components/ui/loading-screen";
-import { FLOW_STEPS } from "@/lib/domain/flow";
+import { FLOW_STEPS_A, FLOW_STEPS_B, FLOW_STEPS_C } from "@/lib/domain/flow";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
 import { filterOrders, sortByCreatedAtDesc } from "@/lib/list-utils";
@@ -55,27 +55,76 @@ export default function FlujoPage() {
         <RoleLegend />
       </div>
 
-      <section className="card p-6">
-        <h2 className="text-xl font-semibold">Flujo estándar</h2>
-        <div className="mt-6 overflow-x-auto pb-2">
-          <ProcessFlowDiagram />
+      <section className="card space-y-8 p-6">
+        <div>
+          <h2 className="text-xl font-semibold">Proceso A — OC con Ingeniería</h2>
+          <div className="mt-4 overflow-x-auto pb-2">
+            <ProcessFlowDiagram processKind="a" />
+          </div>
+          <ol className="mt-6 grid gap-3 sm:grid-cols-2">
+            {FLOW_STEPS_A.map((s) => (
+              <li key={`a-${s.step}`} className="flex gap-3 rounded-2xl bg-teal-50/60 px-4 py-3 text-base">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-sm font-bold text-white">
+                  {s.step}
+                </span>
+                <div>
+                  <p className="font-semibold">{s.shortTitle}</p>
+                  <p className="text-zinc-600">{s.detail}</p>
+                  {s.primaryRole && (
+                    <p className="mt-1 text-sm text-orange-800">Responsable: {ROLE_LABEL[s.primaryRole]}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
         </div>
-        <ol className="mt-8 grid gap-3 sm:grid-cols-2">
-          {FLOW_STEPS.map((s) => (
-            <li key={s.step} className="flex gap-3 rounded-2xl bg-teal-50/60 px-4 py-3 text-base">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-teal-600 text-sm font-bold text-white">
-                {s.step}
-              </span>
-              <div>
-                <p className="font-semibold">{s.shortTitle}</p>
-                <p className="text-zinc-600">{s.detail}</p>
-                {s.primaryRole && (
-                  <p className="mt-1 text-sm text-orange-800">Responsable: {ROLE_LABEL[s.primaryRole]}</p>
-                )}
-              </div>
-            </li>
-          ))}
-        </ol>
+
+        <div>
+          <h2 className="text-xl font-semibold">Proceso C — OC a Administración / Carolina</h2>
+          <p className="mt-1 text-sm text-zinc-600">Sin paso de aprobación de Ingeniería.</p>
+          <div className="mt-4 overflow-x-auto pb-2">
+            <ProcessFlowDiagram processKind="c" />
+          </div>
+          <ol className="mt-6 grid gap-3 sm:grid-cols-2">
+            {FLOW_STEPS_C.map((s) => (
+              <li key={`c-${s.step}`} className="flex gap-3 rounded-2xl bg-violet-50/60 px-4 py-3 text-base">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-violet-600 text-sm font-bold text-white">
+                  {s.step}
+                </span>
+                <div>
+                  <p className="font-semibold">{s.shortTitle}</p>
+                  <p className="text-zinc-600">{s.detail}</p>
+                  {s.primaryRole && (
+                    <p className="mt-1 text-sm text-orange-800">Responsable: {ROLE_LABEL[s.primaryRole]}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
+
+        <div>
+          <h2 className="text-xl font-semibold">Proceso B — Gasto directo (sin OC)</h2>
+          <div className="mt-4 overflow-x-auto pb-2">
+            <ProcessFlowDiagram processKind="b" />
+          </div>
+          <ol className="mt-6 grid gap-3 sm:grid-cols-2">
+            {FLOW_STEPS_B.map((s) => (
+              <li key={`b-${s.step}`} className="flex gap-3 rounded-2xl bg-sky-50/60 px-4 py-3 text-base">
+                <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-sky-600 text-sm font-bold text-white">
+                  {s.step}
+                </span>
+                <div>
+                  <p className="font-semibold">{s.shortTitle}</p>
+                  <p className="text-zinc-600">{s.detail}</p>
+                  {s.primaryRole && (
+                    <p className="mt-1 text-sm text-orange-800">Responsable: {ROLE_LABEL[s.primaryRole]}</p>
+                  )}
+                </div>
+              </li>
+            ))}
+          </ol>
+        </div>
       </section>
 
       <section className="space-y-4">

@@ -4,11 +4,15 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { ProveedorModal } from "@/components/compras/proveedor-modal";
+import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
+import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import { canComprasEditOrder, canCreateOrder } from "@/lib/domain/transitions";
+import { canCreateExpedientes } from "@/lib/domain/expedientes";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
@@ -24,10 +28,11 @@ const PAYMENT_TERMS = [
 ];
 
 const MAX_PDF_BYTES = 20 * 1024 * 1024;
-/** Destino especial: OC sin paso de Ingeniería → Administración. */
-const DEST_PROCESO_B = "__proceso_b__";
+/** Destino especial: OC sin paso de Ingeniería → Administración (Proceso C). */
+const DEST_PROCESO_C = "__proceso_c__";
 
 type Step = 1 | 2 | 3;
+type SendTarget = "engineer" | "proceso_c";
 
 type EngineerOption = { id: string; name: string };
 
@@ -212,9 +217,12 @@ function NuevaOcWizard() {
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploadedPdf, setUploadedPdf] = useState<{ name: string; size: number; at: string } | null>(null);
   const [assignedEngineerId, setAssignedEngineerId] = useState("");
+  const [sendTarget, setSendTarget] = useState<SendTarget>("engineer");
   const [paymentModality, setPaymentModality] = useState<PaymentType>("programado");
   const [materialRequestId, setMaterialRequestId] = useState<string | null>(solicitudIdParam);
   const [invoiceFirstCommitmentId, setInvoiceFirstCommitmentId] = useState<string | null>(compromisoFacturaIdParam);
+  const [expedienteId, setExpedienteId] = useState("");
+  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
   const [solicitudBanner, setSolicitudBanner] = useState("");
   const [history, setHistory] = useState<{ at: string; text: string }[]>([]);
 
@@ -224,8 +232,9 @@ function NuevaOcWizard() {
     if (s) return s.displayName;
     return supplierName;
   }, [suppliers, supplierId, supplierName]);
-  const isProcesoB = assignedEngineerId === DEST_PROCESO_B;
-  const engineerUserIdForApi = isProcesoB ? null : assignedEngineerId || null;
+  const isProcesoC = sendTarget === "proceso_c";
+  const engineerUserIdForApi = isProcesoC ? null : assignedEngineerId || null;
+  const sendSelectValue = isProcesoC ? DEST_PROCESO_C : assignedEngineerId;
 
   const loadCatalogs = useCallback(async () => {
     const [oRes, sRes, uRes] = await Promise.all([
@@ -244,9 +253,15 @@ function NuevaOcWizard() {
     if (uRes.ok) {
       const d = (await uRes.json()) as { users: EngineerOption[] };
       setEngineers(d.users);
-      if (d.users[0] && !assignedEngineerId) setAssignedEngineerId(d.users[0].id);
     }
-  }, [assignedEngineerId]);
+  }, []);
+
+  /** Solo auto-elige ingeniero si el destino sigue siendo Ingeniería y aún no hay valor. */
+  useEffect(() => {
+    if (sendTarget !== "engineer") return;
+    if (assignedEngineerId) return;
+    if (engineers[0]) setAssignedEngineerId(engineers[0].id);
+  }, [engineers, assignedEngineerId, sendTarget]);
 
   const hydrateFromOrder = useCallback((o: PurchaseOrderDto) => {
     setObraId(o.obraId);
@@ -260,9 +275,15 @@ function NuevaOcWizard() {
     setTotalAmount(o.totalAmount > 0 ? formatAmountInput(o.totalAmount) : "");
     setCurrency(o.currency);
     setDocumentDate(o.documentDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
-    if (o.assignedEngineerUserId) setAssignedEngineerId(o.assignedEngineerUserId);
+    if (o.assignedEngineerUserId) {
+      setAssignedEngineerId(o.assignedEngineerUserId);
+      setSendTarget("engineer");
+    } else if (o.processKind === "c" || o.invoiceFirstCommitmentId) {
+      setSendTarget("proceso_c");
+    }
     if (o.paymentType) setPaymentModality(o.paymentType);
     if (o.materialRequestId) setMaterialRequestId(o.materialRequestId);
+    setExpedienteId(o.expedienteId ?? "");
     const pdf = o.files.find((f) => f.kind === "oc_pdf");
     if (pdf) {
       setUploadedPdf({
@@ -326,6 +347,7 @@ function NuevaOcWizard() {
               .join("\n")
           );
           setSolicitudBanner(`Factura ${c.invoiceFolio} · Proceso C`);
+          setSendTarget("proceso_c");
         }
       } else if (solicitudIdParam) {
         const sRes = await fetch(`/api/material-requests/${solicitudIdParam}`, { credentials: "include" });
@@ -351,6 +373,7 @@ function NuevaOcWizard() {
           );
           setInternalReference(s.costCenter ? `CC: ${s.costCenter}` : "");
           setAssignedEngineerId(s.createdByUserId);
+          setSendTarget("engineer");
           setSolicitudBanner(`Solicitud de ${s.createdByName} · ${s.obraName}`);
         }
       }
@@ -395,6 +418,8 @@ function NuevaOcWizard() {
       materialRequestId,
       invoiceFirstCommitmentId,
       assignedEngineerUserId: engineerUserIdForApi,
+      processKind: isProcesoC ? "c" : "a",
+      expedienteId: expedienteId || null,
       asDraft: true,
     };
 
@@ -523,12 +548,16 @@ function NuevaOcWizard() {
     }
     setBusy(true);
     try {
-      if (isProcesoB) {
+      if (isProcesoC) {
         await fetch(`/api/orders/${orderId}`, {
           method: "PATCH",
           headers: { "Content-Type": "application/json" },
           credentials: "include",
-          body: JSON.stringify({ assignedEngineerUserId: null, paymentType: paymentModality }),
+          body: JSON.stringify({
+            assignedEngineerUserId: null,
+            paymentType: paymentModality,
+            processKind: "c",
+          }),
         });
 
         const res = await fetch(`/api/orders/${orderId}/actions`, {
@@ -540,7 +569,7 @@ function NuevaOcWizard() {
         const data = (await res.json()) as { order?: PurchaseOrderDto; error?: string };
         if (!res.ok) throw new Error(data.error ?? "Error al enviar a Administración.");
 
-        showSuccess("La OC fue enviada a Administración (Proceso B).", () => {
+        showSuccess("La OC fue enviada a Administración / Carolina (Proceso C).", () => {
           router.push(`/ordenes/${orderId}`);
         });
         return;
@@ -550,7 +579,7 @@ function NuevaOcWizard() {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ assignedEngineerUserId: assignedEngineerId }),
+        body: JSON.stringify({ assignedEngineerUserId: assignedEngineerId, processKind: "a" }),
       });
 
       const res = await fetch(`/api/orders/${orderId}/actions`, {
@@ -607,6 +636,15 @@ function NuevaOcWizard() {
           setSupplierName(s.displayName);
         }}
       />
+      <NuevoExpedienteModal
+        open={nuevoExpedienteOpen}
+        onClose={() => setNuevoExpedienteOpen(false)}
+        obras={obras}
+        onSaved={(e) => {
+          setExpedienteId(e.id);
+          setNuevoExpedienteOpen(false);
+        }}
+      />
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -640,7 +678,7 @@ function NuevaOcWizard() {
             </button>
           ) : (
             <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
-              {isProcesoB ? "Enviar a administración →" : "Enviar a Ingeniería →"}
+              {isProcesoC ? "Enviar a administración/Carolina →" : "Enviar a Ingeniería →"}
             </button>
           )}
         </div>
@@ -712,6 +750,18 @@ function NuevaOcWizard() {
                     className={inputCls}
                   />
                 </label>
+                <div className="sm:col-span-2">
+                  <ExpedienteCombobox
+                    value={expedienteId}
+                    onChange={(id) => setExpedienteId(id)}
+                    allowCreate={user ? canCreateExpedientes(user.role) : false}
+                    onCreateClick={() => setNuevoExpedienteOpen(true)}
+                    label="Expediente (contenedor)"
+                  />
+                  <p className="mt-1 text-xs text-zinc-500">
+                    Agrupa esta OC con otros pagos del mismo asunto. Puedes crearlo después si aún no existe.
+                  </p>
+                </div>
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-medium text-zinc-800">
                     Modalidad de pago acordada <span className="text-red-500">*</span>
@@ -1036,8 +1086,16 @@ function NuevaOcWizard() {
                   </span>
                   <select
                     required
-                    value={assignedEngineerId}
-                    onChange={(e) => setAssignedEngineerId(e.target.value)}
+                    value={sendSelectValue}
+                    onChange={(e) => {
+                      const v = e.target.value;
+                      if (v === DEST_PROCESO_C) {
+                        setSendTarget("proceso_c");
+                        return;
+                      }
+                      setSendTarget("engineer");
+                      setAssignedEngineerId(v);
+                    }}
                     className={inputCls}
                   >
                     {engineers.map((eng) => (
@@ -1045,12 +1103,12 @@ function NuevaOcWizard() {
                         {eng.name} (Ingeniería)
                       </option>
                     ))}
-                    <option value={DEST_PROCESO_B}>Proceso B</option>
+                    <option value={DEST_PROCESO_C}>Proceso C — Administración / Carolina</option>
                   </select>
                   <p className="mt-1 text-xs text-zinc-500">
-                    {isProcesoB
-                      ? "La OC se enviará directo a Administración, sin paso de Ingeniería."
-                      : "Responsable de revisar y aprobar esta OC."}
+                    {isProcesoC
+                      ? "La OC se enviará directo a Administración / Carolina (Proceso C), sin paso de Ingeniería."
+                      : "Responsable de revisar y aprobar esta OC (Proceso A)."}
                   </p>
                 </label>
               </section>
@@ -1058,10 +1116,10 @@ function NuevaOcWizard() {
               <section className="rounded-2xl border border-sky-100 bg-sky-50/50 p-5">
                 <h2 className="text-sm font-bold text-sky-900">¿Qué ocurrirá después de enviar?</h2>
                 <ul className="mt-3 space-y-2 text-sm text-sky-900">
-                  {(isProcesoB
+                  {(isProcesoC
                     ? [
-                        "Se notificará a Administración.",
-                        "La OC omitirá el paso de Ingeniería (Proceso B).",
+                        "Se notificará a Administración (Carolina).",
+                        "La OC omitirá el paso de Ingeniería (Proceso C).",
                         "Administración podrá continuar con el pago según la modalidad indicada.",
                         "Todas las acciones quedarán registradas en la bitácora.",
                       ]
@@ -1078,6 +1136,16 @@ function NuevaOcWizard() {
                     </li>
                   ))}
                 </ul>
+              </section>
+
+              <section className="card p-5 sm:p-6">
+                <h2 className="text-sm font-bold text-zinc-900">Diagrama del proceso</h2>
+                <p className="mt-1 text-xs text-zinc-500">
+                  Vista previa según el destino seleccionado.
+                </p>
+                <div className="mt-4 overflow-x-auto pb-2">
+                  <ProcessFlowDiagram processKind={isProcesoC ? "c" : "a"} />
+                </div>
               </section>
 
               {history.length > 0 && (
@@ -1118,7 +1186,7 @@ function NuevaOcWizard() {
                 </button>
               ) : (
                 <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
-                  {isProcesoB ? "Enviar a administración →" : "Enviar a Ingeniería →"}
+                  {isProcesoC ? "Enviar a administración/Carolina →" : "Enviar a Ingeniería →"}
                 </button>
               )}
             </div>
@@ -1135,9 +1203,9 @@ function NuevaOcWizard() {
           hasPdf={Boolean(uploadedPdf || pdfFile)}
           statusLabel="BORRADOR"
           nextStatus={
-            step === 3 ? (isProcesoB ? "EN ADMINISTRACIÓN" : "PENDIENTE APROBACIÓN") : undefined
+            step === 3 ? (isProcesoC ? "EN ADMINISTRACIÓN" : "PENDIENTE APROBACIÓN") : undefined
           }
-          nextRole={step === 3 ? (isProcesoB ? "ADMINISTRACIÓN" : "INGENIERÍA") : undefined}
+          nextRole={step === 3 ? (isProcesoC ? "ADMINISTRACIÓN / CAROLINA" : "INGENIERÍA") : undefined}
         />
       </div>
     </div>

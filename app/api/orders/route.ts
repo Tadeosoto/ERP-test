@@ -55,6 +55,8 @@ export async function POST(request: Request) {
       materialRequestId?: string | null;
       invoiceFirstCommitmentId?: string | null;
       assignedEngineerUserId?: string | null;
+      processKind?: "a" | "c" | null;
+      expedienteId?: string | null;
       asDraft?: boolean;
     };
 
@@ -159,6 +161,8 @@ export async function POST(request: Request) {
           materialRequestId,
           invoiceFirstCommitmentId,
           assignedEngineerUserId,
+          processKind: body.processKind === "c" || invoiceFirstCommitmentId ? "c" : "a",
+          expedienteId: body.expedienteId || null,
           status: asDraft ? "draft" : "awaitingEngineer",
           createdByUserId: user.id,
         },

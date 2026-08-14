@@ -57,6 +57,7 @@ export async function POST(request: Request) {
       currency?: string;
       invoiceDate?: string;
       comment?: string;
+      expedienteId?: string | null;
     };
 
     if (!body.supplierId && !body.supplierName?.trim()) {
@@ -108,6 +109,7 @@ export async function POST(request: Request) {
         invoiceDate: new Date(body.invoiceDate),
         comment: body.comment?.trim() ?? "",
         status: "awaiting_oc",
+        expedienteId: body.expedienteId || null,
         createdByUserId: user.id,
       },
       include: invoiceFirstInclude,

@@ -30,6 +30,7 @@ model User {
   invoiceFirstCommitments InvoiceFirstCommitment[] @relation("InvoiceFirstCreated")
   invoiceFirstFiles       InvoiceFirstFile[]
   recurringCommitmentFiles RecurringCommitmentFile[]
+  expedientes              Expediente[]
 }
 
 model Session {
@@ -80,6 +81,7 @@ model Obra {
   directExpenses   DirectExpenseRequest[]
   recurringCommitments RecurringCommitment[]
   invoiceFirstCommitments InvoiceFirstCommitment[]
+  expedientes          Expediente[]
 }
 
 model PurchaseOrder {
@@ -106,6 +108,8 @@ model PurchaseOrder {
   suggestedPaymentType   String?
   paymentDueDate         DateTime?
   status                 String          @default("draft")
+  /// Variante de flujo: a = OC con Ingeniería; c = OC a Administración (sin Ingeniería).
+  processKind            String          @default("a")
   createdByUserId        String
   createdBy              User            @relation("OrderCreator", fields: [createdByUserId], references: [id])
   sentToEngineerAt       DateTime?
@@ -119,6 +123,8 @@ model PurchaseOrder {
   files                  StoredFile[]
   notifications          Notification[]
   paymentRecords         PaymentRecord[]
+  expedienteId           String?
+  expediente             Expediente?     @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
 }
 
 model PaymentRecord {
@@ -289,6 +295,8 @@ model InvoiceFirstCommitment {
   updatedAt       DateTime           @updatedAt
   files           InvoiceFirstFile[]
   notifications   Notification[]
+  expedienteId    String?
+  expediente      Expediente? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
 }
 
 model InvoiceFirstFile {
@@ -331,6 +339,24 @@ model RecurringCommitment {
   updatedAt            DateTime                  @updatedAt
   files                RecurringCommitmentFile[]
   notifications        Notification[]
+  expedienteId         String?
+  expediente           Expediente? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
+}
+
+model Expediente {
+  id              String   @id @default(cuid())
+  folio           String   @unique
+  name            String
+  notes           String   @default("")
+  obraId          String?
+  obra            Obra?    @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  createdByUserId String
+  createdBy       User     @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  purchaseOrders           PurchaseOrder[]
+  recurringCommitments     RecurringCommitment[]
+  invoiceFirstCommitments  InvoiceFirstCommitment[]
 }
 
 model RecurringCommitmentFile {

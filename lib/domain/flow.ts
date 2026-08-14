@@ -1,4 +1,4 @@
-import type { OrderStatus, Role, PaymentType } from "./types";
+import type { OrderStatus, Role, PaymentType, OrderProcessKind } from "./types";
 import { ROLE_LABEL, PAYMENT_TYPE_TEXT } from "./labels";
 
 export const INVOICE_UPLOAD_ROLES: Role[] = ["compras", "pagos", "recepcion", "contabilidad"];
@@ -6,16 +6,19 @@ export const INVOICE_UPLOAD_ROLES: Role[] = ["compras", "pagos", "recepcion", "c
 /** Roles que pueden validar y cerrar expedientes (OC = pago = factura). */
 export const EXPEDIENTE_CLOSE_ROLES: Role[] = ["pagos", "recepcion", "contabilidad"];
 
-export const FLOW_STEPS: readonly {
+export type FlowStepDef = {
   step: number;
   shortTitle: string;
   detail: string;
   primaryRole: Role | null;
-}[] = [
+};
+
+/** Proceso A — OC con aprobación de Ingeniería. */
+export const FLOW_STEPS_A: readonly FlowStepDef[] = [
   {
     step: 1,
     shortTitle: "Ingeniería",
-    detail: "Santiago crea y envía la solicitud de material (Proceso A) o gasto directo (Proceso B)",
+    detail: "Santiago crea y envía la solicitud de material (Proceso A)",
     primaryRole: "ingeniero",
   },
   {
@@ -56,7 +59,98 @@ export const FLOW_STEPS: readonly {
   },
 ] as const;
 
-export function flowPhaseNumber(status: OrderStatus): number {
+/** Proceso C — OC enviada directo a Administración / Carolina (sin Ingeniería). */
+export const FLOW_STEPS_C: readonly FlowStepDef[] = [
+  {
+    step: 1,
+    shortTitle: "Compras",
+    detail: "Paty registra la OC y la envía a Administración (Proceso C)",
+    primaryRole: "compras",
+  },
+  {
+    step: 2,
+    shortTitle: "Administración",
+    detail: "Carolina realiza el pago y sube el comprobante",
+    primaryRole: "pagos",
+  },
+  {
+    step: 3,
+    shortTitle: "Compras",
+    detail: "Paty envía comprobante al proveedor y solicita factura",
+    primaryRole: "compras",
+  },
+  {
+    step: 4,
+    shortTitle: "Factura",
+    detail: "Compras, Administración, Recepción o Contabilidad suben el PDF de la factura",
+    primaryRole: null,
+  },
+  {
+    step: 5,
+    shortTitle: "Contabilidad",
+    detail: "Helena valida OC = Pago = Factura y cierra el expediente",
+    primaryRole: "contabilidad",
+  },
+] as const;
+
+/** Proceso B — Gasto directo sin OC. */
+export const FLOW_STEPS_B: readonly FlowStepDef[] = [
+  {
+    step: 1,
+    shortTitle: "Ingeniería",
+    detail: "Santiago registra el gasto directo",
+    primaryRole: "ingeniero",
+  },
+  {
+    step: 2,
+    shortTitle: "Administración",
+    detail: "Carolina paga y sube el comprobante",
+    primaryRole: "pagos",
+  },
+  {
+    step: 3,
+    shortTitle: "Factura",
+    detail: "Se carga la factura del proveedor",
+    primaryRole: null,
+  },
+  {
+    step: 4,
+    shortTitle: "Cierre",
+    detail: "Validación y cierre del expediente",
+    primaryRole: "contabilidad",
+  },
+] as const;
+
+/** @deprecated Usar FLOW_STEPS_A; se mantiene como alias del Proceso A. */
+export const FLOW_STEPS = FLOW_STEPS_A;
+
+export function flowStepsForProcess(kind: OrderProcessKind | "b" = "a"): readonly FlowStepDef[] {
+  if (kind === "c") return FLOW_STEPS_C;
+  if (kind === "b") return FLOW_STEPS_B;
+  return FLOW_STEPS_A;
+}
+
+export function flowPhaseNumber(status: OrderStatus, kind: OrderProcessKind = "a"): number {
+  if (kind === "c") {
+    switch (status) {
+      case "awaitingPatyDeadline":
+      case "awaitingPayment":
+        return 2;
+      case "paid":
+        return 3;
+      case "awaitingInvoice":
+        return 4;
+      case "invoiceReceived":
+      case "difference":
+        return 5;
+      case "completed":
+        return 6;
+      case "draft":
+      default:
+        return 1;
+    }
+  }
+
   switch (status) {
     case "awaitingEngineer":
       return 3;
@@ -79,10 +173,11 @@ export function flowPhaseNumber(status: OrderStatus): number {
   }
 }
 
-export function flowProgressPercent(status: OrderStatus): number {
+export function flowProgressPercent(status: OrderStatus, kind: OrderProcessKind = "a"): number {
   if (status === "completed") return 100;
-  const phase = flowPhaseNumber(status);
-  return Math.round(((phase - 1) / FLOW_STEPS.length) * 100);
+  const steps = flowStepsForProcess(kind);
+  const phase = flowPhaseNumber(status, kind);
+  return Math.round(((phase - 1) / steps.length) * 100);
 }
 
 export function isFlowComplete(status: OrderStatus): boolean {

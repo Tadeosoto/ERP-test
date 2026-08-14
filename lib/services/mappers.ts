@@ -8,6 +8,7 @@ import type {
   PaymentLabel,
   PaymentRecordDto,
   PaymentType,
+  OrderProcessKind,
   PurchaseOrderDto,
   Role,
   StoredFileDto,
@@ -54,10 +55,15 @@ export function asCommentKind(value: string): CommentKind {
   return value as CommentKind;
 }
 
+export function asProcessKind(value: string | null | undefined): OrderProcessKind {
+  return value === "c" ? "c" : "a";
+}
+
 type OrderWithRelations = PurchaseOrder & {
   obra: Obra;
   createdBy: User;
   assignedEngineer?: User | null;
+  expediente?: { id: string; folio: string; name: string } | null;
   comments: (OrderComment & { author: User })[];
   files: StoredFile[];
   paymentRecords: (PaymentRecord & { recordedBy: User })[];
@@ -93,6 +99,13 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     assignedEngineerUserId: order.assignedEngineerUserId,
     assignedEngineerName: order.assignedEngineer?.name ?? null,
     materialRequestId: order.materialRequestId,
+    invoiceFirstCommitmentId: order.invoiceFirstCommitmentId,
+    processKind: asProcessKind(
+      order.processKind ?? (order.invoiceFirstCommitmentId ? "c" : "a")
+    ),
+    expedienteId: order.expedienteId ?? null,
+    expedienteFolio: order.expediente?.folio ?? null,
+    expedienteName: order.expediente?.name ?? null,
     totalAmount: total,
     amountPaidSoFar: paid,
     amountRemaining: amountRemaining(total, paid),
@@ -224,6 +237,7 @@ export const orderInclude = {
   obra: true,
   createdBy: true,
   assignedEngineer: true,
+  expediente: { select: { id: true, folio: true, name: true } },
   comments: { include: { author: true }, orderBy: { createdAt: "desc" as const } },
   files: { orderBy: { createdAt: "desc" as const } },
   paymentRecords: {

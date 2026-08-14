@@ -18,6 +18,9 @@ export type OrderStatus =
 /** Modalidad acordada tras aprobación de ingeniería (o parcialidades sugerida por Paty). */
 export type PaymentType = "inmediato" | "programado" | "parcialidades";
 
+/** Variante de flujo de una OC: A (con Ingeniería) o C (directo a Administración). */
+export type OrderProcessKind = "a" | "c";
+
 /** Estado de saldo de la orden. */
 export type PaymentLabel = "pendiente" | "saldada";
 
@@ -74,6 +77,11 @@ export interface PurchaseOrderDto {
   assignedEngineerUserId: string | null;
   assignedEngineerName: string | null;
   materialRequestId: string | null;
+  invoiceFirstCommitmentId: string | null;
+  processKind: OrderProcessKind;
+  expedienteId: string | null;
+  expedienteFolio: string | null;
+  expedienteName: string | null;
   totalAmount: number;
   amountPaidSoFar: number;
   amountRemaining: number;
@@ -281,6 +289,9 @@ export interface RecurringCommitmentDto {
   createdAt: string;
   updatedAt: string;
   files: RecurringCommitmentFileDto[];
+  expedienteId: string | null;
+  expedienteFolio: string | null;
+  expedienteName: string | null;
 }
 
 export interface InvoiceFirstFileDto {
@@ -318,4 +329,33 @@ export interface InvoiceFirstCommitmentDto {
   createdAt: string;
   updatedAt: string;
   files: InvoiceFirstFileDto[];
+  expedienteId: string | null;
+  expedienteFolio: string | null;
+  expedienteName: string | null;
+}
+
+export interface ExpedienteListItemDto {
+  id: string;
+  folio: string;
+  name: string;
+  notes: string;
+  obraId: string | null;
+  obraName: string | null;
+  createdByName: string;
+  createdAt: string;
+  updatedAt: string;
+  ordersCount: number;
+  commitmentsCount: number;
+  procesoCCount: number;
+  totalAmount: number;
+  amountPaidSoFar: number;
+  amountRemaining: number;
+  currency: string;
+  statusLabel: string;
+}
+
+export interface ExpedienteDetailDto extends ExpedienteListItemDto {
+  purchaseOrders: PurchaseOrderDto[];
+  recurringCommitments: RecurringCommitmentDto[];
+  invoiceFirstCommitments: InvoiceFirstCommitmentDto[];
 }

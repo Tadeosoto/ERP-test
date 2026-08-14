@@ -229,7 +229,7 @@ export function RegistrarPagoModal({
   }
 
   async function submitPayment() {
-    if (!order || !receiptFile) return;
+    if (!order) return;
     setBusy(true);
     try {
       const res = await fetch(`/api/orders/${order.id}/actions`, {
@@ -246,15 +246,21 @@ export function RegistrarPagoModal({
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo registrar el pago.");
 
-      const fd = new FormData();
-      fd.set("orderId", order.id);
-      fd.set("kind", "comprobante_pago");
-      fd.set("file", receiptFile);
-      const up = await fetch("/api/files/upload", { method: "POST", credentials: "include", body: fd });
-      const upData = (await up.json()) as { error?: string };
-      if (!up.ok) throw new Error(upData.error ?? "Pago registrado, pero falló la subida del comprobante.");
+      if (receiptFile) {
+        const fd = new FormData();
+        fd.set("orderId", order.id);
+        fd.set("kind", "comprobante_pago");
+        fd.set("file", receiptFile);
+        const up = await fetch("/api/files/upload", { method: "POST", credentials: "include", body: fd });
+        const upData = (await up.json()) as { error?: string };
+        if (!up.ok) throw new Error(upData.error ?? "Pago registrado, pero falló la subida del comprobante.");
+      }
 
-      showSuccess(actionSuccessMessage("register_payment"));
+      showSuccess(
+        receiptFile
+          ? actionSuccessMessage("register_payment")
+          : "Pago registrado. Puedes adjuntar el comprobante más adelante desde el expediente."
+      );
       onCompleted?.();
       onClose();
     } catch (e) {
@@ -435,14 +441,14 @@ export function RegistrarPagoModal({
               </Field>
 
               <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-3 text-sm text-violet-900">
-                <span className="font-semibold">Importante:</span> Después de registrar el pago podrás subir el
-                comprobante bancario en el siguiente paso.
+                <span className="font-semibold">Importante:</span> El comprobante es opcional. Puedes registrar el
+                pago ahora y adjuntarlo después desde el expediente.
               </div>
             </div>
           ) : step === 2 ? (
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-zinc-900">2. Subir comprobante de pago</h3>
+                <h3 className="text-sm font-bold text-zinc-900">2. Comprobante de pago (opcional)</h3>
                 <div
                   role="button"
                   tabIndex={0}
@@ -631,6 +637,11 @@ export function RegistrarPagoModal({
                     </div>
                   </div>
                 )}
+                {!receiptFile && (
+                  <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
+                    Sin comprobante por ahora. Podrás adjuntarlo más adelante desde el expediente.
+                  </div>
+                )}
 
                 <div className="rounded-2xl border border-emerald-100 bg-emerald-50/70 px-4 py-3 text-sm text-emerald-900">
                   <span className="font-semibold">Todo está listo</span> — Revisa que la información sea correcta
@@ -744,11 +755,11 @@ export function RegistrarPagoModal({
               </button>
               <button
                 type="button"
-                disabled={busy || !receiptFile}
+                disabled={busy}
                 className="btn-primary min-h-11 px-6 text-sm"
                 onClick={() => setStep(3)}
               >
-                Continuar →
+                {receiptFile ? "Continuar →" : "Continuar sin comprobante →"}
               </button>
             </>
           ) : (
@@ -763,7 +774,7 @@ export function RegistrarPagoModal({
               </button>
               <button
                 type="button"
-                disabled={busy || !receiptFile}
+                disabled={busy}
                 className="btn-primary min-h-11 px-6 text-sm"
                 onClick={() => void submitPayment()}
               >

@@ -196,7 +196,7 @@ export function canSendToEngineer(status: OrderStatus, role: Role): boolean {
   return canActAsCompras(role) && status === "draft";
 }
 
-/** Compras / Administración: OC borrador enviada directo a pago (Proceso B, sin Ingeniería). */
+/** Compras / Administración: OC borrador enviada directo a pago (Proceso C, sin Ingeniería). */
 export function canSendToAdministration(status: OrderStatus, role: Role): boolean {
   return canActAsCompras(role) && status === "draft";
 }

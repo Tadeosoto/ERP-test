@@ -1,7 +1,12 @@
 "use client";
 
-import type { OrderStatus } from "@/lib/domain/types";
-import { FLOW_STEPS, flowPhaseNumber, isFlowComplete } from "@/lib/domain/flow";
+import type { OrderProcessKind, OrderStatus } from "@/lib/domain/types";
+import {
+  flowPhaseNumber,
+  flowStepsForProcess,
+  isFlowComplete,
+  type FlowStepDef,
+} from "@/lib/domain/flow";
 
 function Arrow() {
   return (
@@ -71,43 +76,78 @@ function StepNode({
   );
 }
 
-export function ProcessFlowDiagram({
-  status,
-  className = "",
+function DiagramRow({
+  steps,
+  phase,
+  complete,
+  legend,
 }: {
-  status?: OrderStatus | null;
-  className?: string;
+  steps: readonly FlowStepDef[];
+  phase: number;
+  complete: boolean;
+  legend: boolean;
 }) {
-  const legend = status == null;
-  const phase = legend ? 0 : flowPhaseNumber(status);
-  const complete = legend ? false : isFlowComplete(status);
-
   return (
-    <div className={className}>
+    <>
       <div className="hidden flex-wrap items-start justify-center gap-1 sm:flex lg:gap-2">
-        {FLOW_STEPS.map((s, i) => (
-          <div key={s.step} className="flex items-start">
+        {steps.map((s, i) => (
+          <div key={`${s.step}-${s.shortTitle}`} className="flex items-start">
             <StepNode
               step={s.step}
               shortTitle={s.shortTitle}
               state={nodeState(phase, s.step, complete, legend)}
             />
-            {i < FLOW_STEPS.length - 1 && <Arrow />}
+            {i < steps.length - 1 && <Arrow />}
           </div>
         ))}
       </div>
       <div className="flex flex-col items-center sm:hidden">
-        {FLOW_STEPS.map((s, i) => (
-          <div key={s.step} className="flex flex-col items-center">
+        {steps.map((s, i) => (
+          <div key={`${s.step}-${s.shortTitle}-m`} className="flex flex-col items-center">
             <StepNode
               step={s.step}
               shortTitle={s.shortTitle}
               state={nodeState(phase, s.step, complete, legend)}
             />
-            {i < FLOW_STEPS.length - 1 && <ArrowDown />}
+            {i < steps.length - 1 && <ArrowDown />}
           </div>
         ))}
       </div>
+    </>
+  );
+}
+
+export function ProcessFlowDiagram({
+  status,
+  processKind = "a",
+  className = "",
+}: {
+  status?: OrderStatus | null;
+  /** Variante visual: a (OC + Ingeniería), c (OC → Administración), b (gasto directo). */
+  processKind?: OrderProcessKind | "b";
+  className?: string;
+}) {
+  const legend = status == null;
+  const steps = flowStepsForProcess(processKind);
+  const kindForPhase: OrderProcessKind = processKind === "b" ? "a" : processKind;
+  const phase = legend
+    ? 0
+    : processKind === "b"
+      ? 0
+      : flowPhaseNumber(status!, kindForPhase);
+  const complete = legend ? false : isFlowComplete(status!);
+
+  const label =
+    processKind === "c" ? "Proceso C" : processKind === "b" ? "Proceso B" : "Proceso A";
+
+  return (
+    <div className={className}>
+      {!legend && (
+        <p className="mb-2 text-center text-[11px] font-semibold uppercase tracking-wide text-zinc-500">
+          {label}
+        </p>
+      )}
+      <DiagramRow steps={steps} phase={phase} complete={complete} legend={legend} />
       {complete && !legend && (
         <p className="mt-3 text-center text-base font-medium text-teal-700">Proceso completado</p>
       )}

@@ -385,6 +385,7 @@ export function PagosHomeDashboard({
         onSaved={() => onCommitmentsMutated?.()}
         suppliers={suppliers}
         editing={editingCommitment}
+        obras={obras}
       />
     </div>
   );

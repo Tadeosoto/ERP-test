@@ -367,6 +367,7 @@ export async function POST(request: Request, ctx: Ctx) {
             assignedEngineerUserId: engineerId,
             sentToEngineerAt: new Date(),
             paymentType: paymentType,
+            processKind: "a",
           },
           include: orderInclude,
         });
@@ -434,7 +435,7 @@ export async function POST(request: Request, ctx: Ctx) {
           data: {
             orderId: id,
             authorId: user.id,
-            body: `OC enviada por Proceso B a Administración (sin aprobación de Ingeniería) · ${paymentType}`,
+            body: `OC enviada por Proceso C a Administración / Carolina (sin aprobación de Ingeniería) · ${paymentType}`,
             kind: "approval",
           },
         });
@@ -446,6 +447,7 @@ export async function POST(request: Request, ctx: Ctx) {
             paymentType,
             assignedEngineerUserId: null,
             sentToEngineerAt: null,
+            processKind: "c",
           },
           include: orderInclude,
         });
@@ -467,13 +469,13 @@ export async function POST(request: Request, ctx: Ctx) {
         return po;
       });
 
-      const evt = NotificationEvents.sentProcesoB(updated.title);
+      const evt = NotificationEvents.sentProcesoC(updated.title);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
       if (nextStatus === "awaitingPatyDeadline") {
         await notifyByRoles(
           id,
           "engineer_approved_programado",
-          `«${updated.title}» (Proceso B) requiere fecha límite de pago.`,
+          `«${updated.title}» (Proceso C) requiere fecha límite de pago.`,
           ["compras", "pagos"]
         );
       }
