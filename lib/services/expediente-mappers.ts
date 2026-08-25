@@ -13,17 +13,26 @@ import { mapInvoiceFirstCommitment, invoiceFirstInclude } from "@/lib/services/i
 export const expedienteListInclude = {
   obra: true,
   createdBy: true,
-  purchaseOrders: { select: { totalAmount: true, amountPaidSoFar: true, currency: true, status: true } },
+  purchaseOrders: {
+    select: {
+      totalAmount: true,
+      amountPaidSoFar: true,
+      currency: true,
+      status: true,
+      invoiceFirstCommitmentId: true,
+    },
+  },
   recurringCommitments: {
     where: { active: true },
     select: { estimatedAmount: true, currency: true, workflowStatus: true },
   },
   invoiceFirstCommitments: {
     select: {
+      id: true,
       totalAmount: true,
       currency: true,
       status: true,
-      purchaseOrder: { select: { amountPaidSoFar: true } },
+      purchaseOrder: { select: { totalAmount: true, amountPaidSoFar: true } },
     },
   },
 } satisfies Prisma.ExpedienteInclude;
@@ -61,17 +70,43 @@ function statusFromCounts(input: {
   return "En proceso";
 }
 
-export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListItemDto {
-  const orderTotal = row.purchaseOrders.reduce((s, o) => s + o.totalAmount, 0);
-  const orderPaid = row.purchaseOrders.reduce((s, o) => s + o.amountPaidSoFar, 0);
-  const commitTotal = row.recurringCommitments.reduce((s, c) => s + (c.estimatedAmount ?? 0), 0);
-  const procesoCTotal = row.invoiceFirstCommitments.reduce((s, c) => s + c.totalAmount, 0);
-  const procesoCPaid = row.invoiceFirstCommitments.reduce(
+/** Evita contar dos veces la OC generada desde un Proceso C del mismo expediente. */
+function computeExpedienteTotals(input: {
+  purchaseOrders: Array<{
+    totalAmount: number;
+    amountPaidSoFar: number;
+    invoiceFirstCommitmentId?: string | null;
+  }>;
+  recurringCommitments: Array<{ estimatedAmount: number | null }>;
+  invoiceFirstCommitments: Array<{
+    id: string;
+    totalAmount: number;
+    purchaseOrder?: { totalAmount?: number; amountPaidSoFar?: number } | null;
+  }>;
+}): { totalAmount: number; amountPaidSoFar: number } {
+  const procesoCIds = new Set(input.invoiceFirstCommitments.map((c) => c.id));
+  const standaloneOrders = input.purchaseOrders.filter(
+    (o) => !o.invoiceFirstCommitmentId || !procesoCIds.has(o.invoiceFirstCommitmentId)
+  );
+  const orderTotal = standaloneOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const orderPaid = standaloneOrders.reduce((s, o) => s + o.amountPaidSoFar, 0);
+  const commitTotal = input.recurringCommitments.reduce((s, c) => s + (c.estimatedAmount ?? 0), 0);
+  const procesoCTotal = input.invoiceFirstCommitments.reduce((s, c) => {
+    const linkedOrderTotal = c.purchaseOrder?.totalAmount ?? 0;
+    return s + (linkedOrderTotal > 0.01 ? linkedOrderTotal : c.totalAmount);
+  }, 0);
+  const procesoCPaid = input.invoiceFirstCommitments.reduce(
     (s, c) => s + (c.purchaseOrder?.amountPaidSoFar ?? 0),
     0
   );
-  const totalAmount = orderTotal + commitTotal + procesoCTotal;
-  const amountPaidSoFar = orderPaid + procesoCPaid;
+  return {
+    totalAmount: orderTotal + commitTotal + procesoCTotal,
+    amountPaidSoFar: orderPaid + procesoCPaid,
+  };
+}
+
+export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListItemDto {
+  const { totalAmount, amountPaidSoFar } = computeExpedienteTotals(row);
   const currency =
     row.purchaseOrders[0]?.currency ??
     row.recurringCommitments[0]?.currency ??
@@ -104,14 +139,12 @@ export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListIte
 }
 
 export function mapExpedienteDetail(row: ExpedienteDetailRow): ExpedienteDetailDto {
-  const orderTotal = row.purchaseOrders.reduce((s, o) => s + o.totalAmount, 0);
-  const orderPaid = row.purchaseOrders.reduce((s, o) => s + o.amountPaidSoFar, 0);
-  const commitTotal = row.recurringCommitments.reduce((s, c) => s + (c.estimatedAmount ?? 0), 0);
   const procesoCMapped = row.invoiceFirstCommitments.map(mapInvoiceFirstCommitment);
-  const procesoCTotal = procesoCMapped.reduce((s, c) => s + c.displayTotal, 0);
-  const procesoCPaid = procesoCMapped.reduce((s, c) => s + c.amountPaidSoFar, 0);
-  const totalAmount = orderTotal + commitTotal + procesoCTotal;
-  const amountPaidSoFar = orderPaid + procesoCPaid;
+  const { totalAmount, amountPaidSoFar } = computeExpedienteTotals({
+    purchaseOrders: row.purchaseOrders,
+    recurringCommitments: row.recurringCommitments,
+    invoiceFirstCommitments: row.invoiceFirstCommitments,
+  });
   const currency =
     row.purchaseOrders[0]?.currency ??
     row.recurringCommitments[0]?.currency ??
