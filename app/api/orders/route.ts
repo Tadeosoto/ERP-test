@@ -102,6 +102,8 @@ export async function POST(request: Request) {
       }
     }
 
+    let inheritedExpedienteId: string | null = null;
+
     if (invoiceFirstCommitmentId) {
       const compromiso = await prisma.invoiceFirstCommitment.findUnique({
         where: { id: invoiceFirstCommitmentId },
@@ -113,6 +115,7 @@ export async function POST(request: Request) {
       if (compromiso.purchaseOrder) {
         return NextResponse.json({ error: "Esta factura ya tiene una OC vinculada." }, { status: 400 });
       }
+      inheritedExpedienteId = compromiso.expedienteId ?? null;
       if (!body.obraId && compromiso.obraId) {
         body.obraId = compromiso.obraId;
       }
@@ -162,7 +165,7 @@ export async function POST(request: Request) {
           invoiceFirstCommitmentId,
           assignedEngineerUserId,
           processKind: body.processKind === "c" || invoiceFirstCommitmentId ? "c" : "a",
-          expedienteId: body.expedienteId || null,
+          expedienteId: body.expedienteId || inheritedExpedienteId || null,
           status: asDraft ? "draft" : "awaitingEngineer",
           createdByUserId: user.id,
         },

@@ -237,25 +237,59 @@ export function OrderDetailPanel({
             </p>
           )}
         </div>
-        <div className="grid w-full grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:w-auto sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0 sm:text-right">
-          <div>
-            <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
-            <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
-              {formatMoney(order.totalAmount, order.currency)}
-            </p>
+        <div className="w-full sm:w-auto sm:min-w-[16rem] sm:text-right">
+          <div className="grid grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0">
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
+              <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
+                {formatMoney(order.totalAmount, order.currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
+              <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
+                {formatMoney(order.amountPaidSoFar, order.currency)}
+              </p>
+            </div>
+            <div>
+              <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
+              <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
+                {formatMoney(order.amountRemaining, order.currency)}
+              </p>
+            </div>
           </div>
-          <div>
-            <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
-            <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
-              {formatMoney(order.amountPaidSoFar, order.currency)}
-            </p>
-          </div>
-          <div>
-            <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
-            <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
-              {formatMoney(order.amountRemaining, order.currency)}
-            </p>
-          </div>
+          {(() => {
+            const total = order.totalAmount > 0 ? order.totalAmount : 0;
+            const pct =
+              total > 0
+                ? Math.min(100, Math.max(0, Math.round((order.amountPaidSoFar / total) * 100)))
+                : 0;
+            return (
+              <div className="mt-3 text-left sm:text-right">
+                <div className="mb-1 flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
+                  <span className="text-xs font-medium text-zinc-600">Avance de pago</span>
+                  <span className="text-xs font-bold tabular-nums text-teal-800">{pct}%</span>
+                </div>
+                <div
+                  className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200"
+                  role="progressbar"
+                  aria-valuenow={pct}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={`Pagado ${pct} por ciento`}
+                >
+                  <div
+                    className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-[width] duration-500 ease-out"
+                    style={{ width: `${pct}%` }}
+                  />
+                </div>
+                <p className="mt-1 text-[11px] text-zinc-500">
+                  {formatMoney(order.amountPaidSoFar, order.currency)} de{" "}
+                  {formatMoney(order.totalAmount, order.currency)}
+                </p>
+              </div>
+            );
+          })()}
         </div>
       </div>
     </div>

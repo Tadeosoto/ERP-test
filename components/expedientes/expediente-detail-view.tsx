@@ -15,6 +15,27 @@ import { formatDateShort, formatMoney } from "@/lib/format";
 
 type SortKey = "date" | "amount" | "type";
 
+type ContentRow = {
+  key: string;
+  type: "OC" | "Compromiso B" | "Proceso C";
+  title: string;
+  href: string;
+  amount: number;
+  currency: string;
+  status: string;
+  at: string;
+  files: { id: string; label: string; href: string; downloadHref: string }[];
+};
+
+type FacturaDoc = {
+  key: string;
+  title: string;
+  source: string;
+  href: string;
+  downloadHref: string;
+  at: string;
+};
+
 export function ExpedienteDetailView() {
   const params = useParams();
   const id = String(params.id ?? "");
@@ -124,6 +145,49 @@ export function ExpedienteDetailView() {
     });
   }, [exp, sort]);
 
+  const facturas = useMemo(() => {
+    if (!exp) return [] as FacturaDoc[];
+    const docs: FacturaDoc[] = [];
+
+    for (const c of exp.invoiceFirstCommitments) {
+      for (const f of c.files) {
+        docs.push({
+          key: `ifc-${f.id}`,
+          title: f.originalFileName,
+          source: `Proceso C · Factura ${c.invoiceFolio}`,
+          href: `/api/invoice-first-files/${f.id}`,
+          downloadHref: `/api/invoice-first-files/${f.id}?download=1`,
+          at: f.createdAt,
+        });
+      }
+      if (c.files.length === 0) {
+        docs.push({
+          key: `ifc-meta-${c.id}`,
+          title: `Factura ${c.invoiceFolio} (sin PDF aún)`,
+          source: `Proceso C · ${c.supplierName}`,
+          href: `/compromisos-c/${c.id}`,
+          downloadHref: `/compromisos-c/${c.id}`,
+          at: c.createdAt,
+        });
+      }
+    }
+
+    for (const o of exp.purchaseOrders) {
+      for (const f of o.files.filter((x) => x.kind === "factura")) {
+        docs.push({
+          key: `ocf-${f.id}`,
+          title: f.originalFileName,
+          source: `OC ${o.ocFolio || o.title}`,
+          href: `/api/files/${f.id}`,
+          downloadHref: `/api/files/${f.id}?download=1`,
+          at: f.createdAt,
+        });
+      }
+    }
+
+    return docs.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  }, [exp]);
+
   async function saveMeta() {
     if (!exp) return;
     setBusy(true);
@@ -220,6 +284,39 @@ export function ExpedienteDetailView() {
         </div>
       </div>
 
+      {(() => {
+        const total = exp.totalAmount > 0 ? exp.totalAmount : 0;
+        const pct =
+          total > 0
+            ? Math.min(100, Math.max(0, Math.round((exp.amountPaidSoFar / total) * 100)))
+            : 0;
+        return (
+          <div className="card p-4">
+            <div className="mb-1.5 flex items-center justify-between gap-2">
+              <span className="text-xs font-semibold text-zinc-600">Avance de pago del expediente</span>
+              <span className="text-sm font-bold tabular-nums text-teal-800">{pct}%</span>
+            </div>
+            <div
+              className="h-3 w-full overflow-hidden rounded-full bg-zinc-200"
+              role="progressbar"
+              aria-valuenow={pct}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`Pagado ${pct} por ciento`}
+            >
+              <div
+                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-[width] duration-500 ease-out"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <p className="mt-1.5 text-xs text-zinc-500">
+              {formatMoney(exp.amountPaidSoFar, exp.currency)} pagado ·{" "}
+              {formatMoney(exp.amountRemaining, exp.currency)} faltante
+            </p>
+          </div>
+        );
+      })()}
+
       {(editing || exp.notes) && (
         <section className="card p-5">
           <h2 className="text-sm font-bold text-zinc-900">Notas</h2>
@@ -235,6 +332,50 @@ export function ExpedienteDetailView() {
           )}
         </section>
       )}
+
+      <section className="card p-5">
+        <h2 className="text-lg font-bold text-zinc-900">Facturas</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Facturas subidas por Dirección (Proceso C) y facturas adjuntas a las OC de este expediente.
+        </p>
+        {facturas.length === 0 ? (
+          <p className="mt-4 rounded-xl border border-dashed border-zinc-200 px-4 py-6 text-center text-sm text-zinc-500">
+            Aún no hay facturas en este expediente. Al crear una en «Agregar Factura», elige este
+            expediente para que aparezca aquí.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {facturas.map((f) => (
+              <li
+                key={f.key}
+                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-violet-50/40 px-3 py-2.5"
+              >
+                <div className="min-w-0">
+                  <p className="truncate text-sm font-semibold text-zinc-900">{f.title}</p>
+                  <p className="text-xs text-zinc-500">
+                    {f.source} · {formatDateShort(f.at)}
+                  </p>
+                </div>
+                <span className="flex gap-2">
+                  <a
+                    href={f.href}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-xs font-semibold text-orange-700 hover:underline"
+                  >
+                    Ver
+                  </a>
+                  {!f.downloadHref.startsWith("/compromisos-c") && (
+                    <a href={f.downloadHref} className="text-xs font-semibold text-teal-700 hover:underline">
+                      Descargar
+                    </a>
+                  )}
+                </span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </section>
 
       <section className="card p-5">
         <div className="flex flex-wrap items-center justify-between gap-2">

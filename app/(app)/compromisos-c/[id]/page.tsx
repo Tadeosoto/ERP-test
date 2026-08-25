@@ -8,6 +8,8 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
+import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
+import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { commitmentDisplayStatus } from "@/lib/dashboard/direccion-proceso-c-dashboard";
 import {
   INVOICE_FIRST_STATUS_LABEL,
@@ -59,7 +61,9 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
     totalAmount: "",
     currency: "MXN",
     comment: "",
+    expedienteId: "",
   });
+  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
 
   useEffect(() => {
     void params.then((p) => setId(p.id));
@@ -88,6 +92,7 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
         totalAmount: formatAmountInput(d.commitment.totalAmount),
         currency: d.commitment.currency,
         comment: d.commitment.comment,
+        expedienteId: d.commitment.expedienteId ?? "",
       });
       if (d.commitment.purchaseOrderId) {
         const ordRes = await fetch(`/api/orders/${d.commitment.purchaseOrderId}`, {
@@ -158,6 +163,7 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
           totalAmount: parseAmountInput(editForm.totalAmount),
           currency: editForm.currency,
           comment: editForm.comment,
+          expedienteId: editForm.expedienteId || null,
         }),
       });
       const data = (await res.json()) as { error?: string };
@@ -224,6 +230,15 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
 
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-8">
+      <NuevoExpedienteModal
+        open={nuevoExpedienteOpen}
+        onClose={() => setNuevoExpedienteOpen(false)}
+        obras={obras}
+        onSaved={(e) => {
+          setEditForm((f) => ({ ...f, expedienteId: e.id }));
+          setNuevoExpedienteOpen(false);
+        }}
+      />
       <Link
         href={user?.role === "direccion" ? "/agregar-factura" : "/inicio"}
         className="text-sm font-medium text-violet-700 hover:underline"
@@ -328,6 +343,15 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
               </select>
             </label>
           </div>
+          <div>
+            <ExpedienteCombobox
+              value={editForm.expedienteId}
+              onChange={(eid) => setEditForm((f) => ({ ...f, expedienteId: eid }))}
+              allowCreate
+              onCreateClick={() => setNuevoExpedienteOpen(true)}
+              label="Expediente (contenedor)"
+            />
+          </div>
           <label className="block text-xs">
             <span className="font-medium text-zinc-600">Comentario</span>
             <textarea
@@ -371,6 +395,22 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
               <dt className="text-zinc-500">Pagado / Saldo</dt>
               <dd className="tabular-nums">
                 {formatMoney(paid, commitment.currency)} / {formatMoney(remaining, commitment.currency)}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-zinc-500">Expediente</dt>
+              <dd className="font-medium">
+                {commitment.expedienteFolio ? (
+                  <Link
+                    href={`/expedientes/${commitment.expedienteFolio}`}
+                    className="text-violet-700 hover:underline"
+                  >
+                    {commitment.expedienteFolio}
+                    {commitment.expedienteName ? ` · ${commitment.expedienteName}` : ""}
+                  </Link>
+                ) : (
+                  <span className="text-zinc-400">Sin asignar — edita para vincularlo</span>
+                )}
               </dd>
             </div>
             {commitment.comment && (
