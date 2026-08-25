@@ -448,7 +448,7 @@ export function AgregarFacturaView() {
             )}
 
             <div className="flex flex-col-reverse gap-2 sm:flex-row sm:justify-end lg:col-span-2">
-              <button type="button" className="btn-secondary min-h-11" onClick={resetForm} disabled={busy}>
+              <button type="button" className="btn-secondary min-h-11" onClick={() => resetForm()} disabled={busy}>
                 Limpiar
               </button>
               <button
