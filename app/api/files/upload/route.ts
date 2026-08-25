@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import {
   afterInvoiceUploaded,
   afterOcPdfReuploaded,
+  canReplaceOrderFile,
   canUploadInvoice,
   canUploadOcPdf,
   canUploadPaymentReceipt,
@@ -27,12 +28,32 @@ export async function POST(request: Request) {
     }
 
     const kind = asFileKind(kindRaw);
+    const replaceRaw = form.get("replaceFileId");
+    const replaceFileId =
+      typeof replaceRaw === "string" && replaceRaw.trim() ? replaceRaw.trim() : null;
+
     const order = await prisma.purchaseOrder.findUnique({ where: { id: orderId } });
     if (!order) return NextResponse.json({ error: "Orden no encontrada." }, { status: 404 });
     const status = asOrderStatus(order.status);
     const role = asRole(user.role);
 
-    if (kind === "oc_pdf") {
+    if (replaceFileId) {
+      const existing = await prisma.storedFile.findFirst({
+        where: { id: replaceFileId, orderId },
+      });
+      if (!existing) {
+        return NextResponse.json({ error: "Archivo a reemplazar no encontrado." }, { status: 404 });
+      }
+      if (existing.kind !== kind) {
+        return NextResponse.json({ error: "El tipo de archivo no coincide." }, { status: 400 });
+      }
+      if (!canReplaceOrderFile(role, kind as FileKind, status)) {
+        return NextResponse.json(
+          { error: "No tienes permiso para reemplazar este documento." },
+          { status: 403 }
+        );
+      }
+    } else if (kind === "oc_pdf") {
       if (!canUploadOcPdf(status, role)) {
         return NextResponse.json({ error: "No puedes subir PDF de OC ahora." }, { status: 403 });
       }
@@ -57,6 +78,7 @@ export async function POST(request: Request) {
       kind: kind as FileKind,
       file,
       uploadedByUserId: user.id,
+      replaceFileId,
     });
 
     if (kind === "oc_pdf" && status === "engineerRejected") {

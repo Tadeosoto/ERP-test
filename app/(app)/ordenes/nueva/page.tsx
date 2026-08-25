@@ -477,6 +477,12 @@ function NuevaOcWizard() {
       fd.set("orderId", id);
       fd.set("kind", "oc_pdf");
       fd.set("file", pdfFile);
+      const existingOcPdf =
+        order?.files.find((f) => f.kind === "oc_pdf") ??
+        data.order?.files?.find((f) => f.kind === "oc_pdf");
+      if (existingOcPdf) {
+        fd.set("replaceFileId", existingOcPdf.id);
+      }
       const up = await fetch("/api/files/upload", { method: "POST", credentials: "include", body: fd });
       const upData = (await up.json()) as { error?: string };
       if (!up.ok) throw new Error(upData.error ?? "Error al subir el PDF.");

@@ -334,9 +334,17 @@ export function ExpedienteDetailView() {
       )}
 
       <section className="card p-5">
-        <h2 className="text-lg font-bold text-zinc-900">Facturas</h2>
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h2 className="text-lg font-bold text-zinc-900">Facturas</h2>
+          {facturas.length > 0 && (
+            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
+              {facturas.length} archivo{facturas.length === 1 ? "" : "s"}
+            </span>
+          )}
+        </div>
         <p className="mt-1 text-xs text-zinc-500">
-          Facturas subidas por Dirección (Proceso C) y facturas adjuntas a las OC de este expediente.
+          Cada «Agregar Factura» crea un registro Proceso C. Puedes tener varias facturas en el mismo
+          expediente. También aparecen facturas subidas en la OC.
         </p>
         {facturas.length === 0 ? (
           <p className="mt-4 rounded-xl border border-dashed border-zinc-200 px-4 py-6 text-center text-sm text-zinc-500">

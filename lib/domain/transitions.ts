@@ -1,4 +1,4 @@
-import type { Role, OrderStatus, PaymentType, PaymentLabel } from "./types";
+import type { Role, OrderStatus, PaymentType, PaymentLabel, FileKind } from "./types";
 import { INVOICE_UPLOAD_ROLES, EXPEDIENTE_CLOSE_ROLES, statusAfterEngineerApprove } from "./flow";
 
 export function createDraftOrder(): {
@@ -131,7 +131,7 @@ export function canCreateObra(role: Role): boolean {
   return role === "ingeniero" || role === "pagos";
 }
 
-/** Rosa (Administración) tiene permisos elevados de eliminación. */
+/** Rosa (Administración) tiene permisos elevados de eliminación en catálogos. */
 export function isAdministration(role: Role): boolean {
   return role === "pagos";
 }
@@ -154,8 +154,16 @@ export function canDeleteObra(role: Role): boolean {
   return isAdministration(role);
 }
 
+/** Rosa (Administración) y Diomedes (Dirección) pueden eliminar archivos del expediente. */
 export function canDeleteOrderFile(role: Role): boolean {
-  return isAdministration(role);
+  return role === "pagos" || role === "direccion";
+}
+
+/** Reemplazar un archivo concreto (eliminar el anterior y subir otro). No ocurre al subir sin acción explícita. */
+export function canReplaceOrderFile(role: Role, kind: FileKind, status: OrderStatus): boolean {
+  if (role === "pagos" || role === "direccion") return true;
+  if (kind === "oc_pdf" && canUploadOcPdf(status, role)) return true;
+  return false;
 }
 
 export function canDeletePayment(role: Role): boolean {

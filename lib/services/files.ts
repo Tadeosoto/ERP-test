@@ -22,29 +22,26 @@ export function isPdf(file: File): boolean {
 
 const MAX_BYTES = 15 * 1024 * 1024;
 
-/** Tipos con un solo documento vigente (reemplazo al subir de nuevo). */
-const REPLACE_ON_UPLOAD: ReadonlySet<FileKind> = new Set(["oc_pdf", "factura"]);
-
 export async function saveOrderFile(input: {
   orderId: string;
   kind: FileKind;
   file: File;
   uploadedByUserId: string;
+  /** Solo al reemplazar explícitamente (Editar / Reemplazar). Si no se indica, se acumula. */
+  replaceFileId?: string | null;
 }): Promise<{ id: string; originalFileName: string }> {
   if (!isPdf(input.file)) throw new Error("Solo se permiten archivos PDF.");
   if (input.file.size > MAX_BYTES) throw new Error("El archivo supera el límite de 15 MB.");
 
-  // OC / factura: una versión vigente. Comprobantes y complementos: se acumulan (abonos).
-  if (REPLACE_ON_UPLOAD.has(input.kind)) {
-    const previous = await prisma.storedFile.findMany({
-      where: { orderId: input.orderId, kind: input.kind },
+  if (input.replaceFileId) {
+    const prev = await prisma.storedFile.findFirst({
+      where: { id: input.replaceFileId, orderId: input.orderId },
     });
-    for (const prev of previous) {
-      await removeStoredFileFromDisk(prev.storagePath);
+    if (!prev) throw new Error("Archivo a reemplazar no encontrado.");
+    if (prev.kind !== input.kind) {
+      throw new Error("El tipo de archivo no coincide con el documento a reemplazar.");
     }
-    await prisma.storedFile.deleteMany({
-      where: { orderId: input.orderId, kind: input.kind },
-    });
+    await deleteStoredFile(prev.id);
   }
 
   const buffer = Buffer.from(await input.file.arrayBuffer());

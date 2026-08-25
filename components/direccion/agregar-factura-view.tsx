@@ -174,10 +174,10 @@ export function AgregarFacturaView() {
     }
   }
 
-  function resetForm() {
+  function resetForm(keepExpediente = false) {
     setForm({ ...EMPTY_FORM, invoiceDate: new Date().toISOString().slice(0, 10) });
     setPdfFile(null);
-    setExpedienteId("");
+    if (!keepExpediente) setExpedienteId("");
     setError("");
   }
 
@@ -244,8 +244,10 @@ export function AgregarFacturaView() {
       const upData = (await up.json()) as { error?: string };
       if (!up.ok) throw new Error(upData.error ?? "Error al subir el PDF.");
 
-      showSuccess(`Solicitud ${data.commitment.invoiceFolio} enviada. Administración fue notificada.`);
-      resetForm();
+      showSuccess(
+        `Solicitud ${data.commitment.invoiceFolio} registrada en el expediente. Puedes agregar otra factura al mismo expediente abajo.`
+      );
+      resetForm(true);
       setActiveKpi("pendientes");
       await load();
     } catch (err) {

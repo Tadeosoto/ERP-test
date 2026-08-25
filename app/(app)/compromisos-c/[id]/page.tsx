@@ -8,6 +8,7 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
+import { FilePickButton } from "@/components/file-pick-button";
 import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
 import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { commitmentDisplayStatus } from "@/lib/dashboard/direccion-proceso-c-dashboard";
@@ -173,6 +174,29 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
       await load();
     } catch (e) {
       showError(e instanceof Error ? e.message : "Error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function uploadAdditionalFile(file: File) {
+    if (!id) return;
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.set("commitmentId", id);
+      fd.set("file", file);
+      const res = await fetch("/api/invoice-first-files/upload", {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo subir el archivo.");
+      showSuccess("Archivo agregado. La factura anterior sigue disponible.");
+      await load();
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "Error al subir.");
     } finally {
       setBusy(false);
     }
@@ -425,6 +449,9 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
 
       <section className="card p-5">
         <h2 className="text-sm font-bold text-zinc-900">Documentos</h2>
+        <p className="mt-1 text-xs text-zinc-500">
+          Puedes adjuntar varios PDF/XML; no se reemplazan al subir uno nuevo.
+        </p>
         <ul className="mt-3 space-y-2">
           {commitment.files.length === 0 ? (
             <li className="text-sm text-zinc-500">Sin archivos.</li>
@@ -443,6 +470,17 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
             ))
           )}
         </ul>
+        {canEdit && (
+          <div className="mt-3">
+            <FilePickButton
+              label="Agregar otro PDF o XML"
+              hint="Se suma a los archivos existentes"
+              accept="application/pdf,.pdf,.xml,application/xml,text/xml"
+              disabled={busy}
+              onPick={(file) => void uploadAdditionalFile(file)}
+            />
+          </div>
+        )}
       </section>
 
       {order && (

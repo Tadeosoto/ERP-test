@@ -26,6 +26,7 @@ import {
   canDeleteOrder,
   canDeleteOrderFile,
   canDeletePayment,
+  canReplaceOrderFile,
   canEngineerAct,
   canMarkAwaitingInvoice,
   canRegisterPayment,
@@ -92,13 +93,14 @@ export function OrderDetailPanel({
     }
   }
 
-  async function uploadFile(kind: string, file: File) {
+  async function uploadFile(kind: string, file: File, replaceFileId?: string) {
     setBusy(true);
     try {
       const fd = new FormData();
       fd.set("orderId", order.id);
       fd.set("kind", kind);
       fd.set("file", file);
+      if (replaceFileId) fd.set("replaceFileId", replaceFileId);
       const res = await fetch("/api/files/upload", {
         method: "POST",
         credentials: "include",
@@ -108,7 +110,9 @@ export function OrderDetailPanel({
       if (!res.ok) throw new Error(data.error ?? "Error al subir el archivo.");
       onUpdated();
       router.refresh();
-      showSuccess(fileUploadSuccessMessage(kind));
+      showSuccess(
+        replaceFileId ? "Documento reemplazado." : fileUploadSuccessMessage(kind)
+      );
     } catch (e) {
       showError(e instanceof Error ? e.message : "Error al subir el archivo.");
     } finally {
@@ -305,8 +309,12 @@ export function OrderDetailPanel({
         <OrderDocumentsTable
           files={order.files}
           canDelete={Boolean(user && canDeleteOrderFile(user.role))}
+          canReplaceFile={(f) =>
+            Boolean(user && canReplaceOrderFile(user.role, f.kind, order.status))
+          }
           busy={busy}
           onDelete={(fileId, fileName) => void deleteFile(fileId, fileName)}
+          onReplace={(fileId, kind, file) => void uploadFile(kind, file, fileId)}
         />
       </div>
     ) : null;
@@ -442,14 +450,14 @@ export function OrderDetailPanel({
           <div className="mt-4 space-y-3">
             <p className="text-base text-zinc-700">
               {order.status === "engineerRejected"
-                ? "Ingeniería solicitó corrección. Sube el PDF actualizado de la OC."
+                ? "Ingeniería solicitó corrección. Sube el PDF corregido (se suma al expediente; usa «Reemplazar» en la tabla para cambiar uno existente)."
                 : order.status === "awaitingEngineer"
-                  ? "Puedes reemplazar el PDF antes de que Ingeniería apruebe."
-                  : "Sube o reemplaza el PDF de la orden de compra."}
+                  ? "Adjunta el PDF de la OC. Para corregir uno ya subido, usa «Reemplazar» en Documentos."
+                  : "Agrega el PDF de la orden de compra. Los documentos anteriores no se borran al subir otro."}
             </p>
             <FilePickButton
               disabled={busy}
-              label={order.files.some((f) => f.kind === "oc_pdf") ? "Reemplazar PDF" : "Subir PDF"}
+              label="Agregar PDF de OC"
               hint="archivo PDF generado en CONTPAQi"
               onPick={(file) => void uploadFile("oc_pdf", file)}
             />
@@ -595,8 +603,8 @@ export function OrderDetailPanel({
             </p>
             <FilePickButton
               disabled={busy}
-              label="Elegir comprobante"
-              hint="busca en tu equipo el PDF del comprobante de pago"
+              label="Agregar comprobante de pago"
+              hint="cada pago puede tener su PDF; no reemplaza los anteriores"
               onPick={(file) => void uploadFile("comprobante_pago", file)}
             />
           </div>
@@ -623,7 +631,8 @@ export function OrderDetailPanel({
         {canUploadInvoice(order.status, user.role) && (
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
-              Sube el PDF de la factura del proveedor. Compras, Administración, Recepción o
+              Agrega el PDF de la factura del proveedor (cada una se conserva). Para corregir una
+              existente, usa «Reemplazar» en Documentos. Compras, Administración, Recepción o
               Contabilidad pueden cargarla.
             </p>
             <div>
@@ -631,8 +640,8 @@ export function OrderDetailPanel({
               <div className="mt-3">
                 <FilePickButton
                   disabled={busy}
-                  label="Elegir factura"
-                  hint="busca en tu equipo el PDF de la factura"
+                  label="Agregar factura"
+                  hint="PDF de factura del proveedor"
                   onPick={(file) => void uploadFile("factura", file)}
                 />
               </div>
