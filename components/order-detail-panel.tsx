@@ -203,202 +203,221 @@ export function OrderDetailPanel({
       ? formatAmountInput(order.amountRemaining)
       : payAmount;
 
-  const prioritizeDocuments = user.role === "ingeniero";
+  const payPct = (() => {
+    const total = order.totalAmount > 0 ? order.totalAmount : 0;
+    return total > 0
+      ? Math.min(100, Math.max(0, Math.round((order.amountPaidSoFar / total) * 100)))
+      : 0;
+  })();
 
   const headerPanel = (
-    <div className="card p-4 sm:p-6">
-      <div className="flex flex-col gap-5 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-4">
-        <div className="min-w-0">
-          <p className="text-sm font-medium text-teal-700 sm:text-base">{order.obraName}</p>
-          <h1 className="mt-1 break-words text-2xl font-bold text-zinc-900 sm:text-3xl">{order.title}</h1>
-          <p className="mt-2 text-base text-zinc-600 sm:text-lg">{order.supplierName}</p>
-          <p className="mt-2 text-sm text-zinc-500 sm:text-base">Orden creada el {formatDate(order.createdAt)}</p>
-          <div className="mt-3 flex flex-wrap gap-2">
-            <SystemStatusBadge status={order.status} />
-            <span className="inline-flex rounded-full bg-teal-100 px-4 py-1.5 text-sm font-semibold text-teal-900">
-              {PAYMENT_LABEL_TEXT[order.paymentLabel]}
+    <div className="dash-panel overflow-hidden p-3 sm:p-4">
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="min-w-0 flex-1">
+          <p className="dash-caption text-teal-700">{order.obraName}</p>
+          <h1 className="dash-page-title mt-0.5 break-words text-xl sm:text-2xl">{order.title}</h1>
+          <p className="dash-body mt-0.5 text-zinc-600">
+            {order.supplierName}
+            <span className="text-zinc-400"> · </span>
+            {formatDate(order.createdAt)}
+            {order.ocFolio ? (
+              <>
+                <span className="text-zinc-400"> · </span>
+                <span className="font-medium text-zinc-700">{order.ocFolio}</span>
+              </>
+            ) : null}
+          </p>
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          <SystemStatusBadge status={order.status} />
+          <span className="inline-flex rounded-full bg-teal-100 px-2.5 py-1 text-[11px] font-semibold text-teal-900">
+            {PAYMENT_LABEL_TEXT[order.paymentLabel]}
+          </span>
+          {order.paymentType && (
+            <span className="inline-flex rounded-full bg-zinc-100 px-2.5 py-1 text-[11px] font-semibold text-zinc-800">
+              {PAYMENT_TYPE_TEXT[order.paymentType]}
             </span>
-            {order.paymentType && (
-              <span className="inline-flex rounded-full bg-zinc-100 px-4 py-1.5 text-sm font-semibold text-zinc-800">
-                Pago: {PAYMENT_TYPE_TEXT[order.paymentType]}
-              </span>
-            )}
-            {!order.paymentType && order.suggestedPaymentType === "parcialidades" && (
-              <span className="inline-flex rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-900">
-                Paty indicó parcialidades
-              </span>
-            )}
-          </div>
-          {order.paymentDueDate && (
-            <p className="mt-3 text-base font-medium text-teal-800">
-              Fecha límite de pago:{" "}
-              {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
-                weekday: "long",
-                year: "numeric",
-                month: "long",
-                day: "numeric",
-              })}
-            </p>
+          )}
+          {!order.paymentType && order.suggestedPaymentType === "parcialidades" && (
+            <span className="inline-flex rounded-full bg-amber-100 px-2.5 py-1 text-[11px] font-semibold text-amber-900">
+              Paty: parcialidades
+            </span>
           )}
         </div>
-        <div className="w-full sm:w-auto sm:min-w-[16rem] sm:text-right">
-          <div className="grid grid-cols-3 gap-3 rounded-2xl border border-orange-50 bg-orange-50/40 p-3 sm:gap-4 sm:border-0 sm:bg-transparent sm:p-0">
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Total orden</p>
-              <p className="text-lg font-bold tabular-nums text-orange-700 sm:text-2xl">
-                {formatMoney(order.totalAmount, order.currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Pagado</p>
-              <p className="text-lg font-bold tabular-nums text-teal-700 sm:text-xl">
-                {formatMoney(order.amountPaidSoFar, order.currency)}
-              </p>
-            </div>
-            <div>
-              <p className="text-xs text-zinc-500 sm:text-sm">Falta por pagar</p>
-              <p className="text-lg font-bold tabular-nums text-amber-700 sm:text-xl">
-                {formatMoney(order.amountRemaining, order.currency)}
-              </p>
-            </div>
-          </div>
-          {(() => {
-            const total = order.totalAmount > 0 ? order.totalAmount : 0;
-            const pct =
-              total > 0
-                ? Math.min(100, Math.max(0, Math.round((order.amountPaidSoFar / total) * 100)))
-                : 0;
-            return (
-              <div className="mt-3 text-left sm:text-right">
-                <div className="mb-1 flex items-center justify-between gap-2 sm:justify-end sm:gap-3">
-                  <span className="text-xs font-medium text-zinc-600">Avance de pago</span>
-                  <span className="text-xs font-bold tabular-nums text-teal-800">{pct}%</span>
-                </div>
-                <div
-                  className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200"
-                  role="progressbar"
-                  aria-valuenow={pct}
-                  aria-valuemin={0}
-                  aria-valuemax={100}
-                  aria-label={`Pagado ${pct} por ciento`}
-                >
-                  <div
-                    className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-[width] duration-500 ease-out"
-                    style={{ width: `${pct}%` }}
-                  />
-                </div>
-                <p className="mt-1 text-[11px] text-zinc-500">
-                  {formatMoney(order.amountPaidSoFar, order.currency)} de{" "}
-                  {formatMoney(order.totalAmount, order.currency)}
-                </p>
-              </div>
-            );
-          })()}
+      </div>
+
+      {order.paymentDueDate && (
+        <p className="mt-2 text-xs font-medium text-teal-800">
+          Límite de pago:{" "}
+          {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
+            day: "numeric",
+            month: "short",
+            year: "numeric",
+          })}
+        </p>
+      )}
+
+      <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
+        <div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-2 sm:px-3">
+          <p className="dash-label text-zinc-500">Total</p>
+          <p className="mt-0.5 text-base font-bold tabular-nums text-orange-800 sm:text-xl">
+            {formatMoney(order.totalAmount, order.currency)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-teal-100 bg-teal-50/50 px-2.5 py-2 sm:px-3">
+          <p className="dash-label text-zinc-500">Pagado</p>
+          <p className="mt-0.5 text-base font-bold tabular-nums text-teal-800 sm:text-xl">
+            {formatMoney(order.amountPaidSoFar, order.currency)}
+          </p>
+        </div>
+        <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-2.5 py-2 sm:px-3">
+          <p className="dash-label text-zinc-500">Falta</p>
+          <p className="mt-0.5 text-base font-bold tabular-nums text-amber-800 sm:text-xl">
+            {formatMoney(order.amountRemaining, order.currency)}
+          </p>
         </div>
       </div>
+
+      <div className="mt-2 flex items-center gap-2">
+        <div
+          className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-zinc-200"
+          role="progressbar"
+          aria-valuenow={payPct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Pagado ${payPct} por ciento`}
+        >
+          <div
+            className="h-full rounded-full bg-teal-500 transition-[width] duration-500 ease-out"
+            style={{ width: `${payPct}%` }}
+          />
+        </div>
+        <span className="shrink-0 text-xs font-bold tabular-nums text-teal-800">{payPct}%</span>
+      </div>
+
+      <p className="mt-2 rounded-lg bg-teal-50/80 px-2.5 py-1.5 text-xs leading-snug text-teal-950 sm:text-sm">
+        <span className="font-semibold">{describeGate(order.status, order.paymentType)}</span>
+        <span className="text-teal-800/80"> — {sessionHintForCase(user.role, order.status, canAct)}</span>
+      </p>
     </div>
   );
 
-  const documentsPanel =
-    order.files.length > 0 ? (
-      <div id="documentos" className="card scroll-mt-24 p-6">
-        <h2 className="text-xl font-semibold">Documentos</h2>
-        <p className="mt-1 text-sm text-zinc-500">
-          Todos los archivos del expediente, con la fecha en que se subieron.
-        </p>
-        <OrderDocumentsTable
-          files={order.files}
-          canDelete={Boolean(user && canDeleteOrderFile(user.role))}
-          canReplaceFile={(f) =>
-            Boolean(user && canReplaceOrderFile(user.role, f.kind, order.status))
-          }
-          busy={busy}
-          onDelete={(fileId, fileName) => void deleteFile(fileId, fileName)}
-          onReplace={(fileId, kind, file) => void uploadFile(kind, file, fileId)}
-        />
+  const documentsPanel = (
+    <div id="documentos" className="dash-panel scroll-mt-24 p-3 sm:p-4">
+      <div className="flex flex-wrap items-baseline justify-between gap-2">
+        <h2 className="dash-section-title">Documentos</h2>
+        <span className="dash-caption text-zinc-500">
+          {order.files.length === 0
+            ? "Sin archivos aún"
+            : `${order.files.length} archivo${order.files.length === 1 ? "" : "s"}`}
+        </span>
       </div>
-    ) : null;
+      <OrderDocumentsTable
+        files={order.files}
+        canDelete={Boolean(user && canDeleteOrderFile(user.role))}
+        canReplaceFile={(f) =>
+          Boolean(user && canReplaceOrderFile(user.role, f.kind, order.status))
+        }
+        busy={busy}
+        onDelete={(fileId, fileName) => void deleteFile(fileId, fileName)}
+        onReplace={(fileId, kind, file) => void uploadFile(kind, file, fileId)}
+      />
+    </div>
+  );
+
+  const paymentsAside = (
+    <div id="pagos" className="dash-panel scroll-mt-24 p-3">
+      <h2 className="dash-section-title">Historial de abonos</h2>
+      {order.paymentRecords.length === 0 ? (
+        <p className="mt-2 text-xs text-zinc-400">Sin abonos registrados.</p>
+      ) : (
+        <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto pr-0.5">
+          {order.paymentRecords.map((p) => (
+            <li
+              key={p.id}
+              className="rounded-xl border border-teal-100/80 bg-teal-50/40 px-2.5 py-2"
+            >
+              <p className="text-sm font-bold tabular-nums text-teal-900">
+                {formatMoney(p.amount, order.currency)}
+              </p>
+              <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
+                <span className="font-medium text-zinc-800">{p.recordedByName}</span>
+                <br />
+                {new Date(p.createdAt).toLocaleString("es-MX", {
+                  day: "numeric",
+                  month: "short",
+                  year: "numeric",
+                  hour: "2-digit",
+                  minute: "2-digit",
+                })}
+              </p>
+              {(p.reference || p.notes) && (
+                <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+                  {p.reference ? `Ref. ${p.reference}` : null}
+                  {p.reference && p.notes ? " · " : null}
+                  {p.notes}
+                </p>
+              )}
+              {user && canDeletePayment(user.role) && (
+                <button
+                  type="button"
+                  disabled={busy}
+                  className="mt-1.5 text-[11px] font-semibold text-red-700 hover:underline disabled:opacity-50"
+                  onClick={() => void deletePayment(p.id)}
+                >
+                  Eliminar
+                </button>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
+
+  const commentsAside = (
+    <div id="comentarios" className="dash-panel scroll-mt-24 p-3">
+      <h2 className="dash-section-title">Comentarios de ingeniería</h2>
+      {order.comments.length === 0 ? (
+        <p className="mt-2 text-xs text-zinc-400">Sin comentarios.</p>
+      ) : (
+        <ul className="mt-2 max-h-[18rem] space-y-2 overflow-y-auto pr-0.5">
+          {order.comments.map((c) => (
+            <li
+              key={c.id}
+              className={`rounded-xl px-2.5 py-2 text-xs leading-snug ${
+                c.kind === "rejection" ? "bg-red-50 text-red-900" : "bg-teal-50 text-teal-900"
+              }`}
+            >
+              <p className="font-semibold">{c.authorName}</p>
+              <p className="mt-0.5">{c.body}</p>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 
   return (
-    <div className="space-y-6 sm:space-y-8">
-      {prioritizeDocuments && documentsPanel}
+    <div className="space-y-3 sm:space-y-4">
       {headerPanel}
 
-      <div className="card border-teal-200 bg-gradient-to-br from-white to-teal-50/40 p-4 sm:p-6">
-        <p className="text-base font-semibold text-zinc-900 sm:text-lg">
-          {describeGate(order.status, order.paymentType)}
-        </p>
-        <p className="mt-2 text-base text-zinc-700">
-          {sessionHintForCase(user.role, order.status, canAct)}
-        </p>
-      </div>
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:gap-4">
+        <div className="min-w-0 lg:col-start-1 lg:row-start-1">{documentsPanel}</div>
 
-      <div className="card p-6">
-        <h2 className="text-xl font-semibold">Avance en el proceso</h2>
-        <div className="mt-4 overflow-x-auto pb-2">
-          <ProcessFlowDiagram status={order.status} processKind={order.processKind} />
-        </div>
-      </div>
+        <aside className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:col-start-2 lg:row-span-2 lg:row-start-1 lg:sticky lg:top-20">
+          {paymentsAside}
+          {commentsAside}
+        </aside>
 
-      {order.paymentRecords.length > 0 && (
-        <div id="pagos" className="card scroll-mt-24 p-6">
-          <h2 className="text-xl font-semibold">Historial de abonos (Carolina)</h2>
-          <ul className="mt-4 space-y-3">
-            {order.paymentRecords.map((p) => (
-              <li
-                key={p.id}
-                className="rounded-2xl border border-teal-100 bg-teal-50/40 px-4 py-3 text-base"
-              >
-                <p className="font-semibold tabular-nums text-teal-900">
-                  {formatMoney(p.amount, order.currency)}
-                </p>
-                <p className="text-sm text-zinc-600">
-                  {p.recordedByName} · {new Date(p.createdAt).toLocaleString("es-MX")}
-                  {p.reference ? ` · Ref. ${p.reference}` : ""}
-                </p>
-                {p.notes && <p className="mt-1 text-sm text-zinc-600">{p.notes}</p>}
-                {user && canDeletePayment(user.role) && (
-                  <button
-                    type="button"
-                    disabled={busy}
-                    className="mt-2 text-sm font-semibold text-red-700 hover:underline disabled:opacity-50"
-                    onClick={() => void deletePayment(p.id)}
-                  >
-                    Eliminar pago
-                  </button>
-                )}
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <div className="min-w-0 space-y-3 sm:space-y-4 lg:col-start-1 lg:row-start-2">
+          <div id="facturas" className="scroll-mt-24" aria-hidden />
 
-      {order.comments.length > 0 && (
-        <div id="comentarios" className="card scroll-mt-24 p-6">
-          <h2 className="text-xl font-semibold">Comentarios de ingeniería</h2>
-          <ul className="mt-4 space-y-3">
-            {order.comments.map((c) => (
-              <li
-                key={c.id}
-                className={`rounded-2xl p-4 text-base ${
-                  c.kind === "rejection" ? "bg-red-50 text-red-900" : "bg-teal-50 text-teal-900"
-                }`}
-              >
-                <p className="font-medium">{c.authorName}</p>
-                <p className="mt-1">{c.body}</p>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {!prioritizeDocuments && documentsPanel}
-
-
-      <div id="facturas" className="scroll-mt-24" aria-hidden />
-
-      <div id="tarea" className="card scroll-mt-24 border-2 border-dashed border-orange-200 bg-orange-50/40 p-6">
-        <h2 className="text-xl font-bold text-zinc-900">Tu tarea</h2>
+          <div
+            id="tarea"
+            className="dash-panel scroll-mt-24 border border-dashed border-orange-200 bg-orange-50/30 p-3 sm:p-4"
+          >
+            <h2 className="dash-section-title text-zinc-900">Tu tarea</h2>
 
         {canActAsCompras(user.role) && (
           <div className="mt-4 flex flex-wrap gap-3">
@@ -739,7 +758,30 @@ export function OrderDetailPanel({
             Proceso terminado. Todos los documentos están disponibles.
           </p>
         )}
+          </div>
+        </div>
       </div>
+
+      <details className="dash-panel group p-3 sm:p-4">
+        <summary className="cursor-pointer list-none dash-section-title text-zinc-600 marker:content-none [&::-webkit-details-marker]:hidden">
+          <span className="inline-flex items-center gap-2">
+            <svg
+              className="h-4 w-4 text-zinc-400 transition group-open:rotate-90"
+              fill="none"
+              stroke="currentColor"
+              viewBox="0 0 24 24"
+              aria-hidden
+            >
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+            Avance en el proceso
+            <span className="dash-caption font-normal text-zinc-400">(opcional)</span>
+          </span>
+        </summary>
+        <div className="mt-3 overflow-x-auto pb-1">
+          <ProcessFlowDiagram status={order.status} processKind={order.processKind} />
+        </div>
+      </details>
     </div>
   );
 }

@@ -149,13 +149,13 @@ export function PagosProcesoBListPanel({
   );
 
   return (
-    <section id="proceso-b" className="overflow-hidden rounded-2xl border border-teal-200/80 bg-white shadow-sm">
-      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-teal-100 bg-teal-50/40 px-4 py-3">
+    <section id="proceso-b" className="dash-panel overflow-hidden">
+      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 bg-zinc-50/60 px-4 py-3">
         <div>
-          <h2 className="text-base font-bold text-zinc-900">{title}</h2>
-          <p className="text-xs text-zinc-500">{subtitle}</p>
+          <h2 className="text-sm font-semibold text-zinc-800">{title}</h2>
+          <p className="dash-caption mt-0.5">{subtitle}</p>
         </div>
-        <span className="rounded-full bg-teal-100 px-3 py-1 text-xs font-semibold text-teal-800">
+        <span className="rounded-full bg-zinc-200/80 px-3 py-1 text-xs font-semibold text-zinc-700">
           {pending.length} pendiente{pending.length === 1 ? "" : "s"}
         </span>
       </div>

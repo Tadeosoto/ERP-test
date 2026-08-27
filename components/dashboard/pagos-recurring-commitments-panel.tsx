@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
+import Link from "next/link";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -16,7 +17,8 @@ import {
 import type { RecurringCommitmentDto } from "@/lib/domain/types";
 import { formatDateShort } from "@/lib/format";
 
-const PAGE_SIZES = [5, 10, 15] as const;
+const EMBEDDED_PAGE_SIZES = [5, 10, 15] as const;
+const PAGE_PAGE_SIZES = [10, 15, 25, 50] as const;
 
 function CommitmentActionMenu({
   commitment,
@@ -128,48 +130,79 @@ export function PagosRecurringCommitmentsPanel({
   onNew,
   onEdit,
   onMutated,
+  variant = "embedded",
+  canManage = true,
+  showModuleLink = false,
+  hideChrome = false,
 }: {
   commitments: RecurringCommitmentDto[];
   onNew: () => void;
   onEdit: (c: RecurringCommitmentDto) => void;
   onMutated: () => void;
+  /** `page` = panel grande en /compromisos; `embedded` = resumen en /pagos */
+  variant?: "embedded" | "page";
+  canManage?: boolean;
+  /** Enlace a la ruta dedicada (solo en vista embebida). */
+  showModuleLink?: boolean;
+  /** Oculta título/CTA del panel cuando la página ya tiene cabecera propia. */
+  hideChrome?: boolean;
 }) {
+  const pageSizes = variant === "page" ? PAGE_PAGE_SIZES : EMBEDDED_PAGE_SIZES;
   const [page, setPage] = useState(1);
-  const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(15);
+  const [pageSize, setPageSize] = useState<number>(variant === "page" ? 25 : 15);
+
+  useEffect(() => {
+    setPage(1);
+  }, [commitments]);
 
   const totalPages = Math.max(1, Math.ceil(commitments.length / pageSize));
   const safePage = Math.min(page, totalPages);
   const pageStart = (safePage - 1) * pageSize;
-  const pageItems = commitments.slice(pageStart, pageStart + pageSize);
+  const pageItems = useMemo(
+    () => commitments.slice(pageStart, pageStart + pageSize),
+    [commitments, pageStart, pageSize]
+  );
 
   const th =
     "px-2 py-2 text-[10px] font-semibold uppercase tracking-wide text-zinc-500 whitespace-nowrap";
+  const shellClass =
+    variant === "page"
+      ? "dash-panel flex min-h-[min(70vh,52rem)] flex-1 flex-col overflow-hidden"
+      : "card flex min-h-0 flex-1 flex-col overflow-hidden";
 
   return (
-    <section className="card flex min-h-0 flex-1 flex-col overflow-hidden">
-      <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4">
-        <div className="flex items-start justify-between gap-2">
-          <div>
-            <div className="flex items-center gap-2">
-              <h2 className="text-base font-bold text-zinc-900 sm:text-lg">Compromisos recurrentes</h2>
+    <section className={shellClass}>
+      {!hideChrome && (
+        <div className="shrink-0 border-b border-orange-50 px-3 py-3 sm:px-4">
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <div className="flex flex-wrap items-center gap-2">
+                <h2 className="text-base font-bold text-zinc-900 sm:text-lg">Compromisos recurrentes</h2>
+                {showModuleLink && (
+                  <Link
+                    href="/compromisos"
+                    className="text-xs font-semibold text-sky-700 hover:underline"
+                  >
+                    Abrir módulo completo →
+                  </Link>
+                )}
+              </div>
+              <p className="mt-0.5 text-[11px] text-zinc-500">
+                Servicios y gastos recurrentes programados.
+              </p>
+            </div>
+            {canManage && (
               <button
                 type="button"
-                title="Servicios y gastos que se repiten periódicamente"
-                className="text-zinc-400 hover:text-zinc-600"
-                aria-label="Información"
+                onClick={onNew}
+                className="shrink-0 text-sm font-semibold text-sky-700 hover:underline"
               >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M12 18a6 6 0 100-12 6 6 0 000 12z" />
-                </svg>
+                + Nuevo compromiso
               </button>
-            </div>
-            <p className="mt-0.5 text-[11px] text-zinc-500">Servicios y gastos recurrentes programados.</p>
+            )}
           </div>
-          <button type="button" onClick={onNew} className="shrink-0 text-sm font-semibold text-sky-700 hover:underline">
-            + Nuevo compromiso
-          </button>
         </div>
-      </div>
+      )}
 
       <div className="hidden min-h-0 flex-1 overflow-auto lg:block">
         <table className="w-full table-fixed border-collapse text-left">
@@ -230,11 +263,15 @@ export function PagosRecurringCommitmentsPanel({
                       </span>
                     </td>
                     <td className="px-2 py-2.5 text-right">
-                      <CommitmentActionMenu
-                        commitment={c}
-                        onEdit={() => onEdit(c)}
-                        onDeleted={onMutated}
-                      />
+                      {canManage ? (
+                        <CommitmentActionMenu
+                          commitment={c}
+                          onEdit={() => onEdit(c)}
+                          onDeleted={onMutated}
+                        />
+                      ) : (
+                        <span className="text-xs text-zinc-400">—</span>
+                      )}
                     </td>
                   </tr>
                 );
@@ -261,10 +298,15 @@ export function PagosRecurringCommitmentsPanel({
                   {COMMITMENT_WORKFLOW_LABEL[wf]}
                 </span>
               </div>
-              <CommitmentActionMenu commitment={c} onEdit={() => onEdit(c)} onDeleted={onMutated} />
+              {canManage ? (
+                <CommitmentActionMenu commitment={c} onEdit={() => onEdit(c)} onDeleted={onMutated} />
+              ) : null}
             </div>
           );
         })}
+        {pageItems.length === 0 && (
+          <p className="px-3 py-8 text-center text-sm text-zinc-500">No hay compromisos en este filtro.</p>
+        )}
       </div>
 
       <div className="flex shrink-0 flex-wrap items-center justify-end gap-2 border-t border-orange-50 px-3 py-2">
@@ -276,12 +318,12 @@ export function PagosRecurringCommitmentsPanel({
         <select
           value={pageSize}
           onChange={(e) => {
-            setPageSize(Number(e.target.value) as (typeof PAGE_SIZES)[number]);
+            setPageSize(Number(e.target.value));
             setPage(1);
           }}
           className="h-8 rounded-lg border border-orange-100 bg-white px-2 text-xs"
         >
-          {PAGE_SIZES.map((n) => (
+          {pageSizes.map((n) => (
             <option key={n} value={n}>
               {n} / pág.
             </option>

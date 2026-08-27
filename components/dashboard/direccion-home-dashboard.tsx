@@ -2,20 +2,27 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
-import { DireccionExpedientesPanel } from "@/components/expedientes/direccion-expedientes-panel";
-import { DireccionHomeSidebar } from "@/components/dashboard/direccion-home-sidebar";
-import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
-import { useSession } from "@/components/session-provider";
+import {
+  CalmKpiTile,
+  DashPanelHeader,
+  HomeHeroMetric,
+  HomeLauncherLink,
+  HomePulseLine,
+} from "@/components/dashboard/calm-kpi-tile";
 import {
   direccionKpiCounts,
   kpiMonthGrowth,
   pendingAuthorizationCount,
 } from "@/lib/dashboard/direccion-dashboard";
 import {
-  canShowExpedienteAdminActions,
   expedienteKpis,
+  expedientePendingArea,
+  filterByExpedienteTab,
+  isProcesoBExpediente,
+  isProcesoCExpediente,
   mergeExpedienteOrders,
 } from "@/lib/dashboard/direccion-expedientes";
+import { orderDisplayCode } from "@/lib/dashboard/compras-dashboard";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type {
   DirectExpenseDto,
@@ -27,76 +34,36 @@ import type {
 } from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
 
-function KpiCard({
-  label,
-  value,
-  sub,
-  accent,
-  iconBg,
-  href,
-  linkClass,
-  icon,
-}: {
-  label: string;
-  value: string;
-  sub: string;
-  accent: string;
-  iconBg: string;
-  href: string;
-  linkClass: string;
-  icon: "wallet" | "hourglass" | "doc";
-}) {
-  return (
-    <Link
-      href={href}
-      className={`flex h-full min-w-0 flex-col rounded-2xl border border-zinc-200/80 border-l-4 p-4 shadow-sm transition hover:shadow-md ${accent}`}
-    >
-      <div className="flex items-start justify-between gap-2">
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-          {icon === "wallet" && (
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h18M7 15h1m4 0h1m-7 4h12a3 3 0 003-3V8a3 3 0 00-3-3H6a3 3 0 00-3 3v8a3 3 0 003 3z" />
-            </svg>
-          )}
-          {icon === "hourglass" && (
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-            </svg>
-          )}
-          {icon === "doc" && (
-            <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
-            </svg>
-          )}
-        </span>
-        <span className="text-right text-xl font-bold tabular-nums leading-tight text-zinc-900 lg:text-2xl">
-          {value}
-        </span>
-      </div>
-      <p className="mt-2 text-xs font-semibold leading-snug text-zinc-800 sm:text-sm">{label}</p>
-      <p className={`mt-0.5 text-[11px] sm:text-xs ${linkClass}`}>{sub}</p>
-    </Link>
-  );
+const ATTENTION_LIMIT = 5;
+
+const AREA_LABEL: Record<string, string> = {
+  ingeniero: "Ingeniería",
+  compras: "Compras",
+  pagos: "Administración",
+  recepcion: "Recepción",
+  contabilidad: "Contabilidad",
+};
+
+function attentionHref(order: PurchaseOrderDto): string {
+  if (isProcesoBExpediente(order)) return `/solicitudes/gasto/${order.id}`;
+  if (isProcesoCExpediente(order)) return `/compromisos-c/${order.id}`;
+  return `/ordenes/${order.id}`;
 }
 
 export function DireccionHomeDashboard({
   userName,
   orders,
-  obras,
   expenses = [],
   invoiceCommitments = [],
-  recentMovements,
-  pendingMovements,
 }: {
   userName: string;
   orders: PurchaseOrderDto[];
-  obras: ObraDto[];
+  obras?: ObraDto[];
   expenses?: DirectExpenseDto[];
   invoiceCommitments?: InvoiceFirstCommitmentDto[];
-  recentMovements: MovementDto[];
-  pendingMovements: PendingMovementDto[];
+  recentMovements?: MovementDto[];
+  pendingMovements?: PendingMovementDto[];
 }) {
-  const { user } = useSession();
   const kpis = useMemo(() => direccionKpiCounts(orders), [orders]);
   const growth = useMemo(() => kpiMonthGrowth(orders), [orders]);
   const pendingCount = useMemo(() => pendingAuthorizationCount(orders), [orders]);
@@ -105,87 +72,138 @@ export function DireccionHomeDashboard({
     [orders, expenses, invoiceCommitments]
   );
   const expKpis = useMemo(() => expedienteKpis(expedienteRows), [expedienteRows]);
-  const tabCounts = useMemo(
-    () => ({
-      todos: expKpis.total,
-      completos: expKpis.completos,
-      en_proceso: expKpis.enProceso,
-      atencion: expKpis.atencion,
-    }),
-    [expKpis]
+  const attention = useMemo(
+    () => filterByExpedienteTab(expedienteRows, "atencion").slice(0, ATTENTION_LIMIT),
+    [expedienteRows]
   );
   const currency = orders[0]?.currency ?? "MXN";
-  const showAdminActions = canShowExpedienteAdminActions(user?.role);
 
   const growthText =
     growth === null
-      ? "Ver reportes →"
+      ? undefined
       : growth >= 0
         ? `+${growth}% vs. mes anterior`
         : `${growth}% vs. mes anterior`;
 
+  const pulse = useMemo(() => {
+    const parts: string[] = [];
+    if (pendingCount > 0) {
+      parts.push(
+        `${pendingCount} pago${pendingCount === 1 ? "" : "s"} por autorizar`
+      );
+    }
+    if (expKpis.atencion > 0) {
+      parts.push(
+        `${expKpis.atencion} expediente${expKpis.atencion === 1 ? "" : "s"} requieren atención`
+      );
+    }
+    if (parts.length === 0) {
+      return "Sin pendientes críticos. Consulta expedientes o reportes cuando lo necesites.";
+    }
+    return `Hoy: ${parts.join(" · ")}.`;
+  }, [pendingCount, expKpis.atencion]);
+
+  const displayName = userName.replace(/^Ing\.\s*/i, "").trim() || userName;
+
   return (
-    <div className="home-dashboard flex flex-col gap-4 pb-4">
-      <header className="shrink-0">
-        <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">
-          ¡Hola, {userName.replace(/^Ing\.\s*/i, "").trim() || userName}!
-        </h1>
-        <p className="mt-1 flex items-start gap-2 text-sm text-zinc-600">
-          <RoleActivityIcon role="direccion" size="sm" />
-          <span>{ROLE_LABEL.direccion} · Consulta expedientes, pagos y autorizaciones del consorcio.</span>
-        </p>
+    <div className="home-dashboard dash-stack w-full pb-6">
+      <header className="space-y-2">
+        <h1 className="dash-page-title">¡Hola, {displayName}!</h1>
+        <HomePulseLine>
+          {ROLE_LABEL.direccion} · {pulse}
+        </HomePulseLine>
       </header>
 
-      <div className="grid shrink-0 grid-cols-1 gap-3 sm:grid-cols-3">
-        <KpiCard
-          label="Gasto total del mes"
+      <HomeHeroMetric
+        label="Pendiente de autorizar"
+        value={formatMoney(kpis.pagosPendientesAutorizar, currency)}
+        hint={
+          pendingCount > 0
+            ? `${pendingCount} pago${pendingCount === 1 ? "" : "s"} del mes`
+            : "Nada pendiente de autorización"
+        }
+      />
+
+      <div className="dash-grid-3">
+        <CalmKpiTile
+          label="Gasto del mes"
           value={formatMoney(kpis.gastoTotalMes, currency)}
-          sub={growthText}
-          accent="border-l-violet-400 bg-violet-50/35"
-          iconBg="bg-violet-100 text-violet-800"
+          sub={growthText ?? "Ver reportes"}
           href="/reportes"
-          linkClass="text-violet-700"
-          icon="wallet"
+          tint="violet"
         />
-        <KpiCard
-          label="Pagos pendientes de autorizar"
-          value={formatMoney(kpis.pagosPendientesAutorizar, currency)}
-          sub={`${pendingCount} pago${pendingCount === 1 ? "" : "s"} del mes →`}
-          accent="border-l-orange-400 bg-orange-50/40"
-          iconBg="bg-orange-100 text-orange-700"
+        <CalmKpiTile
+          label="Parciales activos"
+          value={kpis.pagosParcialesActivos}
+          sub="Con saldo pendiente"
           href="/pagos"
-          linkClass="text-orange-700"
-          icon="hourglass"
+          tint="sky"
         />
-        <KpiCard
-          label="Pagos parciales activos"
-          value={String(kpis.pagosParcialesActivos)}
-          sub="Con saldo pendiente →"
-          accent="border-l-sky-400 bg-sky-50/35"
-          iconBg="bg-sky-100 text-sky-800"
-          href="/pagos"
-          linkClass="text-sky-800"
-          icon="doc"
+        <CalmKpiTile
+          label="Requieren atención"
+          value={expKpis.atencion}
+          sub="Expedientes / OC en alerta"
+          href="/expedientes"
+          tint="orange"
         />
       </div>
 
-      <div className="grid grid-cols-1 items-start gap-4 xl:grid-cols-[minmax(0,1fr)_17.5rem] 2xl:grid-cols-[minmax(0,1fr)_19rem]">
-        <DireccionExpedientesPanel
-          orders={expedienteRows}
-          obras={obras}
-          compact
-          showExport={false}
-          showAdminActions={showAdminActions}
-          defaultTab="todos"
-          tabCounts={tabCounts}
-        />
-        <DireccionHomeSidebar
-          orders={orders}
-          recentMovements={recentMovements}
-          pendingMovements={pendingMovements}
-          sticky
-        />
+      <div className="flex flex-wrap gap-2">
+        <HomeLauncherLink href="/pagos" label="Ver pagos" primary />
+        <HomeLauncherLink href="/expedientes" label="Ver expedientes" />
+        <HomeLauncherLink href="/reportes" label="Reportes" />
+        <HomeLauncherLink href="/agregar-factura" label="Agregar factura" />
       </div>
+
+      <section className="dash-panel">
+        <DashPanelHeader
+          title="Atención prioritaria"
+          meta={`Top ${ATTENTION_LIMIT} · listado completo en Expedientes`}
+          action={
+            <Link href="/expedientes" className="text-sm font-semibold text-orange-700 hover:text-orange-900">
+              Ver todos →
+            </Link>
+          }
+        />
+
+        {attention.length === 0 ? (
+          <p className="dash-body px-4 py-10 text-center text-zinc-500 sm:px-5">
+            No hay expedientes que requieran atención ahora.
+          </p>
+        ) : (
+          <ul className="divide-y divide-zinc-100">
+            {attention.map((order) => {
+              const area = expedientePendingArea(order);
+              return (
+                <li key={order.id} className="flex flex-wrap items-center gap-3 px-4 py-3.5 sm:px-5">
+                  <div className="min-w-0 flex-1">
+                    <Link href={attentionHref(order)} className="link-oc text-sm">
+                      {orderDisplayCode(order)}
+                    </Link>
+                    <p className="dash-caption mt-0.5 truncate">
+                      {order.obraName} · {order.supplierName}
+                    </p>
+                  </div>
+                  {area ? (
+                    <span className="shrink-0 rounded-full bg-orange-50 px-2.5 py-1 text-xs font-semibold text-orange-800 ring-1 ring-inset ring-orange-200/80">
+                      {AREA_LABEL[area] ?? area}
+                    </span>
+                  ) : null}
+                  <span className="shrink-0 text-sm font-bold tabular-nums text-zinc-900">
+                    {formatMoney(order.totalAmount, order.currency)}
+                  </span>
+                  <Link
+                    href={attentionHref(order)}
+                    className="shrink-0 text-xs font-semibold text-orange-700 hover:underline"
+                  >
+                    Revisar
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </section>
     </div>
   );
 }

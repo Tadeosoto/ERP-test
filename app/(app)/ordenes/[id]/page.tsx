@@ -51,10 +51,10 @@ export default function OrderDetailPage() {
 
   return (
     <div>
-      <Link href="/obras" className="text-base font-medium text-orange-700 hover:underline">
+      <Link href="/obras" className="text-sm font-medium text-orange-700 hover:underline">
         ← Volver a obras
       </Link>
-      <div className="mt-4">
+      <div className="mt-2">
         <OrderDetailPanel order={order} onUpdated={load} />
       </div>
     </div>

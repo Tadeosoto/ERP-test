@@ -106,7 +106,7 @@ export function ExpedienteDetailView() {
         key: `b-${c.id}`,
         type: "Compromiso B",
         title: `${c.supplierName} — ${c.concept}`,
-        href: `/inicio`,
+        href: `/compromisos`,
         amount: c.estimatedAmount ?? 0,
         currency: c.currency,
         status: COMMITMENT_WORKFLOW_LABEL[c.workflowStatus as keyof typeof COMMITMENT_WORKFLOW_LABEL] ?? c.workflowStatus,
@@ -213,7 +213,7 @@ export function ExpedienteDetailView() {
   if (loading) return <LoadingScreen message="Cargando expediente" />;
   if (!exp) {
     return (
-      <div className="card p-8">
+      <div className="dash-panel p-8">
         <p>Expediente no encontrado.</p>
         <Link href="/expedientes" className="mt-4 inline-block text-orange-700 underline">
           Volver
@@ -222,15 +222,21 @@ export function ExpedienteDetailView() {
     );
   }
 
+  const total = exp.totalAmount > 0 ? exp.totalAmount : 0;
+  const pct =
+    total > 0
+      ? Math.min(100, Math.max(0, Math.round((exp.amountPaidSoFar / total) * 100)))
+      : 0;
+
   return (
-    <div className="mx-auto max-w-5xl space-y-6">
+    <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
-        <div>
+        <div className="min-w-0">
           <Link href="/expedientes" className="text-sm font-medium text-orange-700 hover:underline">
             ← Expedientes
           </Link>
           <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h1 className="text-2xl font-bold text-zinc-900">{exp.folio}</h1>
+            <h1 className="dash-page-title text-xl sm:text-2xl">{exp.folio}</h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800 ring-1 ring-sky-100">
               {exp.statusLabel}
             </span>
@@ -239,12 +245,12 @@ export function ExpedienteDetailView() {
             <input
               value={name}
               onChange={(e) => setName(e.target.value)}
-              className="mt-2 w-full max-w-lg rounded-xl border border-zinc-200 px-3 py-2 text-lg font-semibold"
+              className="mt-2 w-full max-w-lg rounded-xl border border-zinc-200 px-3 py-2 text-base font-semibold"
             />
           ) : (
-            <p className="mt-1 text-lg font-semibold text-zinc-800">{exp.name}</p>
+            <p className="mt-0.5 text-base font-semibold text-zinc-800">{exp.name}</p>
           )}
-          {exp.obraName && <p className="text-sm text-violet-700">Obra: {exp.obraName}</p>}
+          {exp.obraName && <p className="dash-caption text-violet-700">Obra: {exp.obraName}</p>}
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && !editing && (
@@ -265,203 +271,212 @@ export function ExpedienteDetailView() {
         </div>
       </div>
 
-      <div className="grid gap-3 sm:grid-cols-3">
-        <div className="card p-4">
-          <p className="text-[11px] font-semibold uppercase text-zinc-500">Total</p>
-          <p className="mt-1 text-xl font-bold tabular-nums">{formatMoney(exp.totalAmount, exp.currency)}</p>
+      {/* Progreso primero; totales como apoyo debajo */}
+      <div className="dash-panel p-3 sm:p-4">
+        <div className="mb-1.5 flex items-center justify-between gap-2">
+          <span className="dash-section-title text-zinc-800">Avance de pago</span>
+          <span className="text-lg font-bold tabular-nums text-teal-800 sm:text-xl">{pct}%</span>
         </div>
-        <div className="card p-4">
-          <p className="text-[11px] font-semibold uppercase text-zinc-500">Pagado</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-emerald-700">
-            {formatMoney(exp.amountPaidSoFar, exp.currency)}
-          </p>
+        <div
+          className="h-2.5 w-full overflow-hidden rounded-full bg-zinc-200 sm:h-3"
+          role="progressbar"
+          aria-valuenow={pct}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={`Pagado ${pct} por ciento`}
+        >
+          <div
+            className="h-full rounded-full bg-teal-500 transition-[width] duration-500 ease-out"
+            style={{ width: `${pct}%` }}
+          />
         </div>
-        <div className="card p-4">
-          <p className="text-[11px] font-semibold uppercase text-zinc-500">Saldo</p>
-          <p className="mt-1 text-xl font-bold tabular-nums text-orange-700">
-            {formatMoney(exp.amountRemaining, exp.currency)}
-          </p>
+        <div className="mt-3 grid grid-cols-3 gap-2">
+          <div className="rounded-xl border border-zinc-100 bg-zinc-50/80 px-2.5 py-2">
+            <p className="dash-label text-zinc-500">Total</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-zinc-900 sm:text-base">
+              {formatMoney(exp.totalAmount, exp.currency)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-emerald-100 bg-emerald-50/50 px-2.5 py-2">
+            <p className="dash-label text-zinc-500">Pagado</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-emerald-800 sm:text-base">
+              {formatMoney(exp.amountPaidSoFar, exp.currency)}
+            </p>
+          </div>
+          <div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-2">
+            <p className="dash-label text-zinc-500">Saldo</p>
+            <p className="mt-0.5 text-sm font-bold tabular-nums text-orange-800 sm:text-base">
+              {formatMoney(exp.amountRemaining, exp.currency)}
+            </p>
+          </div>
         </div>
       </div>
 
-      {(() => {
-        const total = exp.totalAmount > 0 ? exp.totalAmount : 0;
-        const pct =
-          total > 0
-            ? Math.min(100, Math.max(0, Math.round((exp.amountPaidSoFar / total) * 100)))
-            : 0;
-        return (
-          <div className="card p-4">
-            <div className="mb-1.5 flex items-center justify-between gap-2">
-              <span className="text-xs font-semibold text-zinc-600">Avance de pago del expediente</span>
-              <span className="text-sm font-bold tabular-nums text-teal-800">{pct}%</span>
-            </div>
-            <div
-              className="h-3 w-full overflow-hidden rounded-full bg-zinc-200"
-              role="progressbar"
-              aria-valuenow={pct}
-              aria-valuemin={0}
-              aria-valuemax={100}
-              aria-label={`Pagado ${pct} por ciento`}
-            >
-              <div
-                className="h-full rounded-full bg-gradient-to-r from-teal-500 to-teal-600 transition-[width] duration-500 ease-out"
-                style={{ width: `${pct}%` }}
-              />
-            </div>
-            <p className="mt-1.5 text-xs text-zinc-500">
-              {formatMoney(exp.amountPaidSoFar, exp.currency)} pagado ·{" "}
-              {formatMoney(exp.amountRemaining, exp.currency)} faltante
-            </p>
-          </div>
-        );
-      })()}
-
-      {(editing || exp.notes) && (
-        <section className="card p-5">
-          <h2 className="text-sm font-bold text-zinc-900">Notas</h2>
-          {editing ? (
-            <textarea
-              value={notes}
-              onChange={(e) => setNotes(e.target.value)}
-              rows={3}
-              className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
-            />
-          ) : (
-            <p className="mt-2 whitespace-pre-wrap text-sm text-zinc-700">{exp.notes || "—"}</p>
-          )}
-        </section>
-      )}
-
-      <section className="card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-zinc-900">Facturas</h2>
-          {facturas.length > 0 && (
-            <span className="rounded-full bg-violet-100 px-2.5 py-0.5 text-xs font-semibold text-violet-800">
-              {facturas.length} archivo{facturas.length === 1 ? "" : "s"}
-            </span>
-          )}
-        </div>
-        <p className="mt-1 text-xs text-zinc-500">
-          Cada «Agregar Factura» crea un registro Proceso C. Puedes tener varias facturas en el mismo
-          expediente. También aparecen facturas subidas en la OC.
-        </p>
-        {facturas.length === 0 ? (
-          <p className="mt-4 rounded-xl border border-dashed border-zinc-200 px-4 py-6 text-center text-sm text-zinc-500">
-            Aún no hay facturas en este expediente. Al crear una en «Agregar Factura», elige este
-            expediente para que aparezca aquí.
-          </p>
-        ) : (
-          <ul className="mt-4 space-y-2">
-            {facturas.map((f) => (
-              <li
-                key={f.key}
-                className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-violet-100 bg-violet-50/40 px-3 py-2.5"
+      <div className="grid items-start gap-3 lg:grid-cols-[minmax(0,1fr)_minmax(15rem,20rem)] xl:grid-cols-[minmax(0,1fr)_minmax(16rem,22rem)] lg:gap-4">
+        <section className="dash-panel min-w-0 p-3 sm:p-4 lg:col-start-1 lg:row-start-1 lg:row-span-2">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <h2 className="dash-section-title">Contenido del expediente</h2>
+            <label className="flex items-center gap-2 text-xs text-zinc-600">
+              Ordenar
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as SortKey)}
+                className="rounded-lg border border-zinc-200 px-2 py-1"
               >
-                <div className="min-w-0">
-                  <p className="truncate text-sm font-semibold text-zinc-900">{f.title}</p>
-                  <p className="text-xs text-zinc-500">
-                    {f.source} · {formatDateShort(f.at)}
-                  </p>
-                </div>
-                <span className="flex gap-2">
-                  <a
-                    href={f.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-xs font-semibold text-orange-700 hover:underline"
-                  >
-                    Ver
-                  </a>
-                  {!f.downloadHref.startsWith("/compromisos-c") && (
-                    <a href={f.downloadHref} className="text-xs font-semibold text-teal-700 hover:underline">
-                      Descargar
-                    </a>
-                  )}
-                </span>
+                <option value="date">Fecha</option>
+                <option value="amount">Monto</option>
+                <option value="type">Tipo</option>
+              </select>
+            </label>
+          </div>
+
+          {canEdit && (
+            <p className="mt-1.5 dash-caption text-zinc-500">
+              Administración y Dirección pueden abrir cada ítem para editarlo.
+            </p>
+          )}
+
+          <ul className="mt-3 space-y-2">
+            {items.length === 0 ? (
+              <li className="rounded-xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
+                Este expediente aún no tiene OC, compromisos ni pagos Proceso C.
               </li>
-            ))}
-          </ul>
-        )}
-      </section>
-
-      <section className="card p-5">
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h2 className="text-lg font-bold text-zinc-900">Contenido del expediente</h2>
-          <label className="flex items-center gap-2 text-xs text-zinc-600">
-            Ordenar
-            <select
-              value={sort}
-              onChange={(e) => setSort(e.target.value as SortKey)}
-              className="rounded-lg border border-zinc-200 px-2 py-1"
-            >
-              <option value="date">Fecha</option>
-              <option value="amount">Monto</option>
-              <option value="type">Tipo</option>
-            </select>
-          </label>
-        </div>
-
-        {canEdit && (
-          <p className="mt-2 text-xs text-zinc-500">
-            Administración y Dirección pueden abrir cada ítem para editarlo (p. ej. agregar comprobante o
-            folio de OC después).
-          </p>
-        )}
-
-        <ul className="mt-4 space-y-3">
-          {items.length === 0 ? (
-            <li className="rounded-xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
-              Este expediente aún no tiene OC, compromisos ni pagos Proceso C.
-            </li>
-          ) : (
-            items.map((row) => (
-              <li key={row.key} className="rounded-2xl border border-zinc-100 p-4">
-                <div className="flex flex-wrap items-start justify-between gap-2">
-                  <div>
-                    <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700">
-                      {row.type}
-                    </span>
-                    <Link href={row.href} className="mt-0.5 block font-semibold text-zinc-900 hover:underline">
-                      {row.title}
-                    </Link>
-                    <p className="text-xs text-zinc-500">
-                      {row.status} · {formatDateShort(row.at)}
+            ) : (
+              items.map((row) => (
+                <li key={row.key} className="rounded-xl border border-zinc-100 px-3 py-2.5">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <span className="text-[10px] font-bold uppercase tracking-wide text-violet-700">
+                        {row.type}
+                      </span>
+                      <Link
+                        href={row.href}
+                        className="mt-0.5 block truncate font-semibold text-zinc-900 hover:underline"
+                      >
+                        {row.title}
+                      </Link>
+                      <p className="text-xs text-zinc-500">
+                        {row.status} · {formatDateShort(row.at)}
+                      </p>
+                    </div>
+                    <p className="shrink-0 font-bold tabular-nums text-zinc-900">
+                      {formatMoney(row.amount, row.currency)}
                     </p>
                   </div>
-                  <p className="font-bold tabular-nums text-zinc-900">
-                    {formatMoney(row.amount, row.currency)}
-                  </p>
-                </div>
-                {row.files.length > 0 && (
-                  <ul className="mt-3 space-y-1 border-t border-zinc-50 pt-3">
-                    {row.files.map((f) => (
-                      <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
-                        <span className="truncate text-zinc-700">{f.label}</span>
-                        <span className="flex gap-2">
-                          <a href={f.href} target="_blank" rel="noopener noreferrer" className="text-xs font-semibold text-orange-700 hover:underline">
-                            Ver
-                          </a>
-                          <a href={f.downloadHref} className="text-xs font-semibold text-teal-700 hover:underline">
-                            Descargar
-                          </a>
-                        </span>
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {canEdit && (
-                  <Link href={row.href} className="mt-3 inline-block text-xs font-semibold text-sky-700 hover:underline">
-                    Abrir para editar →
-                  </Link>
-                )}
-              </li>
-            ))
-          )}
-        </ul>
-      </section>
+                  {row.files.length > 0 && (
+                    <ul className="mt-2 space-y-1 border-t border-zinc-50 pt-2">
+                      {row.files.map((f) => (
+                        <li key={f.id} className="flex flex-wrap items-center justify-between gap-2 text-sm">
+                          <span className="truncate text-xs text-zinc-700">{f.label}</span>
+                          <span className="flex gap-2">
+                            <a
+                              href={f.href}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="text-xs font-semibold text-orange-700 hover:underline"
+                            >
+                              Ver
+                            </a>
+                            <a
+                              href={f.downloadHref}
+                              className="text-xs font-semibold text-teal-700 hover:underline"
+                            >
+                              Descargar
+                            </a>
+                          </span>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                  {canEdit && (
+                    <Link
+                      href={row.href}
+                      className="mt-2 inline-block text-xs font-semibold text-sky-700 hover:underline"
+                    >
+                      Abrir para editar →
+                    </Link>
+                  )}
+                </li>
+              ))
+            )}
+          </ul>
+        </section>
 
-      <div className="flex gap-2 pb-8">
+        <aside className="flex min-w-0 flex-col gap-3 sm:gap-4 lg:col-start-2 lg:row-start-1 lg:row-span-2 lg:sticky lg:top-20">
+          {(editing || exp.notes) && (
+            <section className="dash-panel p-3">
+              <h2 className="dash-section-title">Notas</h2>
+              {editing ? (
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  rows={4}
+                  className="mt-2 w-full rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+                />
+              ) : (
+                <p className="mt-2 whitespace-pre-wrap text-xs leading-snug text-zinc-700">
+                  {exp.notes || "—"}
+                </p>
+              )}
+            </section>
+          )}
+
+          <section className="dash-panel p-3">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <h2 className="dash-section-title">Facturas</h2>
+              {facturas.length > 0 && (
+                <span className="rounded-full bg-violet-100 px-2 py-0.5 text-[10px] font-semibold text-violet-800">
+                  {facturas.length}
+                </span>
+              )}
+            </div>
+            <p className="mt-1 text-[11px] leading-snug text-zinc-500">
+              Proceso C y facturas de OC en este expediente.
+            </p>
+            {facturas.length === 0 ? (
+              <p className="mt-3 rounded-xl border border-dashed border-zinc-200 px-3 py-4 text-center text-xs text-zinc-500">
+                Sin facturas aún.
+              </p>
+            ) : (
+              <ul className="mt-2 max-h-[28rem] space-y-2 overflow-y-auto pr-0.5">
+                {facturas.map((f) => (
+                  <li
+                    key={f.key}
+                    className="rounded-xl border border-violet-100 bg-violet-50/40 px-2.5 py-2"
+                  >
+                    <p className="truncate text-xs font-semibold text-zinc-900">{f.title}</p>
+                    <p className="mt-0.5 text-[11px] leading-snug text-zinc-500">
+                      {f.source}
+                      <br />
+                      {formatDateShort(f.at)}
+                    </p>
+                    <span className="mt-1.5 flex gap-2">
+                      <a
+                        href={f.href}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="text-[11px] font-semibold text-orange-700 hover:underline"
+                      >
+                        Ver
+                      </a>
+                      {!f.downloadHref.startsWith("/compromisos-c") && (
+                        <a
+                          href={f.downloadHref}
+                          className="text-[11px] font-semibold text-teal-700 hover:underline"
+                        >
+                          Descargar
+                        </a>
+                      )}
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </section>
+        </aside>
+      </div>
+
+      <div className="pb-4">
         <button type="button" className="btn-secondary" onClick={() => router.push("/expedientes")}>
           Volver a la lista
         </button>

@@ -2,10 +2,10 @@
 
 import Link from "next/link";
 import { useMemo } from "react";
+import { CalmKpiTile, HomePulseLine } from "@/components/dashboard/calm-kpi-tile";
 import { IngenieroHomeSidebar } from "@/components/dashboard/ingeniero-home-sidebar";
 import { IngenieroPendingOrdersPanel } from "@/components/dashboard/ingeniero-pending-orders-panel";
 import { RoleQuickGuideBanner } from "@/components/dashboard/role-quick-guide";
-import { RoleActivityIcon } from "@/components/dashboard/role-activity-icon";
 import {
   INGENIERO_HOME_KPI_CONFIG,
   ingenieroHomeKpiCounts,
@@ -20,35 +20,12 @@ import type {
 } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
 
-function KpiIcon({ name }: { name: "clock" | "x" | "check" | "alert" }) {
-  const cls = "h-4 w-4 sm:h-5 sm:w-5";
-  if (name === "clock") {
-    return (
-      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
-      </svg>
-    );
-  }
-  if (name === "x") {
-    return (
-      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
-      </svg>
-    );
-  }
-  if (name === "alert") {
-    return (
-      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01M10.29 3.86L1.82 18a2 2 0 001.71 3h16.94a2 2 0 001.71-3L13.71 3.86a2 2 0 00-3.42 0z" />
-      </svg>
-    );
-  }
-  return (
-    <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-    </svg>
-  );
-}
+const KPI_TINT: Record<string, "orange" | "amber" | "sky" | "emerald" | "violet"> = {
+  pendingApproval: "orange",
+  correctionsRequested: "amber",
+  approvedThisMonth: "emerald",
+  pendingOver3Days: "violet",
+};
 
 export function IngenieroHomeDashboard({
   userId,
@@ -75,47 +52,44 @@ export function IngenieroHomeDashboard({
 
   const recentObras = useMemo(() => sortByCreatedAtDesc(obras).slice(0, 3), [obras]);
 
+  const pulse = useMemo(() => {
+    const n = counts.pendingApproval;
+    if (n > 0) {
+      const stale = counts.pendingOver3Days;
+      const extra =
+        stale > 0 ? ` (${stale} con más de 3 días)` : "";
+      return `Tienes ${n} OC pendiente${n === 1 ? "" : "s"} de revisión${extra}.`;
+    }
+    return "Sin OC urgentes por revisar. Puedes crear una solicitud de material.";
+  }, [counts.pendingApproval, counts.pendingOver3Days]);
+
   return (
-    <div className="home-dashboard flex flex-col gap-3 pb-2 sm:gap-4 lg:min-h-0 lg:flex-1 lg:gap-2.5 lg:overflow-hidden lg:pb-0">
+    <div className="home-dashboard dash-stack mx-auto max-w-6xl pb-4 lg:max-w-none lg:min-h-0 lg:flex-1 lg:overflow-hidden lg:pb-0">
       <header className="shrink-0">
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
-          <div className="min-w-0 flex-1">
-            <h1 className="text-xl font-bold text-zinc-900 sm:text-2xl">
-              ¡Hola, {userName.split(" ")[0]}!
-            </h1>
-            <p className="mt-0.5 flex items-start gap-2 text-xs text-zinc-500 sm:items-center sm:text-sm">
-              <RoleActivityIcon role="ingeniero" size="sm" />
-              <span>Ingeniería — Revisa OC de Compras y gestiona solicitudes de material.</span>
-            </p>
+        <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
+          <div className="min-w-0 flex-1 space-y-1.5">
+            <h1 className="dash-page-title">¡Hola, {userName.split(" ")[0]}!</h1>
+            <HomePulseLine>{pulse}</HomePulseLine>
           </div>
-          <Link
-            href="/solicitudes/nueva"
-            className="btn-primary h-11 min-h-11 w-full shrink-0 px-4 py-2 text-sm sm:w-auto"
-          >
+          <Link href="/solicitudes/nueva" className="btn-primary w-full shrink-0 sm:w-auto">
             + Nueva solicitud
           </Link>
         </div>
       </header>
 
-      <div className="grid shrink-0 grid-cols-2 gap-2 sm:grid-cols-2 md:grid-cols-4 lg:gap-2">
+      <div className="dash-grid-4 shrink-0">
         {INGENIERO_HOME_KPI_CONFIG.map((cfg) => (
-          <div
+          <CalmKpiTile
             key={cfg.key}
-            className={`flex min-w-0 flex-col rounded-xl border border-orange-100/80 border-l-4 p-2.5 shadow-sm sm:p-3 lg:rounded-2xl ${cfg.accent}`}
-          >
-            <div className="flex items-start justify-between gap-2">
-              <span className={`inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-lg sm:h-9 sm:w-9 sm:rounded-xl ${cfg.iconBg}`}>
-                <KpiIcon name={cfg.icon} />
-              </span>
-              <span className="text-xl font-bold tabular-nums text-zinc-900 sm:text-2xl">{counts[cfg.key]}</span>
-            </div>
-            <p className="mt-1.5 text-[11px] font-semibold leading-tight text-zinc-800 sm:text-xs">{cfg.label}</p>
-            <p className="mt-0.5 hidden text-[10px] text-zinc-500 sm:block sm:text-[11px]">{cfg.sublabel}</p>
-          </div>
+            label={cfg.label}
+            value={counts[cfg.key]}
+            sub={cfg.sublabel}
+            tint={KPI_TINT[cfg.key] ?? "zinc"}
+          />
         ))}
       </div>
 
-      <div className="flex flex-col gap-3 lg:min-h-0 lg:flex-1 lg:gap-2 xl:grid xl:grid-cols-4 xl:gap-3 xl:overflow-hidden">
+      <div className="flex min-h-0 flex-col gap-4 lg:flex-1 xl:grid xl:grid-cols-4 xl:overflow-hidden">
         <div className="flex min-w-0 flex-col lg:min-h-0 lg:flex-1 xl:col-span-3">
           <IngenieroPendingOrdersPanel
             orders={orders}

@@ -1,11 +1,22 @@
 @import "tailwindcss";
 
 :root {
-  --background: #ffffff;
-  --foreground: #1c1917;
+  --background: #f4f4f5;
+  --foreground: #18181b;
+  --surface: #ffffff;
   --accent-orange: #ea580c;
   --accent-teal: #0d9488;
-  --text-lg: 1.125rem;
+  /* Dashboard type scale (Five-Second Rule) */
+  --text-metric: 2.25rem; /* 36px */
+  --text-metric-lg: 2.75rem; /* 44px */
+  --text-page: 1.75rem; /* 28px */
+  --text-title: 1.125rem; /* 18px */
+  --text-body: 0.875rem; /* 14px */
+  --text-caption: 0.75rem; /* 12px */
+  --leading-data: 1.4;
+  --dash-gap: 1rem; /* 16px */
+  --dash-gap-lg: 1.5rem;
+  --dash-radius: 0.75rem; /* 12px */
 }
 
 @theme inline {
@@ -21,8 +32,8 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
-  font-size: var(--text-lg);
-  line-height: 1.55;
+  font-size: var(--text-body);
+  line-height: var(--leading-data);
   -webkit-tap-highlight-color: transparent;
 }
 
@@ -30,28 +41,28 @@ body {
   padding-bottom: env(safe-area-inset-bottom, 0px);
 }
 
-/* Accesibilidad: botones táctiles grandes */
+/* Accesibilidad: botones táctiles — marca naranja/teal intacta */
 .btn-primary {
-  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-orange-600 px-6 py-3 text-base font-semibold text-white shadow-sm transition hover:bg-orange-700;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-orange-600 px-5 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange-700;
 }
 
 .btn-secondary {
-  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-teal-600 bg-white px-6 py-3 text-base font-semibold text-teal-800 transition hover:bg-teal-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-teal-600 bg-white px-5 py-2.5 text-sm font-semibold text-teal-800 transition hover:bg-teal-50;
 }
 
 .btn-ghost {
-  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border border-orange-200 bg-white px-5 py-3 text-base font-medium text-orange-900 hover:bg-orange-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-orange-200 bg-white px-4 py-2.5 text-sm font-medium text-orange-900 hover:bg-orange-50;
 }
 
 .btn-danger {
-  @apply inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl border-2 border-red-300 bg-white px-6 py-3 text-base font-semibold text-red-700 transition hover:bg-red-50;
+  @apply inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border-2 border-red-300 bg-white px-5 py-2.5 text-sm font-semibold text-red-700 transition hover:bg-red-50;
 }
 
+/* Cards modulares (Mercury / Acme): blanco sobre canvas gris */
 .card {
-  @apply rounded-3xl border border-orange-100 bg-white shadow-sm;
+  @apply rounded-xl border border-zinc-200/90 bg-white shadow-sm;
 }
 
-/* Enlaces de folio OC en tablas y listados */
 .link-oc {
   @apply font-semibold text-sky-700 hover:text-sky-900 hover:underline;
 }
@@ -60,7 +71,110 @@ body {
   @apply font-medium text-sky-700 hover:text-sky-900 hover:underline;
 }
 
-/* Inicio: scroll natural en móvil, viewport fijo en desktop */
+/* ——— Dashboard design system ——— */
+.dash-page-title {
+  font-size: var(--text-page);
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+  color: #18181b;
+}
+
+.dash-section-title {
+  font-size: var(--text-title);
+  font-weight: 600;
+  line-height: 1.35;
+  color: #18181b;
+}
+
+.dash-metric {
+  font-size: clamp(2rem, 3.2vw, var(--text-metric-lg));
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.03em;
+  font-variant-numeric: tabular-nums;
+  color: #18181b;
+}
+
+.dash-metric-sm {
+  font-size: clamp(1.5rem, 2.2vw, 2rem);
+  font-weight: 700;
+  line-height: 1.15;
+  letter-spacing: -0.02em;
+  font-variant-numeric: tabular-nums;
+  color: #18181b;
+}
+
+.dash-body {
+  font-size: var(--text-body);
+  line-height: var(--leading-data);
+  color: #3f3f46;
+}
+
+.dash-caption {
+  font-size: var(--text-caption);
+  line-height: 1.4;
+  font-weight: 500;
+  color: #71717a;
+}
+
+.dash-label {
+  font-size: var(--text-caption);
+  line-height: 1.35;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: #71717a;
+}
+
+.dash-grid {
+  display: grid;
+  gap: var(--dash-gap);
+  min-width: 0;
+}
+
+.dash-grid-3 {
+  display: grid;
+  gap: var(--dash-gap);
+  grid-template-columns: 1fr;
+  min-width: 0;
+}
+
+@media (min-width: 640px) {
+  .dash-grid-3 {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+.dash-grid-4 {
+  display: grid;
+  gap: var(--dash-gap);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 0;
+}
+
+@media (min-width: 1024px) {
+  .dash-grid-4 {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.dash-panel {
+  border-radius: var(--dash-radius);
+  border: 1px solid rgb(228 228 231 / 0.95);
+  background: var(--surface);
+  box-shadow: 0 1px 2px rgb(24 24 27 / 0.04);
+  min-width: 0;
+  overflow: hidden;
+}
+
+.dash-stack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--dash-gap-lg);
+  min-width: 0;
+}
+
 .home-dashboard {
   min-width: 0;
 }
@@ -73,19 +187,12 @@ body {
   }
 }
 
-/* Grilla única del dashboard Compras: KPIs + panel alineados en 5 columnas */
 .compras-dashboard-grid {
   display: grid;
   width: 100%;
   min-width: 0;
-  gap: 0.5rem;
+  gap: var(--dash-gap);
   grid-template-columns: repeat(2, minmax(0, 1fr));
-}
-
-@media (min-width: 640px) {
-  .compras-dashboard-grid {
-    gap: 0.75rem;
-  }
 }
 
 @media (min-width: 768px) {
@@ -102,9 +209,7 @@ body {
   }
 }
 
-/* (layout pagos: flex en componente, sin grilla global) */
-
-/* Logo CCP: crece → gira → encoge (spring) */
+/* Logo CCP: crece → gira → encoge (spring) — marca intacta */
 @keyframes ccp-logo-loading {
   0% {
     transform: scale(0.52) rotate(0deg);
@@ -150,7 +255,7 @@ body {
     0%,
     100% {
       opacity: 0.55;
-      transform: scale(0.92);
+      transform: scale(0.52);
     }
     50% {
       opacity: 1;

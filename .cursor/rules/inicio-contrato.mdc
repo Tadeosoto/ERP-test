@@ -1,0 +1,33 @@
+---
+description: Contrato Inicio vs pestaña — densidad y jerarquía por rol
+globs: components/dashboard/**/*.{tsx,ts},components/dashboard-shell.tsx
+alwaysApply: false
+---
+
+# Contrato de Inicio (CCP ERP)
+
+**Inicio responde una pregunta por rol. Las pestañas responden el resto.**
+
+## Densidad
+
+- Máximo **3–4 KPIs** + **una** cola principal (5–8 filas) + accesos launcher.
+- No embeber módulos completos (tablas densas, workspaces de otro rol, sidebars de actividad largos).
+- Color solo para **estado** (saldo, atraso, completo), no decoración.
+- Guías rápidas: dismissibles; detalle del proceso vive en `/flujo`.
+
+## Por rol
+
+| Rol | Pregunta de Inicio | En Inicio | En pestaña |
+| --- | --- | --- | --- |
+| Administración (`pagos`) | ¿Qué debo pagar / autorizar hoy? | Hero saldo + 3 KPIs + bandeja corta | `/pagos`, `/compromisos`, `/ordenes`, `/facturas`, `/expedientes`, `/proveedores` |
+| Dirección | ¿Qué falta autorizar / qué saldo hay? | Hero + 3 KPIs + top 5 atención | `/expedientes`, `/pagos`, `/compromisos`, `/reportes`, `/agregar-factura` |
+| Compras | ¿Qué OC avanzo hoy? | KPIs + bandeja corta | `/ordenes` (listado completo) |
+| Ingeniería | ¿Qué me toca revisar? | KPIs + pendientes | `/solicitudes/nueva`, obras |
+
+## Sidebar
+
+Agrupar: **Trabajo** / **Documentos** / **Catálogos** / **Consulta**. Mobile: máx. 4–5 destinos críticos + “Más”.
+
+## Tipografía dashboard (Five-Second Rule)
+
+Usar clases de `globals.css`: `.dash-metric` (32–48px), `.dash-section-title` (18px), `.dash-body` (14px), `.dash-caption` / `.dash-label` (12px). Nunca bajo 11px. Gaps de grilla: 16px (`.dash-grid*`). Canvas gris + cards blancas (`.dash-panel`). Marca: naranja/teal y logo CCP intactos.

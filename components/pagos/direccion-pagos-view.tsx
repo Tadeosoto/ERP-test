@@ -28,8 +28,10 @@ import {
   type DireccionPagoTab,
   type DireccionPagosFilters,
 } from "@/lib/dashboard/direccion-pagos";
-import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import type { DirectExpenseDto, ObraDto, PurchaseOrderDto, RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
+import { PagosRecurringCommitmentsPanel } from "@/components/dashboard/pagos-recurring-commitments-panel";
+import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
 
 const PAGE_SIZE_OPTIONS = [8, 15, 25, 50] as const;
 
@@ -52,48 +54,130 @@ function PagoStatusBadge({ order }: { order: PurchaseOrderDto }) {
   );
 }
 
+type KpiIconKind = "pending" | "paid" | "partial" | "committed";
+
+function KpiIcon({ kind }: { kind: KpiIconKind }) {
+  const cls = "h-5 w-5";
+  if (kind === "pending") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    );
+  }
+  if (kind === "paid") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
+        />
+      </svg>
+    );
+  }
+  if (kind === "partial") {
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"
+        />
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={2}
+          d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"
+        />
+      </svg>
+    );
+  }
+  return (
+    <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+      <path
+        strokeLinecap="round"
+        strokeLinejoin="round"
+        strokeWidth={2}
+        d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"
+      />
+    </svg>
+  );
+}
+
 function KpiCard({
   label,
   value,
   sub,
   accent,
+  icon,
   iconBg,
   href,
+  onClick,
+  emphasis,
 }: {
   label: string;
   value: string;
   sub: string;
   accent: string;
+  icon: KpiIconKind;
   iconBg: string;
   href?: string;
+  onClick?: () => void;
+  /** Destaca el KPI de acción (p. ej. pendientes). */
+  emphasis?: boolean;
 }) {
+  const className = `dash-panel flex h-full min-w-0 flex-col border-l-4 p-4 text-left sm:p-5 ${accent} ${
+    emphasis ? "ring-1 ring-orange-300/70 shadow-sm" : ""
+  } ${href || onClick ? "transition hover:shadow-md" : ""}`;
+
   const inner = (
     <>
-      <div className="flex items-start justify-between gap-2">
-        <span className={`inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${iconBg}`}>
-          <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-          </svg>
+      <div className="flex items-start justify-between gap-3">
+        <span
+          className={`inline-flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ${iconBg}`}
+          aria-hidden
+        >
+          <KpiIcon kind={icon} />
         </span>
-        <span className="text-right text-lg font-bold tabular-nums leading-tight text-zinc-900">{value}</span>
+        <p
+          className={`min-w-0 flex-1 text-right font-bold tabular-nums tracking-tight text-zinc-900 ${
+            emphasis
+              ? "text-2xl sm:text-3xl lg:text-[2rem]"
+              : "text-xl sm:text-2xl lg:text-[1.75rem]"
+          }`}
+        >
+          {value}
+        </p>
       </div>
-      <p className="mt-2 text-xs font-semibold text-zinc-800">{label}</p>
-      <p className="mt-0.5 text-[11px] text-zinc-500">{sub}</p>
+      <p className="mt-3 text-sm font-semibold leading-snug text-zinc-800 sm:text-[15px]">{label}</p>
+      <p className="dash-caption mt-1.5">{sub}</p>
     </>
   );
+
+  if (onClick) {
+    return (
+      <button type="button" onClick={onClick} className={className}>
+        {inner}
+      </button>
+    );
+  }
+
   if (href) {
     return (
-      <Link
-        href={href}
-        className={`block rounded-2xl border border-zinc-200/80 border-l-4 p-4 shadow-sm transition hover:shadow-md ${accent}`}
-      >
+      <Link href={href} className={className}>
         {inner}
       </Link>
     );
   }
-  return (
-    <div className={`rounded-2xl border border-zinc-200/80 border-l-4 p-4 shadow-sm ${accent}`}>{inner}</div>
-  );
+  return <div className={className}>{inner}</div>;
 }
 
 export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
@@ -101,17 +185,26 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
+  const [commitments, setCommitments] = useState<RecurringCommitmentDto[]>([]);
+  const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<DireccionPagoTab>("todos");
   const [filters, setFilters] = useState<DireccionPagosFilters>(EMPTY_FILTERS);
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZE_OPTIONS)[number]>(15);
+  const [compromisoModalOpen, setCompromisoModalOpen] = useState(false);
+  const [editingCommitment, setEditingCommitment] = useState<RecurringCommitmentDto | null>(null);
+
+  const canManageCommitments = user?.role === "pagos";
+  const canOpenReportes = user?.role === "direccion";
 
   const load = useCallback(async () => {
-    const [oRes, ordRes, expRes] = await Promise.all([
+    const [oRes, ordRes, expRes, comRes, supRes] = await Promise.all([
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       fetch("/api/direct-expenses?includeCompleted=1", { credentials: "include" }),
+      fetch("/api/recurring-commitments", { credentials: "include" }),
+      fetch("/api/suppliers", { credentials: "include" }),
     ]);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
@@ -125,6 +218,14 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
       setExpenses(d.expenses);
     }
+    if (comRes.ok) {
+      const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
+      setCommitments(d.commitments);
+    }
+    if (supRes.ok) {
+      const d = (await supRes.json()) as { suppliers: SupplierDto[] };
+      setSuppliers(d.suppliers);
+    }
     setLoading(false);
   }, []);
 
@@ -133,9 +234,23 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
     onRegisterRefresh?.(() => void load());
   }, [load, onRegisterRefresh]);
 
+  useEffect(() => {
+    if (typeof window === "undefined" || loading) return;
+
+    function scrollToHash() {
+      if (window.location.hash === "#compromisos") {
+        document.getElementById("compromisos")?.scrollIntoView({ behavior: "smooth", block: "start" });
+      }
+    }
+
+    scrollToHash();
+    window.addEventListener("hashchange", scrollToHash);
+    return () => window.removeEventListener("hashchange", scrollToHash);
+  }, [loading]);
+
   const currency = orders[0]?.currency ?? "MXN";
   const kpis = useMemo(() => pagosPageKpis(orders), [orders]);
-  const suppliers = useMemo(() => uniqueSuppliers(orders), [orders]);
+  const supplierNames = useMemo(() => uniqueSuppliers(orders), [orders]);
 
   const tabbed = useMemo(() => filterByTab(orders, tab), [orders, tab]);
   const filtered = useMemo(() => applyPagosFilters(tabbed, filters), [tabbed, filters]);
@@ -172,75 +287,117 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
     setFilters(EMPTY_FILTERS);
   }
 
+  function focusPagosLista(
+    nextTab: DireccionPagoTab,
+    nextFilters?: Partial<DireccionPagosFilters>
+  ) {
+    setTab(nextTab);
+    if (nextFilters) {
+      setFilters((f) => ({ ...f, ...nextFilters }));
+    } else if (nextTab === "parciales" || nextTab === "todos" || nextTab === "realizados") {
+      setFilters(EMPTY_FILTERS);
+    }
+    requestAnimationFrame(() => {
+      document.getElementById("pagos-lista")?.scrollIntoView({ behavior: "smooth", block: "start" });
+    });
+  }
+
+  function openNewCompromiso() {
+    setEditingCommitment(null);
+    setCompromisoModalOpen(true);
+  }
+
+  function openEditCompromiso(c: RecurringCommitmentDto) {
+    setEditingCommitment(c);
+    setCompromisoModalOpen(true);
+  }
+
   if (loading) return <LoadingScreen message="Cargando pagos" />;
 
   const rangeStart = sorted.length === 0 ? 0 : (page - 1) * pageSize + 1;
   const rangeEnd = Math.min(page * pageSize, sorted.length);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-5 lg:space-y-6">
       <div>
-        <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Pagos</h1>
-        <p className="mt-1 text-sm text-zinc-600">
-          Consulta y da seguimiento a los pagos del consorcio (OC y gastos directos).
+        <h1 className="dash-page-title">Pagos</h1>
+        <p className="dash-body mt-1 text-zinc-600">
+          Seguimiento de pagos del consorcio. Primero el resumen, luego la cola de OC.
         </p>
       </div>
 
-      {(user?.role === "pagos" || user?.role === "direccion") && (
-        <PagosProcesoBListPanel expenses={expenses} role={user?.role} />
-      )}
-
-      <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+      {/* 1) KPIs — etiqueta legible arriba, monto grande abajo */}
+      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
-          label="Pagos realizados este mes"
+          label="Pendientes de autorizar"
+          value={formatMoney(kpis.pendientesAmount, currency)}
+          sub={`${kpis.pendientesCount} pago${kpis.pendientesCount === 1 ? "" : "s"} · acción prioritaria`}
+          accent="border-l-orange-500 bg-orange-50/50"
+          icon="pending"
+          iconBg="bg-orange-100 text-orange-700"
+          onClick={() => focusPagosLista("pendientes", { estatus: "" })}
+          emphasis
+        />
+        <KpiCard
+          label="Realizados este mes"
           value={formatMoney(kpis.realizadosMes, currency)}
           sub={`${kpis.realizadosCount} pago${kpis.realizadosCount === 1 ? "" : "s"}`}
-          accent="border-l-emerald-400 bg-emerald-50/35"
+          accent="border-l-emerald-500 bg-emerald-50/45"
+          icon="paid"
           iconBg="bg-emerald-100 text-emerald-800"
+          onClick={() => focusPagosLista("realizados")}
         />
         <KpiCard
-          label="Pagos pendientes de autorizar"
-          value={formatMoney(kpis.pendientesAmount, currency)}
-          sub={`${kpis.pendientesCount} pago${kpis.pendientesCount === 1 ? "" : "s"}`}
-          accent="border-l-orange-400 bg-orange-50/40"
-          iconBg="bg-orange-100 text-orange-700"
-          href="#tab-pendientes"
-        />
-        <KpiCard
-          label="Pagos parciales activos"
+          label="Parciales activos"
           value={String(kpis.parcialesCount)}
           sub="Con saldo pendiente"
-          accent="border-l-sky-400 bg-sky-50/35"
+          accent="border-l-sky-500 bg-sky-50/45"
+          icon="partial"
           iconBg="bg-sky-100 text-sky-800"
-          href="#tab-parciales"
+          onClick={() => focusPagosLista("parciales")}
         />
         <KpiCard
           label="Total comprometido"
           value={formatMoney(kpis.totalComprometido, currency)}
-          sub="Ver resumen →"
-          accent="border-l-violet-400 bg-violet-50/35"
+          sub={canOpenReportes ? "Ver resumen en reportes →" : "Ver gasto por obra abajo →"}
+          accent="border-l-violet-500 bg-violet-50/45"
+          icon="committed"
           iconBg="bg-violet-100 text-violet-800"
-          href="/reportes"
+          href={canOpenReportes ? "/reportes" : undefined}
+          onClick={
+            canOpenReportes
+              ? undefined
+              : () => {
+                  document
+                    .getElementById("pagos-por-obra")
+                    ?.scrollIntoView({ behavior: "smooth", block: "start" });
+                }
+          }
         />
       </div>
 
-      <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
-        <div className="flex flex-wrap gap-1 border-b border-zinc-100 px-3 pt-3">
+      {/* 2) Panel principal: todos los pagos / tabs */}
+      <div id="pagos-lista" className="dash-panel scroll-mt-24 overflow-hidden">
+        <div className="border-b border-zinc-100 px-4 pt-4 sm:px-5">
+          <h2 className="dash-section-title">Órdenes y pagos</h2>
+          <p className="dash-caption mt-0.5 mb-3">Filtra por estado, obra o proveedor</p>
+          <div className="flex flex-wrap gap-1">
           {DIRECCION_PAGO_TABS.map((t) => (
             <button
               key={t.key}
               type="button"
               id={t.key === "pendientes" ? "tab-pendientes" : t.key === "parciales" ? "tab-parciales" : undefined}
               onClick={() => setTab(t.key)}
-              className={`rounded-t-lg px-3 py-2 text-xs font-semibold transition sm:text-sm ${
+              className={`rounded-t-lg px-3 py-2.5 text-sm font-semibold transition ${
                 tab === t.key
-                  ? "bg-violet-100 text-violet-900"
+                  ? "bg-orange-50 text-orange-900"
                   : "text-zinc-600 hover:bg-zinc-50 hover:text-zinc-900"
               }`}
             >
               {t.label}
             </button>
           ))}
+          </div>
         </div>
 
         <div className="flex flex-wrap items-end gap-3 border-b border-zinc-100 bg-zinc-50/50 px-4 py-3">
@@ -267,7 +424,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
               className="mt-1 block w-full rounded-lg border border-zinc-200 bg-white px-2 py-2 text-sm"
             >
               <option value="">Todos</option>
-              {suppliers.map((s) => (
+              {supplierNames.map((s) => (
                 <option key={s} value={s}>
                   {s}
                 </option>
@@ -437,8 +594,8 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
             <h3 className="text-sm font-bold text-zinc-900">Pagos parciales activos</h3>
             <button
               type="button"
-              onClick={() => setTab("parciales")}
-              className="text-[11px] font-medium text-sky-700 hover:underline"
+              onClick={() => focusPagosLista("parciales")}
+              className="text-xs font-semibold text-sky-700 hover:underline"
             >
               Ver todos
             </button>
@@ -477,11 +634,8 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
             <h3 className="text-sm font-bold text-zinc-900">Próximos pagos programados</h3>
             <button
               type="button"
-              onClick={() => {
-                setTab("pendientes");
-                setFilter("estatus", "programado");
-              }}
-              className="text-[11px] font-medium text-orange-700 hover:underline"
+              onClick={() => focusPagosLista("pendientes", { estatus: "programado" })}
+              className="text-xs font-semibold text-orange-700 hover:underline"
             >
               Ver todos
             </button>
@@ -514,12 +668,18 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
           </ul>
         </section>
 
-        <section className="card p-4">
+        <section id="pagos-por-obra" className="card scroll-mt-24 p-4">
           <div className="mb-2 flex items-center justify-between gap-2">
             <h3 className="text-sm font-bold text-zinc-900">Resumen de pagos por obra (este mes)</h3>
-            <Link href="/reportes" className="text-[11px] font-medium text-violet-700 hover:underline">
-              Ver reporte
-            </Link>
+            {canOpenReportes ? (
+              <Link href="/reportes" className="text-xs font-semibold text-violet-700 hover:underline">
+                Ver reporte
+              </Link>
+            ) : (
+              <Link href="/obras" className="text-xs font-semibold text-violet-700 hover:underline">
+                Ver obras
+              </Link>
+            )}
           </div>
           <ul className="space-y-3">
             {obraResumen.length === 0 ? (
@@ -548,6 +708,57 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
           </ul>
         </section>
       </div>
+
+      {/* Compromisos recurrentes — también son pagos; módulo completo en /compromisos */}
+      <section id="compromisos" className="scroll-mt-24 space-y-2">
+        <div>
+          <h2 className="dash-section-title">Compromisos recurrentes</h2>
+          <p className="dash-caption mt-0.5">
+            Servicios y gastos que se repiten. El módulo completo está en Compromisos.
+          </p>
+        </div>
+        <PagosRecurringCommitmentsPanel
+          commitments={commitments}
+          onNew={openNewCompromiso}
+          onEdit={openEditCompromiso}
+          onMutated={() => void load()}
+          variant="embedded"
+          canManage={canManageCommitments}
+          showModuleLink
+        />
+      </section>
+
+      {/* 3) Gastos directos Proceso B — jerarquía inferior */}
+      {(user?.role === "pagos" || user?.role === "direccion") && (
+        <section className="space-y-2">
+          <div>
+            <h2 className="dash-section-title text-zinc-700">Gastos directos (Proceso B)</h2>
+            <p className="dash-caption mt-0.5">
+              Secundario respecto a OC: compromisos y pagos sin orden de compra.
+            </p>
+          </div>
+          <PagosProcesoBListPanel
+            expenses={expenses}
+            role={user?.role}
+            title="Listado Proceso B"
+            subtitle="Sin OC — consulta y registra pagos de gasto directo"
+          />
+        </section>
+      )}
+
+      {canManageCommitments && (
+        <CompromisoRecurrenteModal
+          open={compromisoModalOpen}
+          onClose={() => {
+            setCompromisoModalOpen(false);
+            setEditingCommitment(null);
+          }}
+          onSaved={() => void load()}
+          suppliers={suppliers}
+          editing={editingCommitment}
+          obras={obras}
+        />
+      )}
     </div>
   );
 }
