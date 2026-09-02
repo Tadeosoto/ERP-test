@@ -80,7 +80,9 @@ export function NotificationHeaderMenu() {
               ? actionHref ?? undefined
               : latest.orderId
                 ? `/ordenes/${latest.orderId}`
-                : "/notificaciones"
+                : latest.materialRequestId
+                  ? `/solicitudes/material/${latest.materialRequestId}`
+                  : "/notificaciones"
           }
           onDismiss={() => setDismissedId(latest.id)}
           align="right"
@@ -113,7 +115,9 @@ export function NotificationHeaderMenu() {
                     ? notificationActionHref(n, user.role)
                     : n.orderId
                       ? `/ordenes/${n.orderId}`
-                      : null;
+                      : n.materialRequestId
+                        ? `/solicitudes/material/${n.materialRequestId}`
+                        : null;
                 return (
                   <li
                     key={n.id}

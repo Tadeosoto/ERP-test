@@ -74,6 +74,7 @@ model Obra {
   managerName      String          @default("")
   startDate        DateTime?
   estimatedEndDate DateTime?
+  maxMaterialsBudget Float           @default(0)
   active           Boolean         @default(true)
   createdAt        DateTime        @default(now())
   orders           PurchaseOrder[]
@@ -178,6 +179,8 @@ model Notification {
   invoiceFirstCommitment    InvoiceFirstCommitment? @relation(fields: [invoiceFirstCommitmentId], references: [id], onDelete: SetNull)
   recurringCommitmentId     String?
   recurringCommitment       RecurringCommitment?    @relation(fields: [recurringCommitmentId], references: [id], onDelete: SetNull)
+  materialRequestId         String?
+  materialRequest           MaterialRequest?        @relation(fields: [materialRequestId], references: [id], onDelete: SetNull)
   type                      String
   message                   String
   read                      Boolean                 @default(false)
@@ -200,6 +203,7 @@ model MaterialRequest {
   createdBy         User                  @relation("MaterialRequestsCreated", fields: [createdByUserId], references: [id])
   sentAt            DateTime?
   purchaseOrder     PurchaseOrder?
+  notifications     Notification[]
   createdAt         DateTime              @default(now())
   updatedAt         DateTime              @updatedAt
   attachments       SolicitudAttachment[]

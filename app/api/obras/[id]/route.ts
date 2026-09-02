@@ -15,6 +15,14 @@ function parseOptionalDate(value: string | null | undefined): Date | null | unde
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function parseMaxMaterialsBudget(value: unknown): number | null | undefined {
+  if (value === undefined) return undefined;
+  if (value === null || value === "") return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
 export async function GET(_request: Request, ctx: Ctx) {
   try {
     await requireSessionUser();
@@ -48,6 +56,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       startDate?: string | null;
       estimatedEndDate?: string | null;
       active?: boolean;
+      maxMaterialsBudget?: number;
     };
 
     const existing = await prisma.obra.findUnique({ where: { id } });
@@ -69,6 +78,16 @@ export async function PATCH(request: Request, ctx: Ctx) {
     if (body.startDate !== undefined) data.startDate = parseOptionalDate(body.startDate);
     if (body.estimatedEndDate !== undefined) data.estimatedEndDate = parseOptionalDate(body.estimatedEndDate);
     if (body.active !== undefined) data.active = Boolean(body.active);
+    if (body.maxMaterialsBudget !== undefined) {
+      const maxMaterialsBudget = parseMaxMaterialsBudget(body.maxMaterialsBudget);
+      if (maxMaterialsBudget === null) {
+        return NextResponse.json(
+          { error: "Monto máximo de materiales inválido." },
+          { status: 400 }
+        );
+      }
+      data.maxMaterialsBudget = maxMaterialsBudget;
+    }
 
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Nada que actualizar." }, { status: 400 });

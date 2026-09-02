@@ -12,6 +12,13 @@ function parseOptionalDate(value: string | null | undefined): Date | null {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function parseMaxMaterialsBudget(value: unknown): number | null {
+  if (value === undefined || value === null || value === "") return 0;
+  const n = typeof value === "number" ? value : Number(value);
+  if (!Number.isFinite(n) || n < 0) return null;
+  return Math.round(n * 100) / 100;
+}
+
 export async function GET() {
   try {
     await requireSessionUser();
@@ -40,10 +47,19 @@ export async function POST(request: Request) {
       managerName?: string;
       startDate?: string | null;
       estimatedEndDate?: string | null;
+      maxMaterialsBudget?: number;
     };
 
     if (!body.name?.trim()) {
       return NextResponse.json({ error: "Nombre de obra requerido." }, { status: 400 });
+    }
+
+    const maxMaterialsBudget = parseMaxMaterialsBudget(body.maxMaterialsBudget);
+    if (maxMaterialsBudget === null) {
+      return NextResponse.json(
+        { error: "Monto máximo de materiales inválido." },
+        { status: 400 }
+      );
     }
 
     const obra = await prisma.obra.create({
@@ -54,6 +70,7 @@ export async function POST(request: Request) {
         managerName: body.managerName?.trim() ?? "",
         startDate: parseOptionalDate(body.startDate),
         estimatedEndDate: parseOptionalDate(body.estimatedEndDate),
+        maxMaterialsBudget,
         active: true,
       },
       include: { _count: { select: { orders: true } } },

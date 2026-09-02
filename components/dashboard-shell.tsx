@@ -9,6 +9,7 @@ import { useSession } from "@/components/session-provider";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { Role } from "@/lib/domain/types";
 import { IconLogOut, IconRefresh } from "@/components/ui/action-icons";
+import { usePendingMaterialRequestsCount } from "@/lib/hooks/use-pending-material-requests-count";
 
 const SIDEBAR_W = "w-[17.5rem]";
 const SIDEBAR_PL = "lg:pl-[17.5rem]";
@@ -60,6 +61,12 @@ function navSectionsForRole(role: Role): NavSection[] {
     label: "Solicitudes",
     icon: "solicitudes",
   };
+  const solicitudesIngenieria: NavItem = {
+    href: "/solicitudes-ingenieria",
+    label: "Solicitudes Ingeniería",
+    icon: "solicitudes",
+    shortLabel: "Sol. Ing.",
+  };
 
   if (role === "pagos") {
     return [
@@ -71,6 +78,7 @@ function navSectionsForRole(role: Role): NavSection[] {
           pagos,
           { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
           ordenes,
+          solicitudesIngenieria,
           facturas,
         ],
       },
@@ -118,7 +126,7 @@ function navSectionsForRole(role: Role): NavSection[] {
 
   if (role === "compras") {
     return [
-      { id: "trabajo", label: "Trabajo", items: [inicio, ordenes] },
+      { id: "trabajo", label: "Trabajo", items: [inicio, ordenes, solicitudesIngenieria] },
       { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
@@ -311,7 +319,8 @@ function navActive(
   if (href === "/obras") return pathname.startsWith("/obras") && !estado;
   if (href === "/proveedores") return pathname.startsWith("/proveedores");
   if (href === "/reportes") return pathname.startsWith("/reportes");
-  if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes");
+  if (href === "/solicitudes-ingenieria") return pathname.startsWith("/solicitudes-ingenieria");
+  if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes") && !pathname.startsWith("/solicitudes-ingenieria");
   return pathname === href || pathname.startsWith(`${href}/`);
 }
 
@@ -319,11 +328,13 @@ function SidebarNavLink({
   item,
   active,
   compact,
+  badgeCount,
   onNavigate,
 }: {
   item: NavItem;
   active: boolean;
   compact?: boolean;
+  badgeCount?: number;
   onNavigate?: () => void;
 }) {
   const pathname = usePathname();
@@ -359,8 +370,26 @@ function SidebarNavLink({
           : "font-medium text-zinc-600 hover:bg-zinc-100 hover:text-zinc-900"
       }`}
     >
-      <NavIcon name={item.icon} />
-      <span className={compact ? "leading-tight" : "truncate"}>{label}</span>
+      <span className="relative shrink-0">
+        <NavIcon name={item.icon} />
+        {compact && badgeCount != null && badgeCount > 0 && (
+          <span
+            className="absolute -right-1 -top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-teal-600 px-0.5 text-[9px] font-bold text-white ring-2 ring-white"
+            aria-hidden
+          >
+            {badgeCount > 9 ? "9+" : badgeCount}
+          </span>
+        )}
+      </span>
+      <span className={`${compact ? "leading-tight" : "min-w-0 flex-1 truncate"}`}>{label}</span>
+      {!compact && badgeCount != null && badgeCount > 0 && (
+        <span
+          className="ml-auto flex h-5 min-w-5 shrink-0 items-center justify-center rounded-full bg-teal-600 px-1 text-[10px] font-bold tabular-nums text-white"
+          aria-label={`${badgeCount} solicitud${badgeCount === 1 ? "" : "es"} pendiente${badgeCount === 1 ? "" : "s"}`}
+        >
+          {badgeCount > 9 ? "9+" : badgeCount}
+        </span>
+      )}
     </Link>
   );
 }
@@ -436,6 +465,7 @@ export function DashboardShell({
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { user, logout } = useSession();
+  const { pendingCount, refreshPendingCount } = usePendingMaterialRequestsCount(user?.role);
   const [moreOpen, setMoreOpen] = useState(false);
   const [hash, setHash] = useState("");
   const isHome = pathname === "/inicio";
@@ -459,6 +489,7 @@ export function DashboardShell({
     pathname === "/facturas" ||
     pathname === "/expedientes" ||
     pathname === "/movimientos" ||
+    pathname === "/solicitudes-ingenieria" ||
     (pathname?.startsWith("/obras/") ?? false) ||
     (pathname?.startsWith("/ordenes/") ?? false) ||
     (pathname?.startsWith("/expedientes/") ?? false);
@@ -499,6 +530,12 @@ export function DashboardShell({
 
   async function handleRefresh() {
     await onRefresh?.();
+    await refreshPendingCount();
+  }
+
+  function navBadgeCount(href: string): number | undefined {
+    if (href !== "/solicitudes-ingenieria" || pendingCount <= 0) return undefined;
+    return pendingCount;
   }
 
   return (
@@ -531,6 +568,7 @@ export function DashboardShell({
                     key={item.href}
                     item={item}
                     active={navActive(pathname, item.href, searchParams, hash)}
+                    badgeCount={navBadgeCount(item.href)}
                   />
                 ))}
               </div>
@@ -551,6 +589,7 @@ export function DashboardShell({
               item={item}
               active={navActive(pathname, item.href, searchParams, hash)}
               compact
+              badgeCount={navBadgeCount(item.href)}
             />
           </div>
         ))}
@@ -597,6 +636,7 @@ export function DashboardShell({
                   key={item.href}
                   item={item}
                   active={navActive(pathname, item.href, searchParams, hash)}
+                  badgeCount={navBadgeCount(item.href)}
                   onNavigate={() => setMoreOpen(false)}
                 />
               ))}

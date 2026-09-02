@@ -11,7 +11,7 @@ import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
 import { canCreateObra, canCreateOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
-import { formatDateShort, formatMoney } from "@/lib/format";
+import { formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 import { filterObras, sortByCreatedAtDesc } from "@/lib/list-utils";
 
 const inputCls =
@@ -42,6 +42,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   const [managerName, setManagerName] = useState("");
   const [startDate, setStartDate] = useState("");
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
+  const [maxMaterialsBudget, setMaxMaterialsBudget] = useState("");
 
   const canCreate = user ? canCreateObra(user.role) : false;
   const isAdmin = user?.role === "pagos";
@@ -78,7 +79,15 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name, code, client, managerName, startDate: startDate || null, estimatedEndDate: estimatedEndDate || null }),
+        body: JSON.stringify({
+          name,
+          code,
+          client,
+          managerName,
+          startDate: startDate || null,
+          estimatedEndDate: estimatedEndDate || null,
+          maxMaterialsBudget: parseAmountInput(maxMaterialsBudget),
+        }),
       });
       const data = (await res.json()) as { obra?: ObraDto; error?: string };
       if (!res.ok || !data.obra) throw new Error(data.error ?? "Error al crear.");
@@ -89,6 +98,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
       setManagerName("");
       setStartDate("");
       setEstimatedEndDate("");
+      setMaxMaterialsBudget("");
       setShowCreate(false);
       await load();
     } catch (err) {
@@ -180,6 +190,19 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
             <label className="block">
               <span className="text-sm font-medium">Fin estimado</span>
               <input type="date" value={estimatedEndDate} onChange={(e) => setEstimatedEndDate(e.target.value)} className={inputCls} />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium">Monto máximo de materiales (MXN)</span>
+              <input
+                value={maxMaterialsBudget}
+                onChange={(e) => setMaxMaterialsBudget(sanitizeAmountInput(e.target.value))}
+                inputMode="decimal"
+                placeholder="Ej. 800000"
+                className={inputCls}
+              />
+              <span className="mt-1 block text-xs text-zinc-500">
+                Presupuesto de referencia para materiales; los pagos registrados se comparan contra este monto.
+              </span>
             </label>
             <button type="submit" disabled={busy} className="btn-primary sm:col-span-2">
               Crear obra

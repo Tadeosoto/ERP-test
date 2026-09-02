@@ -4,10 +4,16 @@ import Link from "next/link";
 import { IconCheck, IconRefresh } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { useSession } from "@/components/session-provider";
+import {
+  isNotificationActionable,
+  notificationActionHref,
+} from "@/lib/dashboard/notification-actions";
 import { useNotifications } from "@/lib/hooks/use-notifications";
 import { formatDateTime } from "@/lib/format";
 
 export default function NotificacionesPage() {
+  const { user } = useSession();
   const { notifications, unreadCount, loading, refresh } = useNotifications(0);
   const { showSuccess, showError } = useFeedback();
 
@@ -56,25 +62,39 @@ export default function NotificacionesPage() {
         {notifications.length === 0 ? (
           <li className="card py-12 text-center text-base text-zinc-500">No hay avisos.</li>
         ) : (
-          notifications.map((n) => (
-            <li
-              key={n.id}
-              className={`card p-5 ${n.read ? "opacity-80" : "border-teal-200 bg-teal-50/30"}`}
-            >
-              <p className="text-base text-zinc-800">{n.message}</p>
-              <time dateTime={n.createdAt} className="mt-2 block text-sm tabular-nums text-zinc-500">
-                {formatDateTime(n.createdAt)}
-              </time>
-              {n.orderId && (
-                <Link
-                  href={`/ordenes/${n.orderId}`}
-                  className="mt-3 inline-block text-base font-semibold text-orange-700 underline"
-                >
-                  Ver orden
-                </Link>
-              )}
-            </li>
-          ))
+          notifications.map((n) => {
+            const href =
+              user && isNotificationActionable(n, user.role)
+                ? notificationActionHref(n, user.role)
+                : n.orderId
+                  ? `/ordenes/${n.orderId}`
+                  : n.materialRequestId
+                    ? `/solicitudes/material/${n.materialRequestId}`
+                    : null;
+            const cardClass = `card p-5 ${n.read ? "opacity-80" : "border-teal-200 bg-teal-50/30"}`;
+
+            if (href) {
+              return (
+                <li key={n.id}>
+                  <Link href={href} className={`${cardClass} block transition hover:border-orange-200 hover:bg-orange-50/30`}>
+                    <p className="text-base text-zinc-800">{n.message}</p>
+                    <time dateTime={n.createdAt} className="mt-2 block text-sm tabular-nums text-zinc-500">
+                      {formatDateTime(n.createdAt)}
+                    </time>
+                  </Link>
+                </li>
+              );
+            }
+
+            return (
+              <li key={n.id} className={cardClass}>
+                <p className="text-base text-zinc-800">{n.message}</p>
+                <time dateTime={n.createdAt} className="mt-2 block text-sm tabular-nums text-zinc-500">
+                  {formatDateTime(n.createdAt)}
+                </time>
+              </li>
+            );
+          })
         )}
       </ul>
     </div>

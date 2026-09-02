@@ -23,6 +23,7 @@ const EMPTY: NuevaObraForm = {
   street: "",
   neighborhood: "",
   zipCode: "",
+  maxMaterialsBudget: "",
 };
 
 function Field({

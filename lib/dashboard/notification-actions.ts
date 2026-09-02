@@ -22,6 +22,7 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   direct_expense_invoice: [...EXPEDIENTE_CLOSE_ROLES],
   invoice_first_registered: ["pagos"],
   invoice_first_oc_requested: ["compras", "pagos"],
+  material_request_sent: ["compras", "pagos"],
 };
 
 export function isNotificationActionable(n: NotificationDto, role: Role): boolean {
@@ -35,6 +36,9 @@ export function isNotificationActionable(n: NotificationDto, role: Role): boolea
   }
   if (n.type.startsWith("invoice_first_")) {
     return Boolean(n.invoiceFirstCommitmentId);
+  }
+  if (n.type === "material_request_sent") {
+    return true;
   }
   if (n.type === "recurring_due_reminder") {
     return true;
@@ -52,6 +56,10 @@ export function notificationActionHref(n: NotificationDto, role: Role): string |
       return `/ordenes/nueva?compromisoFacturaId=${n.invoiceFirstCommitmentId}`;
     }
     return `/compromisos-c/${n.invoiceFirstCommitmentId}`;
+  }
+  if (n.type === "material_request_sent") {
+    if (n.materialRequestId) return `/solicitudes/material/${n.materialRequestId}`;
+    return "/solicitudes-ingenieria";
   }
   if (n.type === "recurring_due_reminder") {
     return "/inicio";
@@ -96,6 +104,8 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
       return "Solicitar OC";
     case "invoice_first_oc_requested":
       return "Generar OC";
+    case "material_request_sent":
+      return "Ver solicitudes";
     default:
       return "Ir a la actividad";
   }

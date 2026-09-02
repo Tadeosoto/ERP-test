@@ -6,7 +6,7 @@ import {
 } from "@/lib/domain/solicitudes";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
-import { notifyByRoles } from "@/lib/services/notifications";
+import { notifyMaterialRequestByRoles } from "@/lib/services/notifications";
 import {
   mapMaterialRequest,
   materialRequestInclude,
@@ -43,11 +43,11 @@ export async function POST(request: Request, ctx: Ctx) {
         include: materialRequestInclude,
       });
 
-      await notifyByRoles(
-        "",
+      await notifyMaterialRequestByRoles(
+        id,
         "material_request_sent",
-        `Ingeniería envió solicitud de material para «${row.obra.name}». Compras: cotiza y crea la OC.`,
-        ["compras"]
+        `Ingeniería envió solicitud de material para «${row.obra.name}». Cotiza y crea la OC.`,
+        ["compras", "pagos"]
       );
 
       return NextResponse.json({ request: mapMaterialRequest(updated) });

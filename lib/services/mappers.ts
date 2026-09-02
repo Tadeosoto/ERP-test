@@ -155,6 +155,7 @@ export function mapObra(obra: Obra & { _count?: { orders: number } }): ObraDto {
     managerName: obra.managerName,
     startDate: obra.startDate?.toISOString() ?? null,
     estimatedEndDate: obra.estimatedEndDate?.toISOString() ?? null,
+    maxMaterialsBudget: obra.maxMaterialsBudget,
     active: obra.active,
     createdAt: obra.createdAt.toISOString(),
     orderCount: obra._count?.orders ?? 0,
@@ -211,6 +212,7 @@ export function mapNotification(n: {
   directExpenseId?: string | null;
   invoiceFirstCommitmentId?: string | null;
   recurringCommitmentId?: string | null;
+  materialRequestId?: string | null;
   type: string;
   message: string;
   read: boolean;
@@ -224,6 +226,7 @@ export function mapNotification(n: {
     directExpenseId: n.directExpenseId ?? null,
     invoiceFirstCommitmentId: n.invoiceFirstCommitmentId ?? null,
     recurringCommitmentId: n.recurringCommitmentId ?? null,
+    materialRequestId: n.materialRequestId ?? null,
     type: n.type,
     message: n.message,
     read: n.read,

@@ -4,15 +4,26 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
+import { ObraMaterialsBudgetPanel } from "@/components/obras/obra-materials-budget-panel";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
-import { canCreateOrder } from "@/lib/domain/transitions";
+import { canCreateOrder, canConfigureObra } from "@/lib/domain/transitions";
+import {
+  computeMaterialsBudgetStats,
+  computeMaterialsSpent,
+} from "@/lib/obras/materials-budget";
 import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
-import { formatDateShort, formatMoney } from "@/lib/format";
+import {
+  formatAmountInput,
+  formatDateShort,
+  formatMoney,
+  parseAmountInput,
+  sanitizeAmountInput,
+} from "@/lib/format";
 import { PagosProcesoBListPanel } from "@/components/dashboard/pagos-direct-expenses-panel";
 
 function obraDisplayCode(obra: ObraDto): string {
@@ -38,6 +49,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const [editClient, setEditClient] = useState("");
   const [editManager, setEditManager] = useState("");
   const [editActive, setEditActive] = useState(true);
+  const [editMaxMaterialsBudget, setEditMaxMaterialsBudget] = useState("");
 
   const load = useCallback(async () => {
     const [oRes, ordRes, expRes] = await Promise.all([
@@ -53,6 +65,9 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
       setEditClient(d.obra.client);
       setEditManager(d.obra.managerName);
       setEditActive(d.obra.active);
+      setEditMaxMaterialsBudget(
+        d.obra.maxMaterialsBudget > 0 ? formatAmountInput(d.obra.maxMaterialsBudget) : ""
+      );
       setNotFound(false);
     } else {
       setObra(null);
@@ -87,9 +102,11 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   }
 
   const fin = computeObraFinancials(orders, obra.id);
+  const materialsSpent = computeMaterialsSpent(orders, expenses, obra.id);
+  const budgetStats = computeMaterialsBudgetStats(obra.maxMaterialsBudget, materialsSpent);
   const pctPagado = fin.totalComprado > 0 ? Math.round((fin.totalPagado / fin.totalComprado) * 100) : 0;
   const pctPendiente = 100 - pctPagado;
-  const canEditObra = user?.role === "ingeniero";
+  const canEditObra = user ? canConfigureObra(user.role) : false;
   const canDelete = user?.role === "pagos";
   const router = useRouter();
 
@@ -107,6 +124,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
           client: editClient,
           managerName: editManager,
           active: editActive,
+          maxMaterialsBudget: parseAmountInput(editMaxMaterialsBudget),
         }),
       });
       const data = (await res.json()) as { obra?: ObraDto; error?: string };
@@ -230,6 +248,8 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
         </div>
       </div>
 
+      <ObraMaterialsBudgetPanel stats={budgetStats} />
+
       {editOpen && canEditObra && (
         <section className="card p-5">
           <h2 className="text-lg font-bold text-zinc-900">Editar obra</h2>
@@ -249,6 +269,16 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
             <label className="block sm:col-span-2">
               <span className="text-sm font-medium">Residente / gerente</span>
               <input value={editManager} onChange={(e) => setEditManager(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2 text-sm" />
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium">Monto máximo de materiales (MXN)</span>
+              <input
+                value={editMaxMaterialsBudget}
+                onChange={(e) => setEditMaxMaterialsBudget(sanitizeAmountInput(e.target.value))}
+                inputMode="decimal"
+                placeholder="Ej. 800000"
+                className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
+              />
             </label>
             <label className="flex items-center gap-2 sm:col-span-2">
               <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} />

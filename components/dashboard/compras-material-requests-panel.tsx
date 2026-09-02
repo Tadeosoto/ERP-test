@@ -27,9 +27,14 @@ export function ComprasMaterialRequestsPanel({
             <p className="text-xs text-zinc-500">Proceso A — cotiza, crea la OC y sube el PDF</p>
           )}
         </div>
-        <span className="rounded-full bg-orange-100 px-2.5 py-0.5 text-[11px] font-semibold text-orange-800">
-          {pending.length} pendiente{pending.length === 1 ? "" : "s"}
-        </span>
+        <div className="flex items-center gap-2">
+          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800">
+            {pending.length} pendiente{pending.length === 1 ? "" : "s"}
+          </span>
+          <Link href="/solicitudes-ingenieria" className="text-xs font-semibold text-orange-700 hover:underline">
+            Ver todas →
+          </Link>
+        </div>
       </div>
       <ul className={compact ? "mt-1.5 divide-y divide-orange-50" : "mt-3 divide-y divide-orange-50"}>
         {pending.slice(0, compact ? 4 : 5).map((r) => (

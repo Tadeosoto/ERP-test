@@ -4,12 +4,18 @@ import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useEffect, useState } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { useSession } from "@/components/session-provider";
 import type { MaterialRequestDto } from "@/lib/domain/types";
 import { MATERIAL_REQUEST_STATUS_LABEL } from "@/lib/domain/solicitudes";
-import { formatDateShort } from "@/lib/format";
+import { canActAsCompras } from "@/lib/domain/transitions";
+import { formatDateTime } from "@/lib/format";
 
 export default function MaterialRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
+  const { user } = useSession();
+  const canManage = user ? canActAsCompras(user.role) : false;
+  const backHref = canManage ? "/solicitudes-ingenieria" : "/inicio";
+
   const [req, setReq] = useState<MaterialRequestDto | null>(null);
 
   useEffect(() => {
@@ -31,8 +37,9 @@ export default function MaterialRequestDetailPage() {
         <h1 className="text-2xl font-bold text-zinc-900">{req.obraName}</h1>
         <p className="mt-1 text-sm text-zinc-500">
           {MATERIAL_REQUEST_STATUS_LABEL[req.status]}
-          {req.sentAt ? ` · Enviada ${formatDateShort(req.sentAt)}` : ""}
+          {req.sentAt ? ` · Enviada ${formatDateTime(req.sentAt)}` : ""}
         </p>
+        <p className="mt-1 text-sm text-zinc-600">Ingeniero: {req.createdByName}</p>
       </header>
 
       <section className="card space-y-4 p-5">
@@ -68,15 +75,22 @@ export default function MaterialRequestDetailPage() {
             ))}
           </ul>
         )}
-        {req.purchaseOrderId && (
-          <Link href={`/ordenes/${req.purchaseOrderId}`} className="btn-primary inline-flex">
-            Ver orden de compra
-          </Link>
-        )}
+        <div className="flex flex-wrap gap-2 pt-2">
+          {canManage && req.status === "sent" && (
+            <Link href={`/ordenes/nueva?solicitudId=${req.id}`} className="btn-primary inline-flex">
+              Crear OC
+            </Link>
+          )}
+          {req.purchaseOrderId && (
+            <Link href={`/ordenes/${req.purchaseOrderId}`} className="btn-secondary inline-flex">
+              Ver orden de compra
+            </Link>
+          )}
+        </div>
       </section>
 
-      <Link href="/inicio" className="text-sm text-zinc-500 underline">
-        Volver al inicio
+      <Link href={backHref} className="text-sm text-zinc-500 underline">
+        Volver a solicitudes
       </Link>
     </div>
   );

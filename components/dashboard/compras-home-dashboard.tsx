@@ -121,8 +121,13 @@ export function ComprasHomeDashboard({
         <HomeLauncherLink href="/ordenes/nueva" label="Nueva OC" />
         <HomeLauncherLink href="/expedientes" label="Expedientes" />
         {solicitudesAbiertas > 0 ? (
-          <HomeLauncherLink href="/solicitudes/nueva" label={`Solicitudes (${solicitudesAbiertas})`} />
-        ) : null}
+          <HomeLauncherLink
+            href="/solicitudes-ingenieria"
+            label={`Solicitudes Ingeniería (${solicitudesAbiertas})`}
+          />
+        ) : (
+          <HomeLauncherLink href="/solicitudes-ingenieria" label="Solicitudes Ingeniería" />
+        )}
       </div>
 
       <section className="dash-panel">

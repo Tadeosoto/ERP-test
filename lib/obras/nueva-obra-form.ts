@@ -10,6 +10,7 @@ export type NuevaObraForm = {
   street: string;
   neighborhood: string;
   zipCode: string;
+  maxMaterialsBudget: string;
 };
 
 export const OBRA_TYPES = [
@@ -84,5 +85,6 @@ export function nuevaObraToApiPayload(form: NuevaObraForm) {
     managerName: managerParts.join(" · "),
     startDate: form.startDate || null,
     estimatedEndDate: form.estimatedEndDate || null,
+    maxMaterialsBudget: parseFloat(form.maxMaterialsBudget.replace(/,/g, "")) || 0,
   };
 }

@@ -136,6 +136,7 @@ export interface ObraDto {
   managerName: string;
   startDate: string | null;
   estimatedEndDate: string | null;
+  maxMaterialsBudget: number;
   active: boolean;
   createdAt: string;
   orderCount: number;
@@ -147,6 +148,7 @@ export interface NotificationDto {
   directExpenseId: string | null;
   invoiceFirstCommitmentId: string | null;
   recurringCommitmentId: string | null;
+  materialRequestId: string | null;
   type: string;
   message: string;
   read: boolean;

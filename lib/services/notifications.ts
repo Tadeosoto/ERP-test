@@ -11,6 +11,7 @@ type NotifyInput = {
   orderId?: string | null;
   directExpenseId?: string | null;
   invoiceFirstCommitmentId?: string | null;
+  materialRequestId?: string | null;
   type: string;
   message: string;
   userIds: string[];
@@ -24,6 +25,7 @@ export async function notifyUsers(input: NotifyInput): Promise<void> {
       orderId: input.orderId || null,
       directExpenseId: input.directExpenseId || null,
       invoiceFirstCommitmentId: input.invoiceFirstCommitmentId || null,
+      materialRequestId: input.materialRequestId || null,
       type: input.type,
       message: input.message,
     })),
@@ -79,6 +81,21 @@ export async function notifyInvoiceFirstByRoles(
   const users = await prisma.user.findMany({ where: { role: { in: roles } } });
   await notifyUsers({
     invoiceFirstCommitmentId,
+    type,
+    message,
+    userIds: users.map((u) => u.id),
+  });
+}
+
+export async function notifyMaterialRequestByRoles(
+  materialRequestId: string,
+  type: string,
+  message: string,
+  roles: Role[]
+): Promise<void> {
+  const users = await prisma.user.findMany({ where: { role: { in: roles } } });
+  await notifyUsers({
+    materialRequestId,
     type,
     message,
     userIds: users.map((u) => u.id),

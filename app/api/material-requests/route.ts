@@ -16,12 +16,17 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const status = searchParams.get("status");
     const mine = searchParams.get("mine") === "1";
+    const all = searchParams.get("all") === "1";
 
     const where: Record<string, unknown> = {};
     if (status) where.status = status;
     if (mine && user.role === "ingeniero") where.createdByUserId = user.id;
-    if (canActAsCompras(asRole(user.role)) && !status) {
-      where.status = { in: ["sent", "in_oc_process"] };
+    if (canActAsCompras(asRole(user.role))) {
+      if (all) {
+        where.status = { not: "draft" };
+      } else if (!status) {
+        where.status = { in: ["sent", "in_oc_process"] };
+      }
     }
 
     const rows = await prisma.materialRequest.findMany({
