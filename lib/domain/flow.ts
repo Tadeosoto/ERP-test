@@ -59,34 +59,40 @@ export const FLOW_STEPS_A: readonly FlowStepDef[] = [
   },
 ] as const;
 
-/** Proceso C — OC enviada directo a Administración / Carolina (sin Ingeniería). */
+/** Proceso C — Factura primero (Dirección inicia); OC sin paso de Ingeniería. */
 export const FLOW_STEPS_C: readonly FlowStepDef[] = [
   {
     step: 1,
-    shortTitle: "Compras",
-    detail: "Paty registra la OC y la envía a Administración (Proceso C)",
-    primaryRole: "compras",
+    shortTitle: "Dirección",
+    detail: "Diomedes registra la factura (PDF) y solicita apertura de expediente (Proceso C)",
+    primaryRole: "direccion",
   },
   {
     step: 2,
     shortTitle: "Administración",
-    detail: "Carolina realiza el pago y sube el comprobante",
+    detail: "Carolina revisa la factura y solicita la OC a Compras",
     primaryRole: "pagos",
   },
   {
     step: 3,
     shortTitle: "Compras",
-    detail: "Paty envía comprobante al proveedor y solicita factura",
+    detail: "Paty genera la OC vinculada y la envía a Administración (sin Ingeniería)",
     primaryRole: "compras",
   },
   {
     step: 4,
-    shortTitle: "Factura",
-    detail: "Compras, Administración, Recepción o Contabilidad suben el PDF de la factura",
-    primaryRole: null,
+    shortTitle: "Administración",
+    detail: "Carolina realiza el pago y sube el comprobante",
+    primaryRole: "pagos",
   },
   {
     step: 5,
+    shortTitle: "Compras",
+    detail: "Paty envía comprobante al proveedor y confirma la documentación",
+    primaryRole: "compras",
+  },
+  {
+    step: 6,
     shortTitle: "Contabilidad",
     detail: "Helena valida OC = Pago = Factura y cierra el expediente",
     primaryRole: "contabilidad",
@@ -135,19 +141,19 @@ export function flowPhaseNumber(status: OrderStatus, kind: OrderProcessKind = "a
     switch (status) {
       case "awaitingPatyDeadline":
       case "awaitingPayment":
-        return 2;
-      case "paid":
-        return 3;
-      case "awaitingInvoice":
         return 4;
+      case "paid":
+        return 5;
+      case "awaitingInvoice":
+        return 5;
       case "invoiceReceived":
       case "difference":
-        return 5;
-      case "completed":
         return 6;
+      case "completed":
+        return 7;
       case "draft":
       default:
-        return 1;
+        return 3;
     }
   }
 
@@ -304,6 +310,7 @@ export function rolePlaybook(role: Role): string[] {
       ];
     case "direccion":
       return [
+        "Registrar facturas para abrir expediente (Proceso C — Agregar Factura).",
         "Consultar el resumen de gastos, pagos y expedientes del consorcio.",
         "Dar seguimiento a autorizaciones pendientes y actividad del equipo.",
       ];

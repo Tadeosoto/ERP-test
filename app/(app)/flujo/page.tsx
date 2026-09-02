@@ -80,8 +80,11 @@ export default function FlujoPage() {
         </div>
 
         <div>
-          <h2 className="text-xl font-semibold">Proceso C — OC a Administración / Carolina</h2>
-          <p className="mt-1 text-sm text-zinc-600">Sin paso de aprobación de Ingeniería.</p>
+          <h2 className="text-xl font-semibold">Proceso C — Factura primero</h2>
+          <p className="mt-1 text-sm text-zinc-600">
+            Diomedes (Dirección) registra la factura; luego Administración y Compras generan la OC sin
+            paso de Ingeniería.
+          </p>
           <div className="mt-4 overflow-x-auto pb-2">
             <ProcessFlowDiagram processKind="c" />
           </div>
