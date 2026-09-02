@@ -10,7 +10,7 @@ import {
   type CommitmentWorkflowStatus,
 } from "@/lib/domain/recurring-commitments";
 import { canManageRecurringCommitments } from "@/lib/domain/transitions";
-import type { ObraDto, RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
+import type { RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
 
 type FilterKey = "todos" | "pending" | "awaiting_invoice" | "paid" | "due_soon";
@@ -56,7 +56,6 @@ export function CompromisosRecurrentesView({
   const { user } = useSession();
   const [commitments, setCommitments] = useState<RecurringCommitmentDto[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
-  const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState<FilterKey>("todos");
   const [modalOpen, setModalOpen] = useState(false);
@@ -65,10 +64,9 @@ export function CompromisosRecurrentesView({
   const canManage = Boolean(user && canManageRecurringCommitments(user.role));
 
   const load = useCallback(async () => {
-    const [comRes, supRes, oRes] = await Promise.all([
+    const [comRes, supRes] = await Promise.all([
       fetch("/api/recurring-commitments", { credentials: "include" }),
       fetch("/api/suppliers", { credentials: "include" }),
-      fetch("/api/obras", { credentials: "include" }),
     ]);
     if (comRes.ok) {
       const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
@@ -77,10 +75,6 @@ export function CompromisosRecurrentesView({
     if (supRes.ok) {
       const d = (await supRes.json()) as { suppliers: SupplierDto[] };
       setSuppliers(d.suppliers);
-    }
-    if (oRes.ok) {
-      const d = (await oRes.json()) as { obras: ObraDto[] };
-      setObras(d.obras);
     }
     setLoading(false);
   }, []);
@@ -237,7 +231,6 @@ export function CompromisosRecurrentesView({
           onSaved={() => void load()}
           suppliers={suppliers}
           editing={editing}
-          obras={obras}
         />
       )}
     </div>

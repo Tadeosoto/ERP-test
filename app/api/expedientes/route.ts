@@ -19,24 +19,26 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const q = (searchParams.get("q") ?? "").trim().toLowerCase();
+    const obraId = searchParams.get("obraId")?.trim() || null;
     const limit = Math.min(200, Math.max(1, Number(searchParams.get("limit") ?? 100) || 100));
 
     const rows = await prisma.expediente.findMany({
       orderBy: [{ updatedAt: "desc" }, { folio: "desc" }],
       take: limit,
       include: expedienteListInclude,
-      ...(q
-        ? {
-            where: {
+      where: {
+        ...(obraId ? { obraId } : {}),
+        ...(q
+          ? {
               OR: [
                 { folio: { contains: q, mode: "insensitive" } },
                 { name: { contains: q, mode: "insensitive" } },
                 { notes: { contains: q, mode: "insensitive" } },
                 { obra: { name: { contains: q, mode: "insensitive" } } },
               ],
-            },
-          }
-        : {}),
+            }
+          : {}),
+      },
     });
 
     return NextResponse.json({ expedientes: rows.map(mapExpedienteListItem) });
@@ -68,23 +70,26 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "El nombre del expediente es requerido." }, { status: 400 });
     }
 
+    const obraId = body.obraId?.trim() ?? "";
+    if (!obraId) {
+      return NextResponse.json({ error: "La obra es requerida. Los expedientes pertenecen a una obra." }, { status: 400 });
+    }
+
     const folio = body.folio?.trim() || (await nextExpedienteFolio(prisma));
     const exists = await prisma.expediente.findUnique({ where: { folio } });
     if (exists) {
       return NextResponse.json({ error: "Ese folio de expediente ya existe." }, { status: 400 });
     }
 
-    if (body.obraId) {
-      const obra = await prisma.obra.findUnique({ where: { id: body.obraId } });
-      if (!obra) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
-    }
+    const obra = await prisma.obra.findUnique({ where: { id: obraId } });
+    if (!obra) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
 
     const row = await prisma.expediente.create({
       data: {
         folio,
         name,
         notes: (body.notes ?? "").trim(),
-        obraId: body.obraId || null,
+        obraId,
         createdByUserId: user.id,
       },
       include: expedienteListInclude,

@@ -756,7 +756,6 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
           onSaved={() => void load()}
           suppliers={suppliers}
           editing={editingCommitment}
-          obras={obras}
         />
       )}
     </div>

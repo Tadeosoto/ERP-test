@@ -47,6 +47,10 @@ export function IngenieroObrasView({ onRegisterRefresh }: { onRegisterRefresh?: 
 
   async function createObra(e: React.FormEvent) {
     e.preventDefault();
+    if (!parseAmountInput(maxMaterialsBudget)) {
+      showError("Indica el monto máximo de materiales (debe ser mayor a cero).");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/obras", {
@@ -129,16 +133,20 @@ export function IngenieroObrasView({ onRegisterRefresh }: { onRegisterRefresh?: 
             <input type="date" value={estimatedEndDate} onChange={(e) => setEstimatedEndDate(e.target.value)} className={inputCls} />
           </label>
           <label className="block sm:col-span-2">
-            <span className="text-sm font-medium">Monto máximo de materiales (MXN)</span>
+            <span className="text-sm font-medium">
+              Monto máximo de materiales (MXN) <span className="text-red-500">*</span>
+            </span>
             <input
               value={maxMaterialsBudget}
               onChange={(e) => setMaxMaterialsBudget(sanitizeAmountInput(e.target.value))}
               inputMode="decimal"
               placeholder="Ej. 800000"
+              required
               className={inputCls}
             />
             <span className="mt-1 block text-xs text-zinc-500">
-              Presupuesto de referencia; los pagos de OC y gastos directos se acumulan contra este monto.
+              Tope acordado con el mandante por materiales. Superarlo implica pérdida; los pagos de OC y gastos
+              directos se acumulan contra este límite.
             </span>
           </label>
           <div className="sm:col-span-2">

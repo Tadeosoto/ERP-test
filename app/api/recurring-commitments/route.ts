@@ -42,7 +42,6 @@ export async function POST(request: Request) {
       estimatedAmount?: number | null;
       workflowStatus?: string;
       notes?: string;
-      expedienteId?: string | null;
     };
 
     if (!body.concept?.trim()) {
@@ -90,7 +89,6 @@ export async function POST(request: Request) {
         lifecycleStatus: "active",
         workflowStatus: "pending",
         notes: (body.notes ?? "").slice(0, 200),
-        expedienteId: body.expedienteId || null,
         createdByUserId: user.id,
       },
       include: recurringCommitmentInclude,

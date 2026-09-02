@@ -13,9 +13,9 @@ function parseOptionalDate(value: string | null | undefined): Date | null {
 }
 
 function parseMaxMaterialsBudget(value: unknown): number | null {
-  if (value === undefined || value === null || value === "") return 0;
-  const n = typeof value === "number" ? value : Number(value);
-  if (!Number.isFinite(n) || n < 0) return null;
+  if (value === undefined || value === null || value === "") return null;
+  const n = typeof value === "number" ? value : Number(String(value).replace(/,/g, ""));
+  if (!Number.isFinite(n) || n <= 0) return null;
   return Math.round(n * 100) / 100;
 }
 
@@ -57,7 +57,7 @@ export async function POST(request: Request) {
     const maxMaterialsBudget = parseMaxMaterialsBudget(body.maxMaterialsBudget);
     if (maxMaterialsBudget === null) {
       return NextResponse.json(
-        { error: "Monto máximo de materiales inválido." },
+        { error: "El monto máximo de materiales es obligatorio y debe ser mayor a cero." },
         { status: 400 }
       );
     }

@@ -291,9 +291,6 @@ export interface RecurringCommitmentDto {
   createdAt: string;
   updatedAt: string;
   files: RecurringCommitmentFileDto[];
-  expedienteId: string | null;
-  expedienteFolio: string | null;
-  expedienteName: string | null;
 }
 
 export interface InvoiceFirstFileDto {
@@ -347,7 +344,6 @@ export interface ExpedienteListItemDto {
   createdAt: string;
   updatedAt: string;
   ordersCount: number;
-  commitmentsCount: number;
   procesoCCount: number;
   totalAmount: number;
   amountPaidSoFar: number;
@@ -358,6 +354,5 @@ export interface ExpedienteListItemDto {
 
 export interface ExpedienteDetailDto extends ExpedienteListItemDto {
   purchaseOrders: PurchaseOrderDto[];
-  recurringCommitments: RecurringCommitmentDto[];
   invoiceFirstCommitments: InvoiceFirstCommitmentDto[];
 }

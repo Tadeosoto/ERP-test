@@ -343,8 +343,6 @@ model RecurringCommitment {
   updatedAt            DateTime                  @updatedAt
   files                RecurringCommitmentFile[]
   notifications        Notification[]
-  expedienteId         String?
-  expediente           Expediente? @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
 }
 
 model Expediente {
@@ -359,7 +357,6 @@ model Expediente {
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
   purchaseOrders           PurchaseOrder[]
-  recurringCommitments     RecurringCommitment[]
   invoiceFirstCommitments  InvoiceFirstCommitment[]
 }
 

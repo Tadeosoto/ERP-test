@@ -66,14 +66,25 @@ export async function PATCH(request: Request, ctx: Ctx) {
       }
     }
 
+    const data: Record<string, unknown> = {
+      name: body.name?.trim() ?? existing.name,
+      notes: body.notes !== undefined ? body.notes.trim() : existing.notes,
+      folio: body.folio?.trim() || existing.folio,
+    };
+
+    if (body.obraId !== undefined) {
+      const obraId = body.obraId?.trim() ?? "";
+      if (!obraId) {
+        return NextResponse.json({ error: "La obra es requerida." }, { status: 400 });
+      }
+      const obra = await prisma.obra.findUnique({ where: { id: obraId } });
+      if (!obra) return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+      data.obraId = obraId;
+    }
+
     const row = await prisma.expediente.update({
       where: { id: existing.id },
-      data: {
-        name: body.name?.trim() ?? existing.name,
-        notes: body.notes !== undefined ? body.notes.trim() : existing.notes,
-        obraId: body.obraId !== undefined ? body.obraId || null : existing.obraId,
-        folio: body.folio?.trim() || existing.folio,
-      },
+      data,
       include: expedienteDetailInclude,
     });
 
@@ -100,7 +111,6 @@ export async function DELETE(_request: Request, ctx: Ctx) {
         _count: {
           select: {
             purchaseOrders: true,
-            recurringCommitments: true,
             invoiceFirstCommitments: true,
           },
         },
@@ -109,14 +119,12 @@ export async function DELETE(_request: Request, ctx: Ctx) {
     if (!existing) return NextResponse.json({ error: "Expediente no encontrado." }, { status: 404 });
 
     const linked =
-      existing._count.purchaseOrders +
-      existing._count.recurringCommitments +
-      existing._count.invoiceFirstCommitments;
+      existing._count.purchaseOrders + existing._count.invoiceFirstCommitments;
     if (linked > 0) {
       return NextResponse.json(
         {
           error:
-            "No se puede eliminar: aún tiene OC, compromisos o pagos Proceso C vinculados. Desvincúlalos primero.",
+            "No se puede eliminar: aún tiene OC o pagos Proceso C vinculados. Desvincúlalos primero.",
         },
         { status: 400 }
       );

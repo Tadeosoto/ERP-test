@@ -36,7 +36,6 @@ export async function PATCH(request: Request, ctx: Ctx) {
       estimatedAmount?: number | null;
       workflowStatus?: string;
       notes?: string;
-      expedienteId?: string | null;
     };
 
     let supplierName = body.supplierName?.trim() ?? existing.supplierName;
@@ -72,8 +71,6 @@ export async function PATCH(request: Request, ctx: Ctx) {
             : existing.estimatedAmount,
         workflowStatus: body.workflowStatus ?? existing.workflowStatus,
         notes: body.notes !== undefined ? body.notes.slice(0, 200) : existing.notes,
-        expedienteId:
-          body.expedienteId !== undefined ? body.expedienteId || null : existing.expedienteId,
       },
       include: recurringCommitmentInclude,
     });

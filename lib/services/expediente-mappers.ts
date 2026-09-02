@@ -4,10 +4,6 @@ import type {
 } from "@/lib/domain/types";
 import type { Prisma } from "@prisma/client";
 import { mapOrder, orderInclude } from "@/lib/services/mappers";
-import {
-  mapRecurringCommitment,
-  recurringCommitmentInclude,
-} from "@/lib/services/recurring-commitment-mappers";
 import { mapInvoiceFirstCommitment, invoiceFirstInclude } from "@/lib/services/invoice-first-mappers";
 
 export const expedienteListInclude = {
@@ -21,10 +17,6 @@ export const expedienteListInclude = {
       status: true,
       invoiceFirstCommitmentId: true,
     },
-  },
-  recurringCommitments: {
-    where: { active: true },
-    select: { estimatedAmount: true, currency: true, workflowStatus: true },
   },
   invoiceFirstCommitments: {
     select: {
@@ -41,11 +33,6 @@ export const expedienteDetailInclude = {
   obra: true,
   createdBy: true,
   purchaseOrders: { include: orderInclude, orderBy: { createdAt: "desc" as const } },
-  recurringCommitments: {
-    where: { active: true },
-    include: recurringCommitmentInclude,
-    orderBy: { dueDate: "asc" as const },
-  },
   invoiceFirstCommitments: {
     include: invoiceFirstInclude,
     orderBy: { createdAt: "desc" as const },
@@ -57,14 +44,12 @@ export type ExpedienteDetailRow = Prisma.ExpedienteGetPayload<{ include: typeof 
 
 function statusFromCounts(input: {
   orders: { status: string }[];
-  commitments: { workflowStatus: string }[];
   procesoC: { status: string }[];
 }): string {
-  const hasItems = input.orders.length + input.commitments.length + input.procesoC.length > 0;
+  const hasItems = input.orders.length + input.procesoC.length > 0;
   if (!hasItems) return "Vacío";
   const allDone =
     input.orders.every((o) => o.status === "completed") &&
-    input.commitments.every((c) => c.workflowStatus === "paid") &&
     input.procesoC.every((c) => c.status === "completed");
   if (allDone) return "Completo";
   return "En proceso";
@@ -77,7 +62,6 @@ function computeExpedienteTotals(input: {
     amountPaidSoFar: number;
     invoiceFirstCommitmentId?: string | null;
   }>;
-  recurringCommitments: Array<{ estimatedAmount: number | null }>;
   invoiceFirstCommitments: Array<{
     id: string;
     totalAmount: number;
@@ -90,7 +74,6 @@ function computeExpedienteTotals(input: {
   );
   const orderTotal = standaloneOrders.reduce((s, o) => s + o.totalAmount, 0);
   const orderPaid = standaloneOrders.reduce((s, o) => s + o.amountPaidSoFar, 0);
-  const commitTotal = input.recurringCommitments.reduce((s, c) => s + (c.estimatedAmount ?? 0), 0);
   const procesoCTotal = input.invoiceFirstCommitments.reduce((s, c) => {
     const linkedOrderTotal = c.purchaseOrder?.totalAmount ?? 0;
     return s + (linkedOrderTotal > 0.01 ? linkedOrderTotal : c.totalAmount);
@@ -100,7 +83,7 @@ function computeExpedienteTotals(input: {
     0
   );
   return {
-    totalAmount: orderTotal + commitTotal + procesoCTotal,
+    totalAmount: orderTotal + procesoCTotal,
     amountPaidSoFar: orderPaid + procesoCPaid,
   };
 }
@@ -109,7 +92,6 @@ export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListIte
   const { totalAmount, amountPaidSoFar } = computeExpedienteTotals(row);
   const currency =
     row.purchaseOrders[0]?.currency ??
-    row.recurringCommitments[0]?.currency ??
     row.invoiceFirstCommitments[0]?.currency ??
     "MXN";
 
@@ -124,7 +106,6 @@ export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListIte
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ordersCount: row.purchaseOrders.length,
-    commitmentsCount: row.recurringCommitments.length,
     procesoCCount: row.invoiceFirstCommitments.length,
     totalAmount,
     amountPaidSoFar,
@@ -132,7 +113,6 @@ export function mapExpedienteListItem(row: ExpedienteListRow): ExpedienteListIte
     currency,
     statusLabel: statusFromCounts({
       orders: row.purchaseOrders,
-      commitments: row.recurringCommitments,
       procesoC: row.invoiceFirstCommitments,
     }),
   };
@@ -142,12 +122,10 @@ export function mapExpedienteDetail(row: ExpedienteDetailRow): ExpedienteDetailD
   const procesoCMapped = row.invoiceFirstCommitments.map(mapInvoiceFirstCommitment);
   const { totalAmount, amountPaidSoFar } = computeExpedienteTotals({
     purchaseOrders: row.purchaseOrders,
-    recurringCommitments: row.recurringCommitments,
     invoiceFirstCommitments: row.invoiceFirstCommitments,
   });
   const currency =
     row.purchaseOrders[0]?.currency ??
-    row.recurringCommitments[0]?.currency ??
     row.invoiceFirstCommitments[0]?.currency ??
     "MXN";
 
@@ -162,7 +140,6 @@ export function mapExpedienteDetail(row: ExpedienteDetailRow): ExpedienteDetailD
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     ordersCount: row.purchaseOrders.length,
-    commitmentsCount: row.recurringCommitments.length,
     procesoCCount: row.invoiceFirstCommitments.length,
     totalAmount,
     amountPaidSoFar,
@@ -170,11 +147,9 @@ export function mapExpedienteDetail(row: ExpedienteDetailRow): ExpedienteDetailD
     currency,
     statusLabel: statusFromCounts({
       orders: row.purchaseOrders,
-      commitments: row.recurringCommitments,
       procesoC: row.invoiceFirstCommitments,
     }),
     purchaseOrders: row.purchaseOrders.map(mapOrder),
-    recurringCommitments: row.recurringCommitments.map(mapRecurringCommitment),
     invoiceFirstCommitments: procesoCMapped,
   };
 }

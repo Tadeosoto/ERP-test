@@ -8,7 +8,6 @@ import { useSession } from "@/components/session-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { canEditExpedientes } from "@/lib/domain/expedientes";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import { COMMITMENT_WORKFLOW_LABEL } from "@/lib/domain/recurring-commitments";
 import { INVOICE_FIRST_STATUS_LABEL } from "@/lib/domain/proceso-c";
 import type { ExpedienteDetailDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
@@ -17,7 +16,7 @@ type SortKey = "date" | "amount" | "type";
 
 type ContentRow = {
   key: string;
-  type: "OC" | "Compromiso B" | "Proceso C";
+  type: "OC" | "Proceso C";
   title: string;
   href: string;
   amount: number;
@@ -73,7 +72,7 @@ export function ExpedienteDetailView() {
     if (!exp) return [];
     const rows: {
       key: string;
-      type: "OC" | "Compromiso B" | "Proceso C";
+      type: "OC" | "Proceso C";
       title: string;
       href: string;
       amount: number;
@@ -98,24 +97,6 @@ export function ExpedienteDetailView() {
           label: `${FILE_KIND_LABEL[f.kind] ?? f.kind}: ${f.originalFileName}`,
           href: `/api/files/${f.id}`,
           downloadHref: `/api/files/${f.id}?download=1`,
-        })),
-      });
-    }
-    for (const c of exp.recurringCommitments) {
-      rows.push({
-        key: `b-${c.id}`,
-        type: "Compromiso B",
-        title: `${c.supplierName} — ${c.concept}`,
-        href: `/compromisos`,
-        amount: c.estimatedAmount ?? 0,
-        currency: c.currency,
-        status: COMMITMENT_WORKFLOW_LABEL[c.workflowStatus as keyof typeof COMMITMENT_WORKFLOW_LABEL] ?? c.workflowStatus,
-        at: c.updatedAt,
-        files: c.files.map((f) => ({
-          id: f.id,
-          label: `${FILE_KIND_LABEL[f.kind] ?? f.kind}: ${f.originalFileName}`,
-          href: `/api/recurring-commitment-files/${f.id}`,
-          downloadHref: `/api/recurring-commitment-files/${f.id}?download=1`,
         })),
       });
     }
@@ -250,7 +231,14 @@ export function ExpedienteDetailView() {
           ) : (
             <p className="mt-0.5 text-base font-semibold text-zinc-800">{exp.name}</p>
           )}
-          {exp.obraName && <p className="dash-caption text-violet-700">Obra: {exp.obraName}</p>}
+          {exp.obraName && exp.obraId && (
+            <Link href={`/obras/${exp.obraId}`} className="dash-caption text-violet-700 hover:underline">
+              Obra: {exp.obraName}
+            </Link>
+          )}
+          {exp.obraName && !exp.obraId && (
+            <p className="dash-caption text-violet-700">Obra: {exp.obraName}</p>
+          )}
         </div>
         <div className="flex flex-wrap gap-2">
           {canEdit && !editing && (
@@ -339,7 +327,7 @@ export function ExpedienteDetailView() {
           <ul className="mt-3 space-y-2">
             {items.length === 0 ? (
               <li className="rounded-xl border border-dashed border-zinc-200 px-4 py-8 text-center text-sm text-zinc-500">
-                Este expediente aún no tiene OC, compromisos ni pagos Proceso C.
+                Este expediente aún no tiene OC ni pagos Proceso C.
               </li>
             ) : (
               items.map((row) => (

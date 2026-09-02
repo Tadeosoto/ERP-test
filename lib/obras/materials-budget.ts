@@ -48,7 +48,7 @@ export type DonutSegment = {
   textColor: string;
 };
 
-/** Segmentos del anillo: pagado, disponible o excedente. */
+/** Segmentos del anillo: pagado, margen restante o pérdida por excedente. */
 export function materialsBudgetDonutSegments(stats: MaterialsBudgetStats): DonutSegment[] {
   if (!stats.hasBudget) return [];
 
@@ -56,8 +56,8 @@ export function materialsBudgetDonutSegments(stats: MaterialsBudgetStats): Donut
   if (pct <= 0) {
     return [
       {
-        key: "disponible",
-        label: "Disponible",
+        key: "margen",
+        label: "Margen",
         pctOfCircle: 100,
         color: "#e4e4e7",
         textColor: "#71717a",
@@ -75,8 +75,8 @@ export function materialsBudgetDonutSegments(stats: MaterialsBudgetStats): Donut
         textColor: "#1d4ed8",
       },
       {
-        key: "disponible",
-        label: "Disponible",
+        key: "margen",
+        label: "Margen",
         pctOfCircle: 100 - pct,
         color: "#e4e4e7",
         textColor: "#71717a",
@@ -89,14 +89,14 @@ export function materialsBudgetDonutSegments(stats: MaterialsBudgetStats): Donut
   return [
     {
       key: "pagado",
-      label: "Dentro del presupuesto",
+      label: "Dentro del límite",
       pctOfCircle: within,
       color: "#2563eb",
       textColor: "#1d4ed8",
     },
     {
       key: "excedente",
-      label: "Excedente",
+      label: "Pérdida",
       pctOfCircle: over,
       color: "#ef4444",
       textColor: "#dc2626",

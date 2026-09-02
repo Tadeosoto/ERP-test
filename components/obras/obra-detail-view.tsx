@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
 import { ObraMaterialsBudgetPanel } from "@/components/obras/obra-materials-budget-panel";
+import { ObraExpedientesPanel } from "@/components/obras/obra-expedientes-panel";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -34,6 +35,7 @@ function obraDisplayCode(obra: ObraDto): string {
 }
 
 export function ObraDetailView({ obraId }: { obraId: string }) {
+  const router = useRouter();
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
   const { confirmDelete } = useConfirmDelete();
@@ -108,7 +110,6 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const pctPendiente = 100 - pctPagado;
   const canEditObra = user ? canConfigureObra(user.role) : false;
   const canDelete = user?.role === "pagos";
-  const router = useRouter();
 
   async function saveObra(e: React.FormEvent) {
     e.preventDefault();
@@ -250,6 +251,8 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
 
       <ObraMaterialsBudgetPanel stats={budgetStats} />
 
+      <ObraExpedientesPanel obraId={obra.id} obraName={obra.name} />
+
       {editOpen && canEditObra && (
         <section className="card p-5">
           <h2 className="text-lg font-bold text-zinc-900">Editar obra</h2>
@@ -279,6 +282,9 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
                 placeholder="Ej. 800000"
                 className="mt-1 w-full rounded-xl border px-3 py-2 text-sm"
               />
+              <span className="mt-1 block text-xs text-zinc-500">
+                Límite acordado con el mandante; superarlo implica pérdida para la obra.
+              </span>
             </label>
             <label className="flex items-center gap-2 sm:col-span-2">
               <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} />

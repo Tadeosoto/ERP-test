@@ -80,13 +80,14 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
     <section className="card overflow-hidden p-4 sm:p-6">
       <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-zinc-900">Presupuesto de materiales</h2>
+          <h2 className="text-lg font-bold text-zinc-900">Límite de materiales</h2>
           <p className="mt-1 text-sm text-zinc-600">
-            Referencia para no exceder el monto máximo de materiales al registrar pagos.
+            Tope acordado con el mandante por materiales. Superarlo genera pérdida; conviene monitorear
+            los pagos y actuar si se acerca o rebasa este monto.
           </p>
           <dl className="mt-4 grid gap-3 sm:grid-cols-3">
             <div>
-              <dt className="text-xs font-medium text-zinc-500">Monto máximo</dt>
+              <dt className="text-xs font-medium text-zinc-500">Límite acordado</dt>
               <dd className="text-lg font-bold tabular-nums text-zinc-900">{formatMoney(stats.budget, "MXN")}</dd>
             </div>
             <div>
@@ -95,7 +96,7 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
             </div>
             <div>
               <dt className="text-xs font-medium text-zinc-500">
-                {stats.isOver ? "Excedente" : "Disponible"}
+                {stats.isOver ? "Pérdida (excedente)" : "Margen restante"}
               </dt>
               <dd
                 className={`text-lg font-bold tabular-nums ${stats.isOver ? "text-red-700" : "text-emerald-700"}`}
@@ -106,13 +107,14 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
           </dl>
           {stats.isOver ? (
             <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del monto máximo de materiales —
-              los pagos superan el presupuesto de referencia.
+              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — los pagos superan
+              el tope acordado. El excedente de {formatMoney(stats.overAmount, "MXN")} se considera pérdida; conviene
+              revisar gastos y tomar medidas para reducirlo.
             </p>
           ) : displayPct >= 90 ? (
             <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% utilizado — queda poco margen
-              ({formatMoney(stats.remaining, "MXN")}).
+              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — queda poco margen
+              ({formatMoney(stats.remaining, "MXN")}). Evitar superar el tope acordado con el mandante.
             </p>
           ) : null}
         </div>
@@ -126,7 +128,7 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
               >
                 {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}%
               </span>
-              <span className="text-[11px] font-medium text-zinc-500">del presupuesto</span>
+              <span className="text-[11px] font-medium text-zinc-500">del límite</span>
             </div>
           </div>
 
@@ -134,15 +136,15 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
             {stats.spent > 0 && (
               <SegmentBadge
                 pct={stats.isOver ? 100 : paidPct}
-                label={stats.isOver ? "Presupuesto" : "Pagado"}
+                label={stats.isOver ? "Límite" : "Pagado"}
                 tone="blue"
               />
             )}
             {!stats.isOver && availablePct > 0.05 && (
-              <SegmentBadge pct={availablePct} label="Disponible" tone="gray" />
+              <SegmentBadge pct={availablePct} label="Margen" tone="gray" />
             )}
             {stats.isOver && overPct > 0 && (
-              <SegmentBadge pct={overPct} label="Excedente" tone="red" />
+              <SegmentBadge pct={overPct} label="Pérdida" tone="red" />
             )}
           </div>
         </div>

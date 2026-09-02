@@ -84,8 +84,7 @@ export function ExpedientesListView() {
         <div>
           <h1 className="text-2xl font-bold text-zinc-900">Expedientes</h1>
           <p className="mt-1 text-sm text-zinc-600">
-            Contenedores con nombre propio. Agrupan órdenes de compra, compromisos (Proceso B) y pagos
-            Proceso C.
+            Contenedores dentro de una obra. Agrupan órdenes de compra y pagos Proceso C.
           </p>
         </div>
         {canCreate && (
@@ -147,7 +146,7 @@ export function ExpedientesListView() {
                     <td className="max-w-[14rem] truncate px-4 py-3 font-medium text-zinc-900">{e.name}</td>
                     <td className="px-4 py-3 text-zinc-600">{e.obraName ?? "—"}</td>
                     <td className="px-4 py-3 text-xs text-zinc-600">
-                      {e.ordersCount} OC · {e.commitmentsCount} B · {e.procesoCCount} C
+                      {e.ordersCount} OC · {e.procesoCCount} C
                     </td>
                     <td className="px-4 py-3 tabular-nums">{formatMoney(e.totalAmount, e.currency)}</td>
                     <td className="px-4 py-3 tabular-nums text-orange-700">

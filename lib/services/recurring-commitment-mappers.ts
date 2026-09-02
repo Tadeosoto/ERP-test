@@ -6,7 +6,6 @@ export const recurringCommitmentInclude = {
   obra: true,
   createdBy: true,
   files: { orderBy: { createdAt: "desc" as const } },
-  expediente: { select: { id: true, folio: true, name: true } },
 } satisfies Prisma.RecurringCommitmentInclude;
 
 export type RecurringCommitmentRow = Prisma.RecurringCommitmentGetPayload<{
@@ -47,8 +46,5 @@ export function mapRecurringCommitment(row: RecurringCommitmentRow): RecurringCo
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
     files: row.files.map(mapFile),
-    expedienteId: row.expedienteId,
-    expedienteFolio: row.expediente?.folio ?? null,
-    expedienteName: row.expediente?.name ?? null,
   };
 }

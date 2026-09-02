@@ -38,13 +38,17 @@ export function NuevoExpedienteModal({
       showError("Indica un nombre para identificar el expediente.");
       return;
     }
+    if (!obraId) {
+      showError("Selecciona la obra a la que pertenece este expediente.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/expedientes", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({ name: name.trim(), notes, obraId: obraId || null }),
+        body: JSON.stringify({ name: name.trim(), notes, obraId }),
       });
       const data = (await res.json()) as { expediente?: ExpedienteListItemDto; error?: string };
       if (!res.ok || !data.expediente) throw new Error(data.error ?? "No se pudo crear.");
@@ -68,7 +72,7 @@ export function NuevoExpedienteModal({
       >
         <h2 className="text-lg font-bold text-zinc-900">Nuevo expediente</h2>
         <p className="mt-1 text-sm text-zinc-500">
-          Contenedor con nombre propio para agrupar OC, compromisos (Proceso B) y pagos Proceso C.
+          Contenedor dentro de una obra para agrupar OC y pagos Proceso C.
         </p>
         <div className="mt-4 space-y-3">
           <label className="block">
@@ -83,9 +87,11 @@ export function NuevoExpedienteModal({
             />
           </label>
           <label className="block">
-            <span className="text-xs font-medium text-zinc-700">Obra (opcional)</span>
-            <select value={obraId} onChange={(e) => setObraId(e.target.value)} className={inputCls}>
-              <option value="">Sin obra</option>
+            <span className="text-xs font-medium text-zinc-700">
+              Obra <span className="text-red-500">*</span>
+            </span>
+            <select value={obraId} onChange={(e) => setObraId(e.target.value)} required className={inputCls}>
+              <option value="">Selecciona obra…</option>
               {obras.filter((o) => o.active).map((o) => (
                 <option key={o.id} value={o.id}>
                   {o.name}
