@@ -8,6 +8,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
+import { ObraEngineerPicker } from "@/components/obras/obra-engineer-picker";
 import { computeObraFinancials } from "@/lib/dashboard/compras-dashboard";
 import { canCreateObra, canCreateOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
@@ -43,9 +44,12 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   const [startDate, setStartDate] = useState("");
   const [estimatedEndDate, setEstimatedEndDate] = useState("");
   const [maxMaterialsBudget, setMaxMaterialsBudget] = useState("");
+  const [engineerUserIds, setEngineerUserIds] = useState<string[]>([]);
 
   const canCreate = user ? canCreateObra(user.role) : false;
   const isAdmin = user?.role === "pagos";
+  const lockedEngineerIds =
+    user?.role === "ingeniero" && user.id ? [user.id] : [];
 
   const load = useCallback(async () => {
     const [oRes, ordRes] = await Promise.all([
@@ -77,6 +81,14 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
       showError("Indica el monto máximo de materiales (debe ser mayor a cero).");
       return;
     }
+    const ids =
+      user?.role === "ingeniero" && user.id && !engineerUserIds.includes(user.id)
+        ? [...engineerUserIds, user.id]
+        : engineerUserIds;
+    if (ids.length === 0) {
+      showError("Designa al menos un ingeniero involucrado en la obra.");
+      return;
+    }
     setBusy(true);
     try {
       const res = await fetch("/api/obras", {
@@ -91,6 +103,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
           startDate: startDate || null,
           estimatedEndDate: estimatedEndDate || null,
           maxMaterialsBudget: parseAmountInput(maxMaterialsBudget),
+          engineerUserIds: ids,
         }),
       });
       const data = (await res.json()) as { obra?: ObraDto; error?: string };
@@ -103,6 +116,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
       setStartDate("");
       setEstimatedEndDate("");
       setMaxMaterialsBudget("");
+      setEngineerUserIds(user?.role === "ingeniero" && user.id ? [user.id] : []);
       setShowCreate(false);
       await load();
     } catch (err) {
@@ -211,6 +225,20 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
                 Tope acordado con el mandante por materiales. Superarlo implica pérdida; los pagos de OC y gastos
                 directos se acumulan contra este límite.
               </span>
+            </label>
+            <label className="block sm:col-span-2">
+              <span className="text-sm font-medium">
+                Ingenieros involucrados <span className="text-red-500">*</span>
+              </span>
+              <ObraEngineerPicker
+                value={
+                  user?.role === "ingeniero" && user.id && !engineerUserIds.includes(user.id)
+                    ? [...engineerUserIds, user.id]
+                    : engineerUserIds
+                }
+                onChange={setEngineerUserIds}
+                lockedIds={lockedEngineerIds}
+              />
             </label>
             <button type="submit" disabled={busy} className="btn-primary sm:col-span-2">
               Crear obra

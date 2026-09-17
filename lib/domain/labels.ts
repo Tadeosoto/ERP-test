@@ -36,6 +36,7 @@ export const PAYMENT_TYPE_SHORT: Record<PaymentType, string> = {
 
 export const FILE_KIND_LABEL: Record<string, string> = {
   oc_pdf: "PDF orden de compra",
+  oc_signed_pdf: "OC firmada (Ingeniería)",
   comprobante_pago: "Comprobante de pago",
   complemento_pago: "Complemento de pago",
   factura: "Factura",

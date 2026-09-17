@@ -62,13 +62,33 @@ export async function POST(request: Request) {
     if (!body.materials?.trim()) {
       return NextResponse.json({ error: "Indica los materiales solicitados." }, { status: 400 });
     }
+    if (!body.quantities?.trim()) {
+      return NextResponse.json({ error: "Indica las cantidades de cada material." }, { status: 400 });
+    }
+
+    const obra = await prisma.obra.findUnique({
+      where: { id: body.obraId },
+      include: { members: true },
+    });
+    if (!obra) {
+      return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+    }
+    const memberIds = obra.members.map((m) => m.userId);
+    const allowed =
+      obra.createdByUserId === user.id || memberIds.includes(user.id);
+    if (!allowed) {
+      return NextResponse.json(
+        { error: "Solo puedes solicitar material en obras donde estás designado." },
+        { status: 403 }
+      );
+    }
 
     const row = await prisma.materialRequest.create({
       data: {
         obraId: body.obraId,
         costCenter: body.costCenter?.trim() ?? "",
         materials: body.materials.trim(),
-        quantities: body.quantities?.trim() ?? "",
+        quantities: body.quantities.trim(),
         justification: body.justification?.trim() ?? "",
         status: "draft",
         createdByUserId: user.id,

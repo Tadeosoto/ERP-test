@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
 import { ObraMaterialsBudgetPanel } from "@/components/obras/obra-materials-budget-panel";
 import { ObraExpedientesPanel } from "@/components/obras/obra-expedientes-panel";
+import { ObraEngineerPicker } from "@/components/obras/obra-engineer-picker";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
@@ -52,6 +53,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const [editManager, setEditManager] = useState("");
   const [editActive, setEditActive] = useState(true);
   const [editMaxMaterialsBudget, setEditMaxMaterialsBudget] = useState("");
+  const [editEngineerIds, setEditEngineerIds] = useState<string[]>([]);
 
   const load = useCallback(async () => {
     const [oRes, ordRes, expRes] = await Promise.all([
@@ -70,6 +72,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
       setEditMaxMaterialsBudget(
         d.obra.maxMaterialsBudget > 0 ? formatAmountInput(d.obra.maxMaterialsBudget) : ""
       );
+      setEditEngineerIds((d.obra.members ?? []).map((m) => m.userId));
       setNotFound(false);
     } else {
       setObra(null);
@@ -126,6 +129,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
           managerName: editManager,
           active: editActive,
           maxMaterialsBudget: parseAmountInput(editMaxMaterialsBudget),
+          engineerUserIds: editEngineerIds,
         }),
       });
       const data = (await res.json()) as { obra?: ObraDto; error?: string };
@@ -227,6 +231,12 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
               {obra.estimatedEndDate && <span>Fin estimado: {formatDateShort(obra.estimatedEndDate)}</span>}
               {obra.managerName && <span>Residente: {obra.managerName}</span>}
             </div>
+            {(obra.members?.length ?? 0) > 0 ? (
+              <p className="mt-2 text-sm text-zinc-600">
+                <span className="font-medium text-zinc-800">Equipo:</span>{" "}
+                {obra.members.map((m) => m.name).join(", ")}
+              </p>
+            ) : null}
           </div>
           <div className="flex flex-wrap gap-2">
             {user && canCreateOrder(user.role) && obra.active && (
@@ -286,6 +296,19 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
                 Límite acordado con el mandante; superarlo implica pérdida para la obra.
               </span>
             </label>
+            <div className="sm:col-span-2">
+              <span className="text-sm font-medium">Ingenieros involucrados</span>
+              <ObraEngineerPicker
+                value={editEngineerIds}
+                onChange={setEditEngineerIds}
+                lockedIds={
+                  obra.createdByUserId &&
+                  obra.members.some((m) => m.userId === obra.createdByUserId)
+                    ? [obra.createdByUserId]
+                    : []
+                }
+              />
+            </div>
             <label className="flex items-center gap-2 sm:col-span-2">
               <input type="checkbox" checked={editActive} onChange={(e) => setEditActive(e.target.checked)} />
               <span className="text-sm">Obra activa</span>

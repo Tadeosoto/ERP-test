@@ -1,7 +1,8 @@
 export const ACTION_SUCCESS_MESSAGES: Record<string, string> = {
-  engineer_approve: "La orden fue aprobada y avanzó en el proceso.",
+  engineer_approve: "OC aprobada con firma. Pasa a autorización de Admin o Dirección.",
   engineer_reject: "Se solicitó la corrección. Compras fue notificada.",
-  set_payment_deadline: "La fecha límite se guardó y Carolina fue avisada.",
+  authorize_order: "OC autorizada. Quedó lista para pagar.",
+  set_payment_deadline: "Fecha límite guardada. Pasa a autorización.",
   register_payment: "El pago se registró correctamente.",
   mark_awaiting_invoice: "La orden quedó en espera de factura.",
   accounting_complete: "El expediente fue validado y cerrado.",
@@ -11,6 +12,7 @@ export const ACTION_SUCCESS_MESSAGES: Record<string, string> = {
 
 export const FILE_UPLOAD_SUCCESS_MESSAGES: Record<string, string> = {
   oc_pdf: "El PDF de la orden se subió correctamente.",
+  oc_signed_pdf: "El PDF firmado se subió correctamente.",
   comprobante_pago: "El comprobante de pago se subió correctamente.",
   factura: "La factura se subió correctamente.",
   complemento_pago: "El complemento de pago se subió correctamente.",

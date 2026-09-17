@@ -763,5 +763,5 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
 }
 
 function isPendingAuthorization(order: PurchaseOrderDto): boolean {
-  return order.status === "awaitingPayment" || order.status === "awaitingPatyDeadline";
+  return order.status === "awaitingAuthorization";
 }

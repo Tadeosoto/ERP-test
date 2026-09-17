@@ -12,7 +12,7 @@ export type ComprasOrderTab =
 
 export const COMPRAS_TAB_STATUSES: Record<Exclude<ComprasOrderTab, "all">, OrderStatus[]> = {
   aprobar: ["awaitingEngineer"],
-  pago: ["awaitingPatyDeadline", "awaitingPayment"],
+  pago: ["awaitingAuthorization", "awaitingPatyDeadline", "awaitingPayment"],
   factura: ["paid", "awaitingInvoice"],
   diferencias: ["difference"],
   completadas: ["completed"],
@@ -37,7 +37,13 @@ export function comprasKpiCounts(orders: PurchaseOrderDto[]): ComprasKpiCounts {
 
   for (const o of orders) {
     if (o.status === "awaitingEngineer") aprobar++;
-    if (o.status === "awaitingPatyDeadline" || o.status === "awaitingPayment") pago++;
+    if (
+      o.status === "awaitingPatyDeadline" ||
+      o.status === "awaitingAuthorization" ||
+      o.status === "awaitingPayment"
+    ) {
+      pago++;
+    }
     if (o.status === "paid" || o.status === "awaitingInvoice") factura++;
     if (o.status === "difference") diferencias++;
     if (o.status === "completed") {
@@ -176,8 +182,8 @@ export const COMPRAS_KPI_CONFIG: {
   {
     key: "aprobar",
     tab: "aprobar",
-    label: "Pendiente aprobación",
-    sublabel: "OC sin ingeniería",
+    label: "En revisión Ingeniería",
+    sublabel: "Esperando firma del ingeniero",
     accent: "border-l-orange-400 bg-orange-50/40",
     iconBg: "bg-orange-100 text-orange-700",
     linkClass: "text-orange-700",
@@ -186,8 +192,8 @@ export const COMPRAS_KPI_CONFIG: {
   {
     key: "pago",
     tab: "pago",
-    label: "Pendiente pago",
-    sublabel: "OC en administración",
+    label: "Listo / por autorizar",
+    sublabel: "Admin o Dirección",
     accent: "border-l-amber-400 bg-amber-50/40",
     iconBg: "bg-amber-100 text-amber-800",
     linkClass: "text-amber-800",
@@ -196,8 +202,8 @@ export const COMPRAS_KPI_CONFIG: {
   {
     key: "factura",
     tab: "factura",
-    label: "Pendiente factura",
-    sublabel: "OC en expediente",
+    label: "Tras el pago",
+    sublabel: "Factura / documentos",
     accent: "border-l-violet-400 bg-violet-50/35",
     iconBg: "bg-violet-100 text-violet-800",
     linkClass: "text-violet-800",

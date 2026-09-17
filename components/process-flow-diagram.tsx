@@ -5,6 +5,7 @@ import {
   flowPhaseNumber,
   flowStepsForProcess,
   isFlowComplete,
+  isProcessASettled,
   type FlowStepDef,
 } from "@/lib/domain/flow";
 
@@ -42,10 +43,12 @@ function StepNode({
   step,
   shortTitle,
   state,
+  highlight,
 }: {
   step: number;
   shortTitle: string;
   state: NodeState;
+  highlight?: boolean;
 }) {
   const base =
     state === "done"
@@ -53,7 +56,9 @@ function StepNode({
       : state === "current"
         ? "border-orange-600 bg-white text-orange-800 ring-2 ring-orange-400 ring-offset-2"
         : state === "legend"
-          ? "border-teal-200 bg-white text-teal-900 shadow-sm"
+          ? highlight
+            ? "border-orange-400 bg-orange-50 text-orange-900 shadow-sm ring-1 ring-orange-200"
+            : "border-teal-200 bg-white text-teal-900 shadow-sm"
           : "border-orange-100 bg-orange-50/80 text-zinc-400";
   return (
     <div className="flex min-w-0 flex-col items-center gap-1">
@@ -69,7 +74,11 @@ function StepNode({
           <span>{step}</span>
         )}
       </div>
-      <span className="max-w-[4.5rem] text-center text-[10px] font-medium leading-tight text-zinc-600 sm:text-xs">
+      <span
+        className={`max-w-[4.5rem] text-center text-[10px] font-medium leading-tight sm:text-xs ${
+          highlight ? "font-semibold text-orange-800" : "text-zinc-600"
+        }`}
+      >
         {shortTitle}
       </span>
     </div>
@@ -81,11 +90,13 @@ function DiagramRow({
   phase,
   complete,
   legend,
+  highlightSteps,
 }: {
   steps: readonly FlowStepDef[];
   phase: number;
   complete: boolean;
   legend: boolean;
+  highlightSteps?: number[];
 }) {
   return (
     <>
@@ -96,6 +107,7 @@ function DiagramRow({
               step={s.step}
               shortTitle={s.shortTitle}
               state={nodeState(phase, s.step, complete, legend)}
+              highlight={highlightSteps?.includes(s.step)}
             />
             {i < steps.length - 1 && <Arrow />}
           </div>
@@ -108,6 +120,7 @@ function DiagramRow({
               step={s.step}
               shortTitle={s.shortTitle}
               state={nodeState(phase, s.step, complete, legend)}
+              highlight={highlightSteps?.includes(s.step)}
             />
             {i < steps.length - 1 && <ArrowDown />}
           </div>
@@ -121,11 +134,14 @@ export function ProcessFlowDiagram({
   status,
   processKind = "a",
   className = "",
+  highlightSteps,
 }: {
   status?: OrderStatus | null;
   /** Variante visual: a (OC + Ingeniería), c (OC → Administración), b (gasto directo). */
   processKind?: OrderProcessKind | "b";
   className?: string;
+  /** Pasos del mapa a resaltar (p. ej. los del rol actual). */
+  highlightSteps?: number[];
 }) {
   const legend = status == null;
   const steps = flowStepsForProcess(processKind);
@@ -135,7 +151,11 @@ export function ProcessFlowDiagram({
     : processKind === "b"
       ? 0
       : flowPhaseNumber(status!, kindForPhase);
-  const complete = legend ? false : isFlowComplete(status!);
+  const complete = legend
+    ? false
+    : processKind === "a"
+      ? isProcessASettled(status!)
+      : isFlowComplete(status!);
 
   const label =
     processKind === "c" ? "Proceso C" : processKind === "b" ? "Proceso B" : "Proceso A";
@@ -147,9 +167,17 @@ export function ProcessFlowDiagram({
           {label}
         </p>
       )}
-      <DiagramRow steps={steps} phase={phase} complete={complete} legend={legend} />
+      <DiagramRow
+        steps={steps}
+        phase={phase}
+        complete={complete}
+        legend={legend}
+        highlightSteps={highlightSteps}
+      />
       {complete && !legend && (
-        <p className="mt-3 text-center text-base font-medium text-teal-700">Proceso completado</p>
+        <p className="mt-3 text-center text-base font-medium text-teal-700">
+          {processKind === "a" ? "OC saldada" : "Proceso completado"}
+        </p>
       )}
     </div>
   );

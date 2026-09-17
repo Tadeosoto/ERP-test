@@ -34,6 +34,7 @@ export function isPagosQueueOrder(order: PurchaseOrderDto): boolean {
 }
 
 export function pagosPaymentDisplayStatus(order: PurchaseOrderDto): PagosPaymentDisplayStatus {
+  if (order.status === "awaitingAuthorization") return "aprobado_ing";
   if (order.status === "awaitingPatyDeadline") return "aprobado_ing";
   if (order.status === "paid") {
     return hasPaymentReceipt(order) ? "pagado" : "comprobante_pendiente";
@@ -48,10 +49,10 @@ export function pagosPaymentDisplayStatus(order: PurchaseOrderDto): PagosPayment
 }
 
 export const PAGOS_PAYMENT_STATUS_LABEL: Record<PagosPaymentDisplayStatus, string> = {
-  pendiente_pago: "Pendiente pago",
-  aprobado_ing: "Aprobado (Ing.)",
+  pendiente_pago: "Listo para pagar",
+  aprobado_ing: "Por autorizar",
   programado: "Programado",
-  pagado: "Pagado",
+  pagado: "Saldada",
   comprobante_pendiente: "Comprobante pend.",
 };
 

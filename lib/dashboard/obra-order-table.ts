@@ -26,6 +26,7 @@ export function obraProcessPhase(status: OrderStatus): number {
     case "awaitingEngineer":
       return 2;
     case "awaitingPatyDeadline":
+    case "awaitingAuthorization":
     case "awaitingPayment":
       return 3;
     case "paid":

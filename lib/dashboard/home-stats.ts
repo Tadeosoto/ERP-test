@@ -16,6 +16,7 @@ export function countByStatus(orders: PurchaseOrderDto[]) {
     awaitingEngineer: 0,
     engineerRejected: 0,
     awaitingPatyDeadline: 0,
+    awaitingAuthorization: 0,
     awaitingPayment: 0,
     paid: 0,
     awaitingInvoice: 0,

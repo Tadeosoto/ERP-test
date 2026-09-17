@@ -2,9 +2,10 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { canCreateObra } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
-import { asRole } from "@/lib/services/mappers";
+import { asRole, mapObra, obraInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
-import { mapObra } from "@/lib/services/mappers";
+import { resolveObraEngineerMemberIds } from "@/lib/obras/obra-members";
+import { randomBytes } from "crypto";
 
 function parseOptionalDate(value: string | null | undefined): Date | null {
   if (!value) return null;
@@ -19,12 +20,27 @@ function parseMaxMaterialsBudget(value: unknown): number | null {
   return Math.round(n * 100) / 100;
 }
 
+function newMemberId() {
+  return `om_${randomBytes(12).toString("hex")}`;
+}
+
 export async function GET() {
   try {
-    await requireSessionUser();
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
+
     const obras = await prisma.obra.findMany({
+      where:
+        role === "ingeniero"
+          ? {
+              OR: [
+                { createdByUserId: user.id },
+                { members: { some: { userId: user.id } } },
+              ],
+            }
+          : undefined,
       orderBy: { createdAt: "desc" },
-      include: { _count: { select: { orders: true } } },
+      include: obraInclude,
     });
     return NextResponse.json({ obras: obras.map(mapObra) });
   } catch (e) {
@@ -48,6 +64,7 @@ export async function POST(request: Request) {
       startDate?: string | null;
       estimatedEndDate?: string | null;
       maxMaterialsBudget?: number;
+      engineerUserIds?: string[];
     };
 
     if (!body.name?.trim()) {
@@ -62,6 +79,20 @@ export async function POST(request: Request) {
       );
     }
 
+    const engineers = await prisma.user.findMany({
+      where: { role: "ingeniero" },
+      select: { id: true, role: true },
+    });
+    const members = resolveObraEngineerMemberIds({
+      engineerUserIds: body.engineerUserIds,
+      creatorUserId: user.id,
+      creatorRole: role,
+      engineerUsers: engineers,
+    });
+    if (!members.ok) {
+      return NextResponse.json({ error: members.error }, { status: 400 });
+    }
+
     const obra = await prisma.obra.create({
       data: {
         name: body.name.trim(),
@@ -72,8 +103,15 @@ export async function POST(request: Request) {
         estimatedEndDate: parseOptionalDate(body.estimatedEndDate),
         maxMaterialsBudget,
         active: true,
+        createdByUserId: user.id,
+        members: {
+          create: members.userIds.map((userId) => ({
+            id: newMemberId(),
+            userId,
+          })),
+        },
       },
-      include: { _count: { select: { orders: true } } },
+      include: obraInclude,
     });
     return NextResponse.json({ obra: mapObra(obra) });
   } catch (e) {

@@ -46,6 +46,10 @@ export function afterEngineerReject(): OrderStatus {
 }
 
 export function afterPatySetsDeadline(): OrderStatus {
+  return "awaitingAuthorization";
+}
+
+export function afterAuthorizeOrder(): OrderStatus {
   return "awaitingPayment";
 }
 
@@ -112,9 +116,10 @@ export function registerPaymentAmount(input: {
 }
 
 export function engineerApproveNextStatus(
-  paymentType: PaymentType
+  paymentType: PaymentType,
+  hasPaymentDueDate = false
 ): { status: OrderStatus; paymentType: PaymentType } {
-  const status = statusAfterEngineerApprove(paymentType, paymentType === "parcialidades");
+  const status = statusAfterEngineerApprove(paymentType, paymentType === "parcialidades", hasPaymentDueDate);
   return { status, paymentType };
 }
 
@@ -145,9 +150,9 @@ export function canManageRecurringCommitments(role: Role): boolean {
   return role === "pagos";
 }
 
-/** Contabilidad, Recepción y Administración pueden consultar factura y comprobante. */
-export function canConsultPaymentDocuments(role: Role): boolean {
-  return role === "pagos" || role === "recepcion" || role === "contabilidad";
+/** Todos los roles autenticados pueden consultar comprobantes y documentos de pago por obra. */
+export function canConsultPaymentDocuments(_role: Role): boolean {
+  return true;
 }
 
 export function canDeleteObra(role: Role): boolean {
@@ -163,6 +168,7 @@ export function canDeleteOrderFile(role: Role): boolean {
 export function canReplaceOrderFile(role: Role, kind: FileKind, status: OrderStatus): boolean {
   if (role === "pagos" || role === "direccion") return true;
   if (kind === "oc_pdf" && canUploadOcPdf(status, role)) return true;
+  if (kind === "oc_signed_pdf" && canUploadSignedOcPdf(status, role)) return true;
   return false;
 }
 
@@ -180,6 +186,8 @@ export function canUpdateDraftOrder(status: OrderStatus, role: Role): boolean {
 
 /** Estados en los que la OC ya avanzó a pago/factura/cierre y Compras no debe editarla ni borrarla. */
 const COMPRAS_LOCKED_STATUSES: OrderStatus[] = [
+  "awaitingAuthorization",
+  "awaitingPayment",
   "paid",
   "awaitingInvoice",
   "invoiceReceived",
@@ -218,6 +226,14 @@ export function canUploadOcPdf(status: OrderStatus, role: Role): boolean {
 
 export function canEngineerAct(status: OrderStatus, role: Role): boolean {
   return role === "ingeniero" && status === "awaitingEngineer";
+}
+
+export function canUploadSignedOcPdf(status: OrderStatus, role: Role): boolean {
+  return role === "ingeniero" && status === "awaitingEngineer";
+}
+
+export function canAuthorizeOrder(status: OrderStatus, role: Role): boolean {
+  return (role === "pagos" || role === "direccion") && status === "awaitingAuthorization";
 }
 
 export function canSetPaymentDeadline(status: OrderStatus, role: Role): boolean {

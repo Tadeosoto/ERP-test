@@ -23,19 +23,27 @@ export const SYSTEM_STATUS: Record<
     icon: "x",
   },
   awaitingPatyDeadline: {
-    label: "Aprobada",
-    tone: "green",
-    icon: "check",
-  },
-  awaitingPayment: {
-    label: "Aprobada",
-    tone: "green",
-    icon: "check",
-  },
-  paid: {
-    label: "Pagada",
+    label: "Fecha de pago",
+    subtitle: "Compras define fecha límite",
     tone: "orange",
     icon: "clock",
+  },
+  awaitingAuthorization: {
+    label: "Por autorizar",
+    subtitle: "Admin o Dirección",
+    tone: "orange",
+    icon: "clock",
+  },
+  awaitingPayment: {
+    label: "Listo para pagar",
+    tone: "orange",
+    icon: "clock",
+  },
+  paid: {
+    label: "Saldada",
+    subtitle: "Total pagado",
+    tone: "green",
+    icon: "check",
   },
   awaitingInvoice: {
     label: "Esperando factura",

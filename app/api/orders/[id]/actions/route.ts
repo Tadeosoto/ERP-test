@@ -3,12 +3,14 @@ import { prisma } from "@/lib/db";
 import {
   afterAccountingComplete,
   afterAccountingDifference,
+  afterAuthorizeOrder,
   afterEngineerReject,
   afterMarkAwaitingInvoice,
   afterPatySetsDeadline,
   afterSendToEngineer,
   canAccountingResolveDifference,
   canAccountingValidate,
+  canAuthorizeOrder,
   canDeletePayment,
   canEngineerAct,
   canMarkAwaitingInvoice,
@@ -86,14 +88,28 @@ export async function POST(request: Request, ctx: Ctx) {
         );
       }
 
-      const { status: nextStatus, paymentType: resolvedType } = engineerApproveNextStatus(paymentType);
+      const signedPdf = await prisma.storedFile.findFirst({
+        where: { orderId: id, kind: "oc_signed_pdf" },
+      });
+      if (!signedPdf) {
+        return NextResponse.json(
+          { error: "Sube el PDF firmado de la OC antes de aprobar." },
+          { status: 400 }
+        );
+      }
+
+      const hasDueDate = Boolean(order.paymentDueDate);
+      const { status: nextStatus, paymentType: resolvedType } = engineerApproveNextStatus(
+        paymentType,
+        hasDueDate
+      );
 
       const updated = await prisma.$transaction(async (tx) => {
         await tx.orderComment.create({
           data: {
             orderId: id,
             authorId: user.id,
-            body: body.comment?.trim() || `Aprobado · ${resolvedType}`,
+            body: body.comment?.trim() || `Aprobado con PDF firmado · ${resolvedType}`,
             kind: "approval",
           },
         });
@@ -111,6 +127,30 @@ export async function POST(request: Request, ctx: Ctx) {
         const evt = NotificationEvents.engineerApproved(updated.title);
         await notifyByRoles(id, evt.type, evt.message, evt.roles);
       }
+      return NextResponse.json({ order: mapOrder(updated) });
+    }
+
+    if (body.action === "authorize_order") {
+      if (!canAuthorizeOrder(status, role)) {
+        return NextResponse.json({ error: "No puedes autorizar en este estado." }, { status: 403 });
+      }
+      const updated = await prisma.$transaction(async (tx) => {
+        await tx.orderComment.create({
+          data: {
+            orderId: id,
+            authorId: user.id,
+            body: body.comment?.trim() || `Autorizada por ${user.name}`,
+            kind: "approval",
+          },
+        });
+        return tx.purchaseOrder.update({
+          where: { id },
+          data: { status: afterAuthorizeOrder() },
+          include: orderInclude,
+        });
+      });
+      const evt = NotificationEvents.orderAuthorized(updated.title, user.name);
+      await notifyByRoles(id, evt.type, evt.message, evt.roles);
       return NextResponse.json({ order: mapOrder(updated) });
     }
 

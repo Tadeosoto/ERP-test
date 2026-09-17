@@ -51,6 +51,7 @@ export const DIRECCION_PAGO_ESTATUS_OPTIONS: { value: DireccionPagoEstatus | "";
 
 const PAYMENT_SCOPE: PurchaseOrderDto["status"][] = [
   "awaitingPatyDeadline",
+  "awaitingAuthorization",
   "awaitingPayment",
   "paid",
   "awaitingInvoice",

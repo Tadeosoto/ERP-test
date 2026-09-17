@@ -28,6 +28,7 @@ import {
   canDeletePayment,
   canReplaceOrderFile,
   canEngineerAct,
+  canAuthorizeOrder,
   canMarkAwaitingInvoice,
   canRegisterPayment,
   canSetPaymentDeadline,
@@ -491,7 +492,7 @@ export function OrderDetailPanel({
                 <strong>
                   {PAYMENT_TYPE_TEXT[order.paymentType ?? order.suggestedPaymentType ?? "inmediato"]}
                 </strong>
-                . Solo revisa el PDF y aprueba o solicita corrección.
+                . Revisa el PDF de Compras, sube tu PDF firmado y aprueba o pide corrección.
               </p>
             )}
             {!order.paymentType && !order.suggestedPaymentType && (
@@ -499,6 +500,29 @@ export function OrderDetailPanel({
                 Compras aún no indicó la modalidad de pago en esta OC. Solicita corrección si falta ese dato.
               </p>
             )}
+            <div className="rounded-2xl border border-orange-100 bg-orange-50/40 px-4 py-3">
+              <p className="text-sm font-semibold text-zinc-900">PDF firmado (obligatorio para aprobar)</p>
+              <p className="mt-1 text-sm text-zinc-600">
+                {order.files.some((f) => f.kind === "oc_signed_pdf")
+                  ? "Ya hay un PDF firmado en el expediente. Puedes reemplazarlo o aprobar."
+                  : "Sube la OC firmada antes de pulsar Aprobar."}
+              </p>
+              <div className="mt-3">
+                <FilePickButton
+                  disabled={busy}
+                  label={
+                    order.files.some((f) => f.kind === "oc_signed_pdf")
+                      ? "Reemplazar PDF firmado"
+                      : "Subir PDF firmado"
+                  }
+                  hint="escaneo o PDF firmado de la OC"
+                  onPick={(file) => {
+                    const existing = order.files.find((f) => f.kind === "oc_signed_pdf");
+                    void uploadFile("oc_signed_pdf", file, existing?.id);
+                  }}
+                />
+              </div>
+            </div>
             <textarea
               value={comment}
               onChange={(e) => setComment(e.target.value)}
@@ -509,7 +533,7 @@ export function OrderDetailPanel({
             <div className="flex flex-wrap gap-3">
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !order.files.some((f) => f.kind === "oc_signed_pdf")}
                 className="btn-primary"
                 onClick={() =>
                   void postAction({
@@ -519,7 +543,7 @@ export function OrderDetailPanel({
                 }
               >
                 <IconCheck />
-                Aprobar orden
+                Aprobar con firma
               </button>
               <button
                 type="button"
@@ -531,6 +555,32 @@ export function OrderDetailPanel({
                 Solicitar corrección
               </button>
             </div>
+          </div>
+        )}
+
+        {canAuthorizeOrder(order.status, user.role) && (
+          <div className="mt-4 space-y-4">
+            <p className="rounded-2xl bg-violet-50 px-4 py-3 text-base text-violet-950">
+              Revisa la OC firmada por Ingeniería. Tú o{" "}
+              {user.role === "pagos" ? "Dirección" : "Administración"} pueden autorizar; el primero
+              que aprueba avanza a <strong>listo para pagar</strong>.
+            </p>
+            <textarea
+              value={comment}
+              onChange={(e) => setComment(e.target.value)}
+              placeholder="Comentario opcional"
+              rows={2}
+              className="w-full rounded-2xl border border-orange-100 px-4 py-3 text-base"
+            />
+            <button
+              type="button"
+              disabled={busy}
+              className="btn-primary"
+              onClick={() => void postAction({ action: "authorize_order", comment })}
+            >
+              <IconCheck />
+              Autorizar OC
+            </button>
           </div>
         )}
 

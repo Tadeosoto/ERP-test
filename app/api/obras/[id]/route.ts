@@ -1,10 +1,12 @@
 import { NextResponse } from "next/server";
+import { randomBytes } from "crypto";
 import { prisma } from "@/lib/db";
 import { canConfigureObra, canDeleteObra } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { cleanupOrderStoredFiles } from "@/lib/services/files";
-import { asRole, mapObra } from "@/lib/services/mappers";
+import { asRole, mapObra, obraInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
+import { engineerCanAccessObra, resolveObraEngineerMemberIds } from "@/lib/obras/obra-members";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,16 +25,31 @@ function parseMaxMaterialsBudget(value: unknown): number | null | undefined {
   return Math.round(n * 100) / 100;
 }
 
+function newMemberId() {
+  return `om_${randomBytes(12).toString("hex")}`;
+}
+
 export async function GET(_request: Request, ctx: Ctx) {
   try {
-    await requireSessionUser();
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
     const { id } = await ctx.params;
     const obra = await prisma.obra.findUnique({
       where: { id },
-      include: { _count: { select: { orders: true } } },
+      include: obraInclude,
     });
     if (!obra) {
       return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+    }
+    if (
+      !engineerCanAccessObra({
+        role,
+        userId: user.id,
+        createdByUserId: obra.createdByUserId,
+        memberUserIds: obra.members.map((m) => m.userId),
+      })
+    ) {
+      return NextResponse.json({ error: "No tienes acceso a esta obra." }, { status: 403 });
     }
     return NextResponse.json({ obra: mapObra(obra) });
   } catch (e) {
@@ -57,11 +74,27 @@ export async function PATCH(request: Request, ctx: Ctx) {
       estimatedEndDate?: string | null;
       active?: boolean;
       maxMaterialsBudget?: number;
+      engineerUserIds?: string[];
     };
 
-    const existing = await prisma.obra.findUnique({ where: { id } });
+    const existing = await prisma.obra.findUnique({
+      where: { id },
+      include: { members: true },
+    });
     if (!existing) {
       return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
+    }
+
+    if (
+      role === "ingeniero" &&
+      !engineerCanAccessObra({
+        role,
+        userId: user.id,
+        createdByUserId: existing.createdByUserId,
+        memberUserIds: existing.members.map((m) => m.userId),
+      })
+    ) {
+      return NextResponse.json({ error: "No tienes acceso a esta obra." }, { status: 403 });
     }
 
     const data: Record<string, unknown> = {};
@@ -76,7 +109,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
     if (body.client !== undefined) data.client = body.client.trim();
     if (body.managerName !== undefined) data.managerName = body.managerName.trim();
     if (body.startDate !== undefined) data.startDate = parseOptionalDate(body.startDate);
-    if (body.estimatedEndDate !== undefined) data.estimatedEndDate = parseOptionalDate(body.estimatedEndDate);
+    if (body.estimatedEndDate !== undefined) {
+      data.estimatedEndDate = parseOptionalDate(body.estimatedEndDate);
+    }
     if (body.active !== undefined) data.active = Boolean(body.active);
     if (body.maxMaterialsBudget !== undefined) {
       const maxMaterialsBudget = parseMaxMaterialsBudget(body.maxMaterialsBudget);
@@ -89,6 +124,47 @@ export async function PATCH(request: Request, ctx: Ctx) {
       data.maxMaterialsBudget = maxMaterialsBudget;
     }
 
+    if (body.engineerUserIds !== undefined) {
+      const engineers = await prisma.user.findMany({
+        where: { role: "ingeniero" },
+        select: { id: true, role: true },
+      });
+      const members = resolveObraEngineerMemberIds({
+        engineerUserIds: body.engineerUserIds,
+        creatorUserId: existing.createdByUserId ?? user.id,
+        creatorRole:
+          existing.createdByUserId === user.id
+            ? role
+            : role === "ingeniero"
+              ? "ingeniero"
+              : "pagos",
+        engineerUsers: engineers,
+      });
+      if (!members.ok) {
+        return NextResponse.json({ error: members.error }, { status: 400 });
+      }
+
+      await prisma.$transaction(async (tx) => {
+        await tx.obraMember.deleteMany({ where: { obraId: id } });
+        await tx.obraMember.createMany({
+          data: members.userIds.map((userId) => ({
+            id: newMemberId(),
+            obraId: id,
+            userId,
+          })),
+        });
+        if (Object.keys(data).length > 0) {
+          await tx.obra.update({ where: { id }, data });
+        }
+      });
+
+      const obra = await prisma.obra.findUniqueOrThrow({
+        where: { id },
+        include: obraInclude,
+      });
+      return NextResponse.json({ obra: mapObra(obra) });
+    }
+
     if (Object.keys(data).length === 0) {
       return NextResponse.json({ error: "Nada que actualizar." }, { status: 400 });
     }
@@ -96,7 +172,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
     const obra = await prisma.obra.update({
       where: { id },
       data,
-      include: { _count: { select: { orders: true } } },
+      include: obraInclude,
     });
     return NextResponse.json({ obra: mapObra(obra) });
   } catch (e) {

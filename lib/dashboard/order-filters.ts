@@ -11,7 +11,7 @@ export type OrderListFilter =
 
 const STATUS_GROUPS: Record<Exclude<OrderListFilter, "pendientes" | null>, OrderStatus[]> = {
   ingenieria: ["awaitingEngineer", "engineerRejected"],
-  pago: ["awaitingPayment", "awaitingPatyDeadline", "paid"],
+  pago: ["awaitingPayment", "awaitingAuthorization", "awaitingPatyDeadline", "paid"],
   documentos: ["awaitingInvoice", "invoiceReceived", "difference"],
   completadas: ["completed"],
 };

@@ -8,6 +8,7 @@ export type OrderStatus =
   | "awaitingEngineer"
   | "engineerRejected"
   | "awaitingPatyDeadline"
+  | "awaitingAuthorization"
   | "awaitingPayment"
   | "paid"
   | "awaitingInvoice"
@@ -24,7 +25,7 @@ export type OrderProcessKind = "a" | "c";
 /** Estado de saldo de la orden. */
 export type PaymentLabel = "pendiente" | "saldada";
 
-export type FileKind = "oc_pdf" | "comprobante_pago" | "complemento_pago" | "factura";
+export type FileKind = "oc_pdf" | "oc_signed_pdf" | "comprobante_pago" | "complemento_pago" | "factura";
 
 export type CommentKind = "approval" | "rejection";
 
@@ -128,6 +129,12 @@ export interface SupplierListItemDto extends SupplierDto {
   documentationComplete: boolean;
 }
 
+export interface ObraMemberDto {
+  userId: string;
+  name: string;
+  email: string;
+}
+
 export interface ObraDto {
   id: string;
   name: string;
@@ -140,6 +147,8 @@ export interface ObraDto {
   active: boolean;
   createdAt: string;
   orderCount: number;
+  createdByUserId: string | null;
+  members: ObraMemberDto[];
 }
 
 export interface NotificationDto {

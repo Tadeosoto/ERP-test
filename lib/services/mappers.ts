@@ -15,6 +15,7 @@ import type {
 } from "@/lib/domain/types";
 import type {
   Obra,
+  ObraMember,
   OrderComment,
   PaymentRecord,
   PurchaseOrder,
@@ -146,7 +147,13 @@ export function mapFile(f: StoredFile): StoredFileDto {
   };
 }
 
-export function mapObra(obra: Obra & { _count?: { orders: number } }): ObraDto {
+export function mapObra(
+  obra: Obra & {
+    _count?: { orders: number };
+    createdByUserId?: string | null;
+    members?: (ObraMember & { user: User })[];
+  }
+): ObraDto {
   return {
     id: obra.id,
     name: obra.name,
@@ -159,8 +166,19 @@ export function mapObra(obra: Obra & { _count?: { orders: number } }): ObraDto {
     active: obra.active,
     createdAt: obra.createdAt.toISOString(),
     orderCount: obra._count?.orders ?? 0,
+    createdByUserId: obra.createdByUserId ?? null,
+    members: (obra.members ?? []).map((m) => ({
+      userId: m.userId,
+      name: m.user.name,
+      email: m.user.email,
+    })),
   };
 }
+
+export const obraInclude = {
+  _count: { select: { orders: true } },
+  members: { include: { user: true }, orderBy: { createdAt: "asc" as const } },
+} as const;
 
 export function mapSupplier(s: {
   id: string;

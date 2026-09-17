@@ -92,6 +92,10 @@ export function paymentsCountInMonth(orders: PurchaseOrderDto[], monthKey: strin
 }
 
 export function isPendingAuthorization(order: PurchaseOrderDto): boolean {
+  return order.status === "awaitingAuthorization";
+}
+
+export function isReadyToPay(order: PurchaseOrderDto): boolean {
   return order.status === "awaitingPayment" || order.status === "awaitingPatyDeadline";
 }
 

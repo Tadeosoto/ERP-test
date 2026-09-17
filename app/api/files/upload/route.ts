@@ -7,6 +7,7 @@ import {
   canUploadInvoice,
   canUploadOcPdf,
   canUploadPaymentReceipt,
+  canUploadSignedOcPdf,
 } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { saveOrderFile } from "@/lib/services/files";
@@ -56,6 +57,13 @@ export async function POST(request: Request) {
     } else if (kind === "oc_pdf") {
       if (!canUploadOcPdf(status, role)) {
         return NextResponse.json({ error: "No puedes subir PDF de OC ahora." }, { status: 403 });
+      }
+    } else if (kind === "oc_signed_pdf") {
+      if (!canUploadSignedOcPdf(status, role)) {
+        return NextResponse.json(
+          { error: "Solo Ingeniería puede subir el PDF firmado en revisión." },
+          { status: 403 }
+        );
       }
     } else if (kind === "comprobante_pago") {
       if (!canUploadPaymentReceipt(status, role)) {

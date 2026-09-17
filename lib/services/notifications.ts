@@ -115,13 +115,18 @@ export const NotificationEvents = {
   }),
   engineerApproved: (orderTitle: string) => ({
     type: "engineer_approved",
-    message: `Ingeniería aprobó «${orderTitle}». Administración: registra el pago.`,
-    roles: ccDireccion(["pagos"] as Role[]),
+    message: `Ingeniería aprobó y firmó «${orderTitle}». Administración o Dirección: autorizar (un sí basta).`,
+    roles: ["pagos", "direccion"] as Role[],
   }),
   engineerApprovedProgramado: (orderTitle: string) => ({
     type: "engineer_approved_programado",
-    message: `Ingeniería aprobó «${orderTitle}» como pago programado. Paty: indica la fecha límite.`,
+    message: `Ingeniería aprobó «${orderTitle}» (pago programado). Compras: indica la fecha límite.`,
     roles: ccDireccion(["compras"] as Role[]),
+  }),
+  orderAuthorized: (orderTitle: string, byName: string) => ({
+    type: "order_authorized",
+    message: `${byName} autorizó «${orderTitle}». Administración: queda lista para pagar.`,
+    roles: ["pagos"] as Role[],
   }),
   sentProcesoC: (orderTitle: string) => ({
     type: "order_sent_proceso_c",
@@ -141,8 +146,8 @@ export const NotificationEvents = {
   }),
   deadlineSet: (orderTitle: string, dateStr: string) => ({
     type: "deadline_set",
-    message: `Paty fijó fecha límite de pago (${dateStr}) para «${orderTitle}». Administración: programa el pago.`,
-    roles: ["pagos"] as Role[],
+    message: `Paty fijó fecha límite (${dateStr}) para «${orderTitle}». Administración o Dirección: autorizar la OC.`,
+    roles: ["pagos", "direccion"] as Role[],
   }),
   paymentRegistered: (orderTitle: string, fullyPaid: boolean) => ({
     type: "payment_registered",

@@ -31,6 +31,8 @@ model User {
   invoiceFirstFiles       InvoiceFirstFile[]
   recurringCommitmentFiles RecurringCommitmentFile[]
   expedientes              Expediente[]
+  obraMemberships          ObraMember[]
+  createdObras             Obra[]                  @relation("ObraCreator")
 }
 
 model Session {
@@ -77,12 +79,28 @@ model Obra {
   maxMaterialsBudget Float           @default(0)
   active           Boolean         @default(true)
   createdAt        DateTime        @default(now())
+  createdByUserId  String?
+  createdBy        User?           @relation("ObraCreator", fields: [createdByUserId], references: [id], onDelete: SetNull)
+  members          ObraMember[]
   orders           PurchaseOrder[]
   materialRequests MaterialRequest[]
   directExpenses   DirectExpenseRequest[]
   recurringCommitments RecurringCommitment[]
   invoiceFirstCommitments InvoiceFirstCommitment[]
   expedientes          Expediente[]
+}
+
+// Ingenieros designados en la obra (equipo). Se define al crear/editar la obra, no en la OC.
+model ObraMember {
+  id        String   @id @default(cuid())
+  obraId    String
+  obra      Obra     @relation(fields: [obraId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now())
+
+  @@unique([obraId, userId])
+  @@index([userId])
 }
 
 model PurchaseOrder {

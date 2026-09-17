@@ -13,49 +13,52 @@ export type FlowStepDef = {
   primaryRole: Role | null;
 };
 
-/** Proceso A — OC con aprobación de Ingeniería. */
+/**
+ * Proceso A — Flujo general de OC por obra.
+ * Fin operativo: total de la OC saldado (registro de OC + pagos/documentos).
+ */
 export const FLOW_STEPS_A: readonly FlowStepDef[] = [
   {
     step: 1,
-    shortTitle: "Ingeniería",
-    detail: "Santiago crea y envía la solicitud de material (Proceso A)",
+    shortTitle: "Obra",
+    detail: "Se crea la obra y se designa el equipo de ingenieros involucrados",
     primaryRole: "ingeniero",
   },
   {
     step: 2,
-    shortTitle: "Compras",
-    detail: "Paty cotiza, crea la OC en CONTPAQi, sube el PDF y define la modalidad de pago",
-    primaryRole: "compras",
-  },
-  {
-    step: 3,
-    shortTitle: "Ingeniería",
-    detail: "Santiago revisa el PDF de la OC y aprueba o solicita corrección",
+    shortTitle: "Solicitud",
+    detail: "El ingeniero pide a Compras la cantidad y el material que necesita",
     primaryRole: "ingeniero",
   },
   {
-    step: 4,
-    shortTitle: "Administración",
-    detail: "Carolina realiza el pago y sube el comprobante",
-    primaryRole: "pagos",
-  },
-  {
-    step: 5,
+    step: 3,
     shortTitle: "Compras",
-    detail: "Paty envía comprobante al proveedor y solicita factura",
+    detail: "Paty arma la OC, elige proveedor, define plazos y envía el PDF a Ingeniería",
     primaryRole: "compras",
   },
   {
+    step: 4,
+    shortTitle: "Ingeniería",
+    detail: "El ingeniero revisa, aprueba con PDF firmado o pide corrección a Compras",
+    primaryRole: "ingeniero",
+  },
+  {
+    step: 5,
+    shortTitle: "Autorización",
+    detail: "Carolina o Diomedes revisan la OC; el primero que aprueba avanza",
+    primaryRole: "pagos",
+  },
+  {
     step: 6,
-    shortTitle: "Factura",
-    detail: "Compras, Administración, Recepción o Contabilidad suben el PDF de la factura",
-    primaryRole: null,
+    shortTitle: "Pago",
+    detail: "Queda lista para pagar; Carolina registra pagos y comprobantes hasta saldar",
+    primaryRole: "pagos",
   },
   {
     step: 7,
-    shortTitle: "Contabilidad",
-    detail: "Helena valida OC = Pago = Factura y cierra el expediente",
-    primaryRole: "contabilidad",
+    shortTitle: "Saldada",
+    detail: "Total pagado. Compras coordina factura con el proveedor; todos consultan documentos",
+    primaryRole: "compras",
   },
 ] as const;
 
@@ -158,29 +161,35 @@ export function flowPhaseNumber(status: OrderStatus, kind: OrderProcessKind = "a
   }
 
   switch (status) {
-    case "awaitingEngineer":
-      return 3;
+    case "draft":
     case "engineerRejected":
-      return 2;
-    case "awaitingPatyDeadline":
-    case "awaitingPayment":
+      return 3;
+    case "awaitingEngineer":
       return 4;
-    case "paid":
+    case "awaitingPatyDeadline":
+    case "awaitingAuthorization":
       return 5;
-    case "awaitingInvoice":
+    case "awaitingPayment":
       return 6;
+    case "paid":
+    case "awaitingInvoice":
     case "invoiceReceived":
     case "difference":
-      return 7;
     case "completed":
-      return 8;
+      return 7;
     default:
-      return 2;
+      return 3;
   }
 }
 
 export function flowProgressPercent(status: OrderStatus, kind: OrderProcessKind = "a"): number {
   if (status === "completed") return 100;
+  if (
+    kind === "a" &&
+    (status === "paid" || status === "awaitingInvoice" || status === "invoiceReceived")
+  ) {
+    return 100;
+  }
   const steps = flowStepsForProcess(kind);
   const phase = flowPhaseNumber(status, kind);
   return Math.round(((phase - 1) / steps.length) * 100);
@@ -190,6 +199,16 @@ export function isFlowComplete(status: OrderStatus): boolean {
   return status === "completed";
 }
 
+/** Fin operativo del Proceso A: OC saldada (pagos registrados; factura puede seguir en curso). */
+export function isProcessASettled(status: OrderStatus): boolean {
+  return (
+    status === "paid" ||
+    status === "awaitingInvoice" ||
+    status === "invoiceReceived" ||
+    status === "completed"
+  );
+}
+
 export function getPendingRoles(status: OrderStatus): Role[] {
   switch (status) {
     case "awaitingEngineer":
@@ -197,8 +216,9 @@ export function getPendingRoles(status: OrderStatus): Role[] {
     case "engineerRejected":
     case "awaitingPatyDeadline":
     case "paid":
-      /** Compras y Administración (puede actuar como Compras). */
       return ["compras", "pagos"];
+    case "awaitingAuthorization":
+      return ["pagos", "direccion"];
     case "awaitingPayment":
       return ["pagos"];
     case "awaitingInvoice":
@@ -230,32 +250,31 @@ export function canRoleAdvance(role: Role, status: OrderStatus): boolean {
 export function describeGate(status: OrderStatus, paymentType?: PaymentType | null): string {
   switch (status) {
     case "awaitingEngineer":
-      return "Le toca a Ingeniería revisar y aprobar la orden de compra.";
+      return "Ingeniería revisa la OC, sube el PDF firmado y aprueba, o pide corrección a Compras.";
     case "engineerRejected":
-      return "Ingeniería solicitó correcciones. Compras debe actualizar y volver a enviar el PDF.";
+      return "Ingeniería pidió correcciones. Compras actualiza la OC y la vuelve a enviar.";
     case "awaitingPatyDeadline":
-      return "Paty debe indicar la fecha límite de pago para Administración (orden programada).";
+      return "Compras indica la fecha límite de pago; luego pasa a autorización de Admin o Dirección.";
+    case "awaitingAuthorization":
+      return "Carolina o Diomedes autorizan la OC. El primero que aprueba avanza a listo para pagar.";
     case "awaitingPayment":
-      if (paymentType === "inmediato") {
-        return "Administración debe saldar el 100% y subir el comprobante de pago.";
+      if (paymentType === "parcialidades") {
+        return "OC autorizada / lista para pagar. Carolina registra abonos y comprobantes hasta saldar.";
       }
       if (paymentType === "programado") {
-        return "Administración debe registrar el pago completo antes de la fecha límite.";
+        return "OC lista para pagar. Carolina registra el pago completo antes de la fecha límite.";
       }
-      if (paymentType === "parcialidades") {
-        return "Administración debe registrar abonos hasta completar el total.";
-      }
-      return "Administración debe gestionar el pago de la orden.";
+      return "OC lista para pagar. Carolina registra el pago y sube el comprobante.";
     case "paid":
-      return "Compras debe enviar el comprobante al proveedor, solicitar la factura y marcar «Esperando factura».";
+      return "Total saldado. Compras envía comprobante al proveedor y registra la factura.";
     case "awaitingInvoice":
-      return "Compras, Administración, Recepción o Contabilidad pueden subir el PDF de la factura.";
+      return "Pueden subir el PDF de la factura del proveedor. La OC ya está saldada.";
     case "invoiceReceived":
-      return "Administración, Recepción o Contabilidad deben validar que OC = Pago = Factura.";
+      return "Factura registrada. Pueden consultar documentos de la OC y los pagos.";
     case "difference":
-      return "Hay una diferencia. Administración, Recepción o Contabilidad deben revisar y resolver.";
+      return "Hay una diferencia documental. Administración o Contabilidad deben revisar.";
     case "completed":
-      return "Expediente cerrado. Todos pueden consultar y descargar.";
+      return "Documentación completa. Todos pueden consultar y descargar.";
     default:
       return "";
   }
@@ -284,35 +303,37 @@ export function rolePlaybook(role: Role): string[] {
   switch (role) {
     case "compras":
       return [
-        "Recibe solicitudes de Ingeniería, cotiza y registra la OC con PDF.",
-        "Define si el pago será inmediato, a 30 días o por parcialidades.",
-        "Tras el pago, coordinar con el proveedor y marcar «Esperando factura».",
+        "Recibe solicitudes de materiales, elige proveedor y arma la OC con plazos y PDF.",
+        "Si Ingeniería pide corrección, actualiza y reenvía la OC.",
+        "Tras el pago, manda el comprobante al proveedor y registra la factura.",
       ];
     case "ingeniero":
       return [
-        "Crea obras y vincula solicitudes de material (Proceso A) o gasto directo (Proceso B).",
-        "Revisa el PDF de la OC que envía Compras y aprueba o solicita corrección.",
+        "Crea obras y designa el equipo de ingenieros involucrados.",
+        "Solicita materiales (cantidad + material) solo en tus obras.",
+        "Aprueba la OC con PDF firmado o pide corrección a Compras.",
       ];
     case "pagos":
       return [
-        "Registrar el pago y subir el comprobante bancario.",
-        "También puedes subir la factura del proveedor si hace falta.",
+        "Autoriza OC (tú o Dirección; un sí basta) y registra pagos con comprobante.",
+        "Si hay plazos, sube comprobantes hasta saldar el total de la OC.",
+        "Los compromisos recurrentes son un proceso aparte de servicios.",
       ];
     case "recepcion":
       return [
         "Subir el PDF de la factura cuando llegue del proveedor.",
-        "Consultar expedientes completados.",
+        "Consultar expedientes y documentos de pago por obra.",
       ];
     case "contabilidad":
       return [
-        "Validar que OC, pago y factura coinciden.",
-        "Cerrar el expediente o marcar diferencia si algo no cuadra.",
+        "Consultar OC, pagos y facturas por obra.",
+        "Apoyar si hay diferencias documentales.",
       ];
     case "direccion":
       return [
-        "Registrar facturas para abrir expediente (Proceso C — Agregar Factura).",
-        "Consultar el resumen de gastos, pagos y expedientes del consorcio.",
-        "Dar seguimiento a autorizaciones pendientes y actividad del equipo.",
+        "Autoriza OC junto con Administración (el primero que aprueba avanza).",
+        "Consulta pagos, saldos y documentos por obra.",
+        "Compromisos y Proceso C se manejan aparte cuando aplique.",
       ];
     default:
       return [];
@@ -325,12 +346,13 @@ export function paymentTypeDescription(type: PaymentType): string {
 
 export function statusAfterEngineerApprove(
   paymentType: PaymentType,
-  suggestedParcialidades: boolean
+  suggestedParcialidades: boolean,
+  hasPaymentDueDate = false
 ): OrderStatus {
   const effective =
     suggestedParcialidades && paymentType !== "programado" ? "parcialidades" : paymentType;
-  if (effective === "programado") return "awaitingPatyDeadline";
-  return "awaitingPayment";
+  if (effective === "programado" && !hasPaymentDueDate) return "awaitingPatyDeadline";
+  return "awaitingAuthorization";
 }
 
 export function resolveEngineerPaymentType(

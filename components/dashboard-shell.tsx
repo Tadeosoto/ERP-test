@@ -96,19 +96,19 @@ function navSectionsForRole(role: Role): NavSection[] {
         items: [
           inicio,
           pagos,
+          ordenes,
           { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
-          agregarFactura,
         ],
       },
       { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
-      { id: "consulta", label: "Consulta", items: [reportes, flujo, movimientos] },
+      { id: "consulta", label: "Consulta", items: [reportes, agregarFactura, flujo, movimientos] },
     ];
   }
 
   if (role === "ingeniero") {
     return [
-      { id: "trabajo", label: "Trabajo", items: [inicio, solicitudes] },
+      { id: "trabajo", label: "Trabajo", items: [inicio, solicitudes, ordenes] },
       { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
@@ -145,9 +145,9 @@ function navSectionsForRole(role: Role): NavSection[] {
 /** Destinos críticos en mobile (máx. 4) + el resto en “Más”. */
 function mobilePrimaryHrefs(role: Role): string[] {
   if (role === "pagos") return ["/inicio", "/pagos", "/compromisos", "/ordenes"];
-  if (role === "direccion") return ["/inicio", "/pagos", "/compromisos", "/reportes"];
-  if (role === "compras") return ["/inicio", "/ordenes", "/expedientes", "/obras"];
-  if (role === "ingeniero") return ["/inicio", "/solicitudes/nueva", "/expedientes", "/obras"];
+  if (role === "direccion") return ["/inicio", "/pagos", "/ordenes", "/reportes"];
+  if (role === "compras") return ["/inicio", "/ordenes", "/solicitudes-ingenieria", "/obras"];
+  if (role === "ingeniero") return ["/inicio", "/solicitudes/nueva", "/ordenes", "/obras"];
   return ["/inicio", "/pagos", "/expedientes", "/obras"];
 }
 

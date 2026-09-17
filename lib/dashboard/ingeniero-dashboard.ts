@@ -123,8 +123,8 @@ export const INGENIERO_HOME_KPI_CONFIG: {
 }[] = [
   {
     key: "pendingApproval",
-    label: "Pendientes de aprobación",
-    sublabel: "OC esperando tu revisión",
+    label: "Por revisar / firmar",
+    sublabel: "OC esperando tu aprobación",
     accent: "border-l-orange-400 bg-orange-50/35",
     iconBg: "bg-orange-100 text-orange-700",
     icon: "clock",

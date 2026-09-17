@@ -18,36 +18,27 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
     role: "ingeniero",
     title: "Guía rápida — Ingeniería",
     intro:
-      "Santiago inicia los procesos de compra (A y B), administra obras y aprueba las OC que registra Compras antes de que sigan a pago.",
+      "Creas obras (con equipo), pides materiales a Compras y apruebas la OC con PDF firmado antes de la autorización y el pago.",
     sections: [
       {
-        heading: "Proceso A — Solicitud de material",
+        heading: "Obra y equipo",
         steps: [
-          "Ve a Solicitudes → Nueva solicitud de material y elige la obra.",
-          "Describe materiales, cantidades y justificación; adjunta archivos si aplica.",
-          "Envía la solicitud a Compras. Paty la verá en su bandeja para crear la OC.",
+          "En Obras crea el proyecto y designa los ingenieros involucrados.",
+          "Solo ves y actúas en obras donde estás designado o que tú creaste.",
         ],
       },
       {
-        heading: "Proceso B — Gasto directo sin OC",
+        heading: "Solicitud de material",
         steps: [
-          "Crea un gasto directo desde Solicitudes cuando no requiera orden de compra.",
-          "Completa categoría, monto y comprobantes; envía para que Administración pague.",
+          "Desde Inicio o Solicitudes indica qué material y qué cantidad necesitas.",
+          "Envía a Compras; Paty elige proveedor y arma la OC.",
         ],
       },
       {
-        heading: "Obras",
+        heading: "Aprobar la OC",
         steps: [
-          "En Obras puedes crear y editar proyectos del consorcio.",
-          "Todos los roles consultan las obras y sus OC; Ingeniería y Administración pueden crear obras nuevas.",
-        ],
-      },
-      {
-        heading: "Aprobar órdenes de compra",
-        steps: [
-          "En Inicio revisa «Órdenes pendientes de mi aprobación».",
-          "Abre la OC (texto azul), descarga el PDF y verifica monto, proveedor y obra.",
-          "Aprueba para liberar el pago o solicita corrección; Compras actualizará el PDF.",
+          "En Inicio → Por revisar abre la OC, descarga el PDF y verifica datos.",
+          "Aprueba (botón + PDF firmado) o pide corrección a Compras.",
         ],
       },
     ],
@@ -56,69 +47,53 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
     role: "compras",
     title: "Guía rápida — Compras",
     intro:
-      "Paty recibe solicitudes de Ingeniería, negocia con proveedores, registra la OC en CONTPAQi y coordina el cierre documental.",
+      "Recibes solicitudes de material, armas la OC con proveedor y plazos, y tras el pago coordinas factura con el proveedor.",
     sections: [
       {
-        heading: "Crear y editar OC",
+        heading: "Armar la OC",
         steps: [
-          "Desde Inicio u Obras, pulsa «Nueva OC» o «Editar OC» en el menú de acciones de una fila.",
-          "Define modalidad de pago: inmediato, a 30 días o parcialidades.",
-          "Sube el PDF de CONTPAQi y envía a Ingeniería para aprobación.",
-          "Puedes editar o eliminar mientras la OC no tenga pagos ni factura cerrada.",
+          "Revisa Solicitudes Ingeniería: material + cantidad.",
+          "Elige proveedor según disponibilidad, define plazos, sube el PDF y envía a Ingeniería.",
         ],
       },
       {
-        heading: "Solicitudes de material",
+        heading: "Correcciones",
         steps: [
-          "Revisa la bandeja de solicitudes enviadas por Ingeniería.",
-          "Cotiza con proveedores y convierte la solicitud en OC con datos precargados.",
+          "Si Ingeniería rechaza, actualiza la OC y vuelve a enviarla a revisión.",
         ],
       },
       {
-        heading: "Después del pago",
+        heading: "Tras el pago",
         steps: [
-          "Cuando Administración registra el pago, envía el comprobante al proveedor.",
-          "Marca «Esperando factura» y sube el PDF cuando llegue (tú, Recepción o Administración).",
+          "Envía el comprobante al proveedor y registra la factura cuando llegue.",
         ],
       },
     ],
   },
   pagos: {
     role: "pagos",
-    title: "Guía rápida — Administración de pagos",
+    title: "Guía rápida — Administración",
     intro:
-      "Carolina ejecuta los pagos autorizados, registra montos y sube comprobantes bancarios.",
+      "Autorizas OC (tú o Dirección), registras pagos con comprobante hasta saldar, y llevas compromisos aparte.",
     sections: [
       {
-        heading: "Registrar pagos",
+        heading: "Autorizar y pagar",
         steps: [
-          "En Inicio abre la OC de tu bandeja (enlace azul).",
-          "En «Tu tarea» indica monto, referencia bancaria y notas.",
-          "Sube el PDF del comprobante de pago.",
+          "Tras la firma de Ingeniería, tú o Diomedes dan el sí (basta uno).",
+          "La OC queda lista para pagar: registra monto y sube el comprobante PDF.",
+          "Con plazos, sube más comprobantes hasta completar el total.",
         ],
       },
       {
-        heading: "Modalidades",
+        heading: "Obras",
         steps: [
-          "Pago inmediato: liquida el 100% de una vez.",
-          "Programado: respeta la fecha límite que fijó Compras.",
-          "Parcialidades: registra abonos hasta completar el total.",
+          "Puedes crear obras y designar el equipo de ingenieros.",
         ],
       },
       {
-        heading: "Facturas y cierre",
+        heading: "Compromisos",
         steps: [
-          "También puedes subir la factura del proveedor si llega antes que Compras o Recepción.",
-          "Con factura recibida, valida que OC = pago = factura y cierra el expediente.",
-        ],
-      },
-      {
-        heading: "Administración y limpieza",
-        steps: [
-          "Puedes crear obras nuevas desde Obras o el acceso rápido del inicio.",
-          "Puedes eliminar OC/expedientes, pagos registrados, archivos adjuntos, obras y proveedores.",
-          "Usa el menú de acciones (⋮) en tablas de Pagos, Expedientes y Obras.",
-          "Las eliminaciones son permanentes; confirma antes de continuar.",
+          "Los compromisos recurrentes son un proceso aparte de servicios; no son el Proceso A.",
         ],
       },
     ],
@@ -126,28 +101,18 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
   recepcion: {
     role: "recepcion",
     title: "Guía rápida — Recepción",
-    intro: "Recepción apoya la carga documental cuando llegan facturas y consulta el avance de las compras.",
+    intro: "Apoyas la carga documental cuando llegan facturas y consultas el avance de las compras.",
     sections: [
       {
-        heading: "Subir facturas",
+        heading: "Facturas",
         steps: [
-          "Abre la OC desde Obras o Inicio cuando esté en «Esperando factura».",
-          "En «Tu tarea» sube el PDF de la factura del proveedor.",
-        ],
-      },
-      {
-        heading: "Validación y cierre",
-        steps: [
-          "Cuando la OC esté en «Factura recibida», compara OC, comprobante y factura.",
-          "En «Tu tarea» valida y cierra el expediente o marca diferencia si algo no cuadra.",
+          "Abre la OC cuando esté saldada / esperando factura y sube el PDF.",
         ],
       },
       {
         heading: "Consulta",
         steps: [
-          "Puedes ver obras, expedientes y el detalle de cada OC.",
-          "Usa Expedientes para buscar por proveedor, obra o estatus.",
-          "No tienes acceso a Pagos ni Proveedores; enfócate en documentos y facturas.",
+          "Puedes ver obras, expedientes y documentos de pago.",
         ],
       },
     ],
@@ -155,20 +120,13 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
   contabilidad: {
     role: "contabilidad",
     title: "Guía rápida — Contabilidad",
-    intro: "Helena valida que OC, pago y factura coinciden antes de cerrar el expediente.",
+    intro: "Consultas OC, pagos y facturas por obra y apoyas si hay diferencias documentales.",
     sections: [
       {
-        heading: "Validación",
+        heading: "Documentos",
         steps: [
-          "Abre OC en estado «Factura recibida» desde tu bandeja.",
-          "Compara montos del PDF de OC, comprobante(s) de pago y factura.",
-          "Aprueba si cuadra o marca diferencia con comentario para el equipo.",
-        ],
-      },
-      {
-        heading: "Cierre",
-        steps: [
-          "Al validar, el expediente queda completado y disponible para consulta de todos.",
+          "Revisa montos de OC, comprobantes y factura.",
+          "Marca diferencia si algo no cuadra.",
         ],
       },
     ],
@@ -176,20 +134,20 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
   direccion: {
     role: "direccion",
     title: "Guía rápida — Dirección",
-    intro: "Ing. Diomedes supervisa pagos, gastos y el avance de todo el flujo de compras.",
+    intro:
+      "Autorizas OC junto con Administración (un sí basta) y das seguimiento a pagos y saldos por obra.",
     sections: [
       {
-        heading: "Panel ejecutivo",
+        heading: "Autorizar",
         steps: [
-          "Revisa KPIs, gráficas y alertas en Inicio.",
-          "Consulta pagos pendientes y parcialidades activas desde la tabla de autorizaciones.",
+          "En Inicio → Por autorizar revisa la OC aprobada por Ingeniería.",
+          "Si das el sí, avanza a listo para pagar (Carolina ejecuta el pago).",
         ],
       },
       {
         heading: "Consulta",
         steps: [
-          "Puedes abrir cualquier obra, OC o expediente en modo consulta.",
-          "Usa Movimientos para ver qué hace cada área del equipo.",
+          "Usa Pagos, Expedientes y Reportes para ver el estado del consorcio.",
         ],
       },
     ],

@@ -4,10 +4,10 @@ import type { OrderStatus } from "@/lib/domain/types";
 const LEGEND_STATUSES: OrderStatus[] = [
   "awaitingEngineer",
   "engineerRejected",
+  "awaitingAuthorization",
   "awaitingPayment",
   "paid",
   "awaitingInvoice",
-  "invoiceReceived",
   "completed",
   "difference",
 ];
