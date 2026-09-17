@@ -6,6 +6,7 @@ import { NotificationEvents, notifyByRoles } from "@/lib/services/notifications"
 import { asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType } from "@/lib/domain/types";
+import { resolveOrderFx } from "@/lib/services/banxico-fx";
 
 function buildTitle(ocFolio: string, supplierName: string): string {
   if (ocFolio.trim()) return ocFolio.trim();
@@ -141,6 +142,13 @@ export async function POST(request: Request) {
 
     const supplierName = supplierNameInput;
     const paymentType = body.paymentType ?? null;
+    const currency = (body.currency?.trim() || "MXN").toUpperCase();
+
+    const fx = await resolveOrderFx({
+      currency,
+      totalAmount,
+      documentDateIso: body.documentDate ?? body.ocDate ?? null,
+    });
 
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.purchaseOrder.create({
@@ -158,7 +166,11 @@ export async function POST(request: Request) {
           totalAmount,
           amountPaidSoFar: draft.amountPaidSoFar,
           paymentLabel: draft.paymentLabel,
-          currency: body.currency?.trim() || "MXN",
+          currency,
+          fxRate: fx.fxRate,
+          fxRateDate: fx.fxRateDate,
+          totalAmountMxn: fx.totalAmountMxn,
+          fxNote: fx.fxNote,
           paymentType,
           suggestedPaymentType: paymentType === "parcialidades" ? "parcialidades" : null,
           materialRequestId,

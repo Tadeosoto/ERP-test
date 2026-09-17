@@ -27,6 +27,16 @@ function datePart(iso: string | null): string | null {
   return iso.slice(0, 10);
 }
 
+export function isPagosActiveOrder(order: PurchaseOrderDto): boolean {
+  if (order.status === "awaitingPayment" && order.paymentType) return true;
+  if (order.status === "awaitingPatyDeadline") return true;
+  if (order.status === "paid" || order.status === "awaitingInvoice") return true;
+  if (order.amountPaidSoFar > 0.01 && order.amountRemaining > 0.01 && order.status !== "completed") {
+    return true;
+  }
+  return false;
+}
+
 export function isPagosQueueOrder(order: PurchaseOrderDto): boolean {
   if (order.status === "awaitingPayment" || order.status === "awaitingPatyDeadline") return true;
   if (order.status === "paid" && !hasPaymentReceipt(order)) return true;
@@ -247,5 +257,5 @@ export function pagosPrimaryAction(order: PurchaseOrderDto): {
     };
   }
 
-  return { label: "Expediente", href: base, showDropdown: true };
+  return { label: "Ver orden", href: base, showDropdown: true };
 }

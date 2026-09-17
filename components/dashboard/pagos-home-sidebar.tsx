@@ -8,7 +8,7 @@ const PROCESS_STEPS = [
   "Ingeniería aprueba la OC y Compras fija la fecha límite de pago.",
   "Administración registra el pago y referencia bancaria en la OC.",
   "Sube el comprobante de pago (PDF del banco).",
-  "Contabilidad valida OC, pago y factura para cerrar el expediente.",
+  "Contabilidad valida OC, pago y factura para cerrar la orden.",
 ];
 
 export function PagosHomeSidebar({

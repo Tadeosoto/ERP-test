@@ -122,6 +122,14 @@ model PurchaseOrder {
   totalAmount            Float
   amountPaidSoFar        Float           @default(0)
   currency               String          @default("MXN")
+  /// Tipo de cambio Banxico FIX (pesos por dólar) al registrar OC en USD.
+  fxRate                 Float?
+  /// Fecha del FIX Banxico usado.
+  fxRateDate             DateTime?
+  /// Total convertido a MXN (igual a totalAmount si currency=MXN).
+  totalAmountMxn         Float?
+  /// Nota legible: TC del día, origen Banxico.
+  fxNote                 String          @default("")
   paymentLabel           String          @default("pendiente")
   paymentType            String?
   suggestedPaymentType   String?

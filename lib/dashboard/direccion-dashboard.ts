@@ -300,8 +300,8 @@ export function direccionAlerts(orders: PurchaseOrderDto[]): DireccionAlert[] {
     alerts.push({
       id: "differences",
       tone: "violet",
-      message: `${diffCount} expediente${diffCount === 1 ? "" : "s"} con diferencia en contabilidad`,
-      href: "/expedientes",
+      message: `${diffCount} orden${diffCount === 1 ? "" : "es"} con diferencia en contabilidad`,
+      href: "/ordenes",
     });
   }
 

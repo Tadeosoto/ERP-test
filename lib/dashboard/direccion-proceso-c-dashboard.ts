@@ -100,9 +100,9 @@ export const AGREGAR_FACTURA_KPI_META: Record<
   { title: string; empty: string; description: string }
 > = {
   pendientes: {
-    title: "Facturas pendientes de abrir expediente",
+    title: "Facturas pendientes de OC",
     description: "Esperan que Administración solicite la OC a Compras. Puedes editar o eliminar mientras no haya OC.",
-    empty: "No hay facturas pendientes de abrir expediente.",
+    empty: "No hay facturas pendientes de OC.",
   },
   mes: {
     title: "Solicitudes registradas este mes",

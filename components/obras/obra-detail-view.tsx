@@ -5,7 +5,6 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
 import { ObraMaterialsBudgetPanel } from "@/components/obras/obra-materials-budget-panel";
-import { ObraExpedientesPanel } from "@/components/obras/obra-expedientes-panel";
 import { ObraEngineerPicker } from "@/components/obras/obra-engineer-picker";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -260,8 +259,6 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
       </div>
 
       <ObraMaterialsBudgetPanel stats={budgetStats} />
-
-      <ObraExpedientesPanel obraId={obra.id} obraName={obra.name} />
 
       {editOpen && canEditObra && (
         <section className="card p-5">

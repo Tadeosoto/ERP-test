@@ -291,10 +291,10 @@ export function DireccionExpedientesPanel({
   return (
     <div className="overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm">
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-zinc-100 px-3 py-2.5 sm:px-4">
-        <h2 className="text-sm font-bold text-zinc-900 sm:text-base">Expedientes</h2>
+        <h2 className="text-sm font-bold text-zinc-900 sm:text-base">Órdenes</h2>
         {compact && (
-          <Link href="/expedientes" className="text-xs font-semibold text-violet-700 hover:underline">
-            Ver módulo completo →
+          <Link href="/ordenes" className="text-xs font-semibold text-violet-700 hover:underline">
+            Ver todas →
           </Link>
         )}
       </div>

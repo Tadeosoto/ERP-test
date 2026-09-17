@@ -387,9 +387,9 @@ export function DireccionReportesView({ onRegisterRefresh }: { onRegisterRefresh
           {showExpedientes && (
             <section className="rounded-2xl border border-zinc-200 bg-white p-5 shadow-sm">
               <div className="flex items-center justify-between gap-2">
-                <h2 className="text-sm font-bold text-zinc-900">Resumen de expedientes</h2>
-                <Link href="/expedientes" className="text-xs font-semibold text-violet-700 hover:underline">
-                  Ver expedientes →
+                <h2 className="text-sm font-bold text-zinc-900">Resumen de órdenes</h2>
+                <Link href="/ordenes" className="text-xs font-semibold text-violet-700 hover:underline">
+                  Ver órdenes →
                 </Link>
               </div>
               <ul className="mt-4 space-y-4">
@@ -414,7 +414,7 @@ export function DireccionReportesView({ onRegisterRefresh }: { onRegisterRefresh
                   </li>
                 ))}
               </ul>
-              <p className="mt-4 text-xs text-zinc-500">{expResumen.total} expedientes en total</p>
+              <p className="mt-4 text-xs text-zinc-500">{expResumen.total} órdenes en total</p>
             </section>
           )}
         </div>

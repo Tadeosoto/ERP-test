@@ -5,9 +5,9 @@ export const ACTION_SUCCESS_MESSAGES: Record<string, string> = {
   set_payment_deadline: "Fecha límite guardada. Pasa a autorización.",
   register_payment: "El pago se registró correctamente.",
   mark_awaiting_invoice: "La orden quedó en espera de factura.",
-  accounting_complete: "El expediente fue validado y cerrado.",
+  accounting_complete: "La orden fue validada y cerrada.",
   accounting_flag_difference: "La diferencia quedó registrada.",
-  accounting_resolve: "La diferencia se resolvió y el expediente cerró.",
+  accounting_resolve: "La diferencia se resolvió y la orden cerró.",
 };
 
 export const FILE_UPLOAD_SUCCESS_MESSAGES: Record<string, string> = {

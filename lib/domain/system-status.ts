@@ -58,7 +58,7 @@ export const SYSTEM_STATUS: Record<
   },
   completed: {
     label: "Completada",
-    subtitle: "Expediente cerrado",
+    subtitle: "Orden cerrada",
     tone: "green",
     icon: "check",
   },

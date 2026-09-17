@@ -249,7 +249,7 @@ export function IngenieroHomeDashboard({
               <div className="border-t border-zinc-100 px-4 py-3 sm:px-5">
                 <div className="flex flex-wrap gap-2">
                   <HomeLauncherLink href="/obras" label="Gestionar obras" primary />
-                  <HomeLauncherLink href="/expedientes" label="Expedientes" />
+                  <HomeLauncherLink href="/ordenes" label="Órdenes" />
                   <HomeLauncherLink href="/pagos" label="Ver pagos" />
                 </div>
               </div>

@@ -1,0 +1,5 @@
+-- Tipo de cambio Banxico FIX para OC en USD (pagos siempre en MXN).
+ALTER TABLE "PurchaseOrder" ADD COLUMN IF NOT EXISTS "fxRate" DOUBLE PRECISION;
+ALTER TABLE "PurchaseOrder" ADD COLUMN IF NOT EXISTS "fxRateDate" TIMESTAMP(3);
+ALTER TABLE "PurchaseOrder" ADD COLUMN IF NOT EXISTS "totalAmountMxn" DOUBLE PRECISION;
+ALTER TABLE "PurchaseOrder" ADD COLUMN IF NOT EXISTS "fxNote" TEXT NOT NULL DEFAULT '';

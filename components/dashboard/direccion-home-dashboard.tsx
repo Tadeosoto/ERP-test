@@ -103,7 +103,7 @@ export function DireccionHomeDashboard({
       return `${pendingCount} OC por autorizar — un sí de Dirección o Administración basta.`;
     }
     if (expKpis.atencion > 0) {
-      return `${expKpis.atencion} expediente${expKpis.atencion === 1 ? "" : "s"} requieren seguimiento.`;
+      return `${expKpis.atencion} orden${expKpis.atencion === 1 ? "" : "es"} requieren seguimiento.`;
     }
     return "Sin pendientes críticos. Consulta pagos o el mapa del Proceso A.";
   }, [pendingCount, expKpis.atencion]);
@@ -171,7 +171,7 @@ export function DireccionHomeDashboard({
 
       <div className="flex flex-wrap gap-2">
         <HomeLauncherLink href="/pagos" label="Ver pagos" primary />
-        <HomeLauncherLink href="/expedientes" label="Expedientes" />
+        <HomeLauncherLink href="/ordenes" label="Órdenes de compra" />
         <HomeLauncherLink href="/reportes" label="Reportes" />
         <HomeLauncherLink href="/flujo" label="Mapa del proceso" />
       </div>
@@ -221,10 +221,10 @@ export function DireccionHomeDashboard({
         <section className="dash-panel">
           <DashPanelHeader
             title="Seguimiento prioritario"
-            meta={`Top ${ATTENTION_LIMIT} · listado completo en Expedientes`}
+            meta={`Top ${ATTENTION_LIMIT} · listado completo en Órdenes`}
             action={
               <Link
-                href="/expedientes"
+                href="/ordenes"
                 className="text-sm font-semibold text-orange-700 hover:text-orange-900"
               >
                 Ver todos →
@@ -233,7 +233,7 @@ export function DireccionHomeDashboard({
           />
           {attention.length === 0 ? (
             <p className="dash-body px-4 py-10 text-center text-zinc-500 sm:px-5">
-              No hay expedientes que requieran atención ahora.
+              No hay órdenes que requieran atención ahora.
             </p>
           ) : (
             <ul className="divide-y divide-zinc-100">

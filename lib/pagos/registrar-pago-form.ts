@@ -1,5 +1,6 @@
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatAmountInput, parseAmountInput } from "@/lib/format";
+import { paymentBasisCurrency } from "@/lib/domain/order-fx";
 
 export { formatAmountInput, parseAmountInput };
 
@@ -33,8 +34,15 @@ export function defaultConcept(order: PurchaseOrderDto): string {
 }
 
 export function defaultAmount(order: PurchaseOrderDto): string {
-  const n = order.amountRemaining > 0 ? order.amountRemaining : order.totalAmount - order.amountPaidSoFar;
+  const n = order.amountRemaining > 0 ? order.amountRemaining : paymentBasisTotalFallback(order);
   return formatAmountInput(n);
+}
+
+function paymentBasisTotalFallback(order: PurchaseOrderDto): number {
+  if (order.currency === "USD" && order.totalAmountMxn != null && order.totalAmountMxn > 0) {
+    return Math.max(0, order.totalAmountMxn - order.amountPaidSoFar);
+  }
+  return Math.max(0, order.totalAmount - order.amountPaidSoFar);
 }
 
 export function formatDisplayDate(isoDate: string): string {
@@ -48,6 +56,10 @@ export function currencyLabel(code: string): string {
   if (code === "MXN") return "MXN - Peso Mexicano";
   if (code === "USD") return "USD - Dólar";
   return code;
+}
+
+export function paymentFormCurrency(order: PurchaseOrderDto): string {
+  return paymentBasisCurrency(order);
 }
 
 export function payableOrders(orders: PurchaseOrderDto[]): PurchaseOrderDto[] {
@@ -70,5 +82,5 @@ export function buildPaymentNotes(form: RegistrarPagoForm): string {
 }
 
 export function remainingAfterPayment(order: PurchaseOrderDto, payAmount: number): number {
-  return Math.max(0, order.totalAmount - order.amountPaidSoFar - payAmount);
+  return Math.max(0, order.amountRemaining - payAmount);
 }

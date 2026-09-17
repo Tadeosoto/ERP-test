@@ -112,7 +112,7 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
       {
         heading: "Consulta",
         steps: [
-          "Puedes ver obras, expedientes y documentos de pago.",
+          "Puedes ver obras, órdenes de compra y documentos de pago.",
         ],
       },
     ],
@@ -147,7 +147,7 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
       {
         heading: "Consulta",
         steps: [
-          "Usa Pagos, Expedientes y Reportes para ver el estado del consorcio.",
+          "Usa Pagos, Órdenes y Reportes para ver el estado del consorcio.",
         ],
       },
     ],

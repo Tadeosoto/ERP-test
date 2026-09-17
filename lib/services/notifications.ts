@@ -163,17 +163,17 @@ export const NotificationEvents = {
   }),
   invoiceUploaded: (orderTitle: string) => ({
     type: "invoice_uploaded",
-    message: `Factura recibida en «${orderTitle}». Valida y cierra el expediente.`,
+    message: `Factura recibida en «${orderTitle}». Valida y cierra la orden.`,
     roles: ccDireccion(EXPEDIENTE_CLOSE_ROLES),
   }),
   orderCompleted: (orderTitle: string) => ({
     type: "order_completed",
-    message: `«${orderTitle}» completada. Expediente cerrado.`,
+    message: `«${orderTitle}» completada. Orden cerrada.`,
     roles: ccDireccion(["pagos", "compras", "ingeniero", "recepcion", "contabilidad"] as Role[]),
   }),
   orderDifference: (orderTitle: string) => ({
     type: "order_difference",
-    message: `Diferencia detectada en «${orderTitle}». Revisa y resuelve el expediente.`,
+    message: `Diferencia detectada en «${orderTitle}». Revisa y resuelve la orden.`,
     roles: ccDireccion([...EXPEDIENTE_CLOSE_ROLES, "compras"] as Role[]),
   }),
   invoiceFirstRegistered: (folio: string, supplierName: string) => ({

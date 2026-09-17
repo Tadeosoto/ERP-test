@@ -23,6 +23,7 @@ import type {
   User,
 } from "@prisma/client";
 import { amountRemaining } from "@/lib/domain/transitions";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 
 export function asRole(value: string): Role {
   return value as Role;
@@ -84,6 +85,12 @@ export function mapPaymentRecord(r: PaymentRecord & { recordedBy: User }): Payme
 export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
   const paid = order.amountPaidSoFar;
   const total = order.totalAmount;
+  const basisTotal = paymentBasisTotal({
+    currency: order.currency,
+    totalAmount: total,
+    fxRate: order.fxRate,
+    totalAmountMxn: order.totalAmountMxn,
+  });
   return {
     id: order.id,
     obraId: order.obraId,
@@ -109,8 +116,12 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     expedienteName: order.expediente?.name ?? null,
     totalAmount: total,
     amountPaidSoFar: paid,
-    amountRemaining: amountRemaining(total, paid),
+    amountRemaining: amountRemaining(basisTotal, paid),
     currency: order.currency,
+    fxRate: order.fxRate ?? null,
+    fxRateDate: order.fxRateDate?.toISOString() ?? null,
+    totalAmountMxn: order.totalAmountMxn ?? null,
+    fxNote: order.fxNote ?? "",
     paymentLabel: asPaymentLabel(order.paymentLabel),
     paymentType: asPaymentType(order.paymentType),
     suggestedPaymentType: asPaymentType(order.suggestedPaymentType),

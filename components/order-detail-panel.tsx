@@ -37,6 +37,12 @@ import {
   canUploadPaymentReceipt,
 } from "@/lib/domain/transitions";
 import {
+  formatFxBanner,
+  orderTracksPaymentsInMxn,
+  paymentBasisCurrency,
+  paymentProgressPct,
+} from "@/lib/domain/order-fx";
+import {
   PAYMENT_LABEL_TEXT,
   PAYMENT_TYPE_TEXT,
 } from "@/lib/domain/labels";
@@ -124,7 +130,7 @@ export function OrderDetailPanel({
   async function deleteOrder() {
     const ok = await confirmDelete({
       title: "Eliminar orden de compra",
-      message: "Se eliminará esta orden de compra y su expediente asociado.",
+      message: "Se eliminará esta orden de compra y sus documentos asociados.",
     });
     if (!ok) return;
     setBusy(true);
@@ -175,7 +181,7 @@ export function OrderDetailPanel({
   async function deleteFile(fileId: string, fileName: string) {
     const ok = await confirmDelete({
       title: "Eliminar archivo",
-      message: `Se eliminará el archivo «${fileName}» del expediente.`,
+      message: `Se eliminará el archivo «${fileName}» de la orden.`,
       confirmLabel: "Eliminar archivo",
     });
     if (!ok) return;
@@ -204,12 +210,9 @@ export function OrderDetailPanel({
       ? formatAmountInput(order.amountRemaining)
       : payAmount;
 
-  const payPct = (() => {
-    const total = order.totalAmount > 0 ? order.totalAmount : 0;
-    return total > 0
-      ? Math.min(100, Math.max(0, Math.round((order.amountPaidSoFar / total) * 100)))
-      : 0;
-  })();
+  const payPct = paymentProgressPct(order);
+  const payCurrency = paymentBasisCurrency(order);
+  const fxBanner = formatFxBanner(order);
 
   const headerPanel = (
     <div className="dash-panel overflow-hidden p-3 sm:p-4">
@@ -264,20 +267,31 @@ export function OrderDetailPanel({
           <p className="mt-0.5 text-base font-bold tabular-nums text-orange-800 sm:text-xl">
             {formatMoney(order.totalAmount, order.currency)}
           </p>
+          {orderTracksPaymentsInMxn(order) && order.totalAmountMxn != null ? (
+            <p className="mt-0.5 text-[11px] font-medium text-orange-700/80">
+              = {formatMoney(order.totalAmountMxn, "MXN")}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-xl border border-teal-100 bg-teal-50/50 px-2.5 py-2 sm:px-3">
-          <p className="dash-label text-zinc-500">Pagado</p>
+          <p className="dash-label text-zinc-500">Pagado {orderTracksPaymentsInMxn(order) ? "(MXN)" : ""}</p>
           <p className="mt-0.5 text-base font-bold tabular-nums text-teal-800 sm:text-xl">
-            {formatMoney(order.amountPaidSoFar, order.currency)}
+            {formatMoney(order.amountPaidSoFar, payCurrency)}
           </p>
         </div>
         <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-2.5 py-2 sm:px-3">
-          <p className="dash-label text-zinc-500">Falta</p>
+          <p className="dash-label text-zinc-500">Falta {orderTracksPaymentsInMxn(order) ? "(MXN)" : ""}</p>
           <p className="mt-0.5 text-base font-bold tabular-nums text-amber-800 sm:text-xl">
-            {formatMoney(order.amountRemaining, order.currency)}
+            {formatMoney(order.amountRemaining, payCurrency)}
           </p>
         </div>
       </div>
+
+      {fxBanner ? (
+        <p className="mt-2 rounded-lg border border-sky-100 bg-sky-50/80 px-2.5 py-1.5 text-[11px] leading-snug text-sky-950 sm:text-xs">
+          {fxBanner}
+        </p>
+      ) : null}
 
       <div className="mt-2 flex items-center gap-2">
         <div
@@ -460,7 +474,7 @@ export function OrderDetailPanel({
           <div className="mt-4 flex flex-wrap gap-3">
             {canDeleteOrder(order.status, user.role, order.amountPaidSoFar) && (
               <button type="button" disabled={busy} className="btn-danger" onClick={() => void deleteOrder()}>
-                Eliminar OC / expediente
+                Eliminar OC
               </button>
             )}
           </div>
@@ -470,7 +484,7 @@ export function OrderDetailPanel({
           <div className="mt-4 space-y-3">
             <p className="text-base text-zinc-700">
               {order.status === "engineerRejected"
-                ? "Ingeniería solicitó corrección. Sube el PDF corregido (se suma al expediente; usa «Reemplazar» en la tabla para cambiar uno existente)."
+                ? "Ingeniería solicitó corrección. Sube el PDF corregido (se suma a la orden; usa «Reemplazar» en la tabla para cambiar uno existente)."
                 : order.status === "awaitingEngineer"
                   ? "Adjunta el PDF de la OC. Para corregir uno ya subido, usa «Reemplazar» en Documentos."
                   : "Agrega el PDF de la orden de compra. Los documentos anteriores no se borran al subir otro."}
@@ -504,7 +518,7 @@ export function OrderDetailPanel({
               <p className="text-sm font-semibold text-zinc-900">PDF firmado (obligatorio para aprobar)</p>
               <p className="mt-1 text-sm text-zinc-600">
                 {order.files.some((f) => f.kind === "oc_signed_pdf")
-                  ? "Ya hay un PDF firmado en el expediente. Puedes reemplazarlo o aprobar."
+                  ? "Ya hay un PDF firmado en la orden. Puedes reemplazarlo o aprobar."
                   : "Sube la OC firmada antes de pulsar Aprobar."}
               </p>
               <div className="mt-3">
@@ -614,10 +628,13 @@ export function OrderDetailPanel({
           <div className="mt-4 space-y-4 sm:max-w-md">
             <p className="text-base text-zinc-700">
               {order.paymentType === "parcialidades"
-                ? "Registra cada abono. El sistema lleva la cuenta de lo pagado y lo que falta."
+                ? "Registra cada abono en pesos. El sistema lleva el % pagado sobre el total en MXN."
                 : order.paymentType === "programado"
-                  ? "Registra el pago completo de la orden (programado)."
-                  : "Registra el pago inmediato del 100% de la orden."}
+                  ? "Registra el pago completo en pesos (programado)."
+                  : "Registra el pago inmediato del 100% en pesos."}
+              {orderTracksPaymentsInMxn(order)
+                ? ` OC en USD · abonos contra ${formatMoney(order.totalAmountMxn ?? 0, "MXN")}.`
+                : ""}
             </p>
             <input
               inputMode="decimal"
@@ -701,8 +718,8 @@ export function OrderDetailPanel({
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
               Agrega el PDF de la factura del proveedor (cada una se conserva). Para corregir una
-              existente, usa «Reemplazar» en Documentos. Compras, Administración, Recepción o
-              Contabilidad pueden cargarla.
+              existente, usa «Reemplazar» en Documentos. Paty (Compras) o Carolina (Administración)
+              pueden cargarla después de enviar el comprobante al proveedor.
             </p>
             <div>
               <p className="font-medium text-zinc-800">Factura (PDF)</p>
@@ -732,7 +749,7 @@ export function OrderDetailPanel({
         {canAccountingValidate(order.status, user.role) && (
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
-              Compara la OC, el comprobante de pago y la factura. Cierra el expediente o marca
+              Compara la OC, el comprobante de pago y la factura. Cierra la orden o marca
               diferencia si algo no cuadra.
             </p>
             <textarea
@@ -750,7 +767,7 @@ export function OrderDetailPanel({
                 onClick={() => void postAction({ action: "accounting_complete" })}
               >
                 <IconCheck />
-                Validar y cerrar expediente
+                Validar y cerrar orden
               </button>
               <button
                 type="button"
@@ -773,7 +790,7 @@ export function OrderDetailPanel({
         {canAccountingResolveDifference(order.status, user.role) && (
           <div className="mt-4 space-y-3">
             <p className="text-base text-zinc-700">
-              Tras corregir la diferencia, puedes cerrar el expediente.
+              Tras corregir la diferencia, puedes cerrar la orden.
             </p>
             <button
               type="button"
@@ -782,7 +799,7 @@ export function OrderDetailPanel({
               onClick={() => void postAction({ action: "accounting_resolve" })}
             >
               <IconCheck />
-              Resolver y cerrar expediente
+              Resolver y cerrar orden
             </button>
           </div>
         )}

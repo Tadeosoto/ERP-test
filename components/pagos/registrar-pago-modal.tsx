@@ -13,6 +13,7 @@ import {
   obraForOrder,
   parseAmountInput,
   payableOrders,
+  paymentFormCurrency,
   PAYMENT_METHODS,
   remainingAfterPayment,
   todayMxInput,
@@ -166,7 +167,7 @@ export function RegistrarPagoModal({
       amount: defaultAmount(first),
       paymentDate: todayMxInput(),
       paymentMethod: "Transferencia bancaria",
-      currency: first.currency || "MXN",
+      currency: paymentFormCurrency(first) || "MXN",
       concept: defaultConcept(first),
       notes: "",
       receiptComments: "",
@@ -200,7 +201,7 @@ export function RegistrarPagoModal({
       ...f,
       orderId,
       amount: defaultAmount(next),
-      currency: next.currency || "MXN",
+      currency: paymentFormCurrency(next) || "MXN",
       concept: defaultConcept(next),
     }));
   }

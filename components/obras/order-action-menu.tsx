@@ -171,7 +171,7 @@ function buildMenuEntries(
     const canDel = canDeleteOrder(order.status, role, order.amountPaidSoFar);
     entries.push({
       kind: "action",
-      label: "Eliminar OC / expediente",
+      label: "Eliminar OC",
       icon: "delete",
       onClick: onDelete,
       danger: true,
@@ -181,7 +181,7 @@ function buildMenuEntries(
   }
 
   entries.push(
-    { kind: "link", label: "Ver expediente", href: base, icon: "folder" },
+    { kind: "link", label: "Ver orden", href: base, icon: "folder" },
     { kind: "link", label: "Consultar pagos", href: `${base}#pagos`, icon: "pay" },
     { kind: "link", label: "Consultar facturas", href: `${base}#facturas`, icon: "invoice" }
   );
@@ -236,7 +236,7 @@ function countMenuRows(entries: MenuEntry[]): number {
 export function OrderActionMenu({
   order,
   onOrderMutated,
-  primaryLabel = "Expediente",
+  primaryLabel = "Orden",
   primaryHref,
   appearance = "default",
   showDropdown = true,
@@ -265,7 +265,7 @@ export function OrderActionMenu({
   const deleteOrder = useCallback(async () => {
     const ok = await confirmDelete({
       title: "Eliminar orden de compra",
-      message: "Se eliminará esta orden de compra y su expediente asociado.",
+      message: "Se eliminará esta orden de compra y sus documentos asociados.",
     });
     if (!ok) return;
     setBusy(true);

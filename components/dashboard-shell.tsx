@@ -33,7 +33,6 @@ function navSectionsForRole(role: Role): NavSection[] {
   const inicio: NavItem = { href: "/inicio", label: "Inicio", icon: "home" };
   const obras: NavItem = { href: "/obras", label: "Obras", icon: "grid" };
   const pagos: NavItem = { href: "/pagos", label: "Pagos", icon: "pay" };
-  const expedientes: NavItem = { href: "/expedientes", label: "Expedientes", icon: "folder" };
   const proveedores: NavItem = { href: "/proveedores", label: "Proveedores", icon: "suppliers" };
   const flujo: NavItem = { href: "/flujo", label: "Mapa del proceso", icon: "flow", shortLabel: "Mapa" };
   const movimientos: NavItem = {
@@ -82,7 +81,6 @@ function navSectionsForRole(role: Role): NavSection[] {
           facturas,
         ],
       },
-      { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
       { id: "consulta", label: "Consulta", items: [flujo, movimientos] },
     ];
@@ -100,7 +98,6 @@ function navSectionsForRole(role: Role): NavSection[] {
           { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
         ],
       },
-      { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
       { id: "consulta", label: "Consulta", items: [reportes, agregarFactura, flujo, movimientos] },
     ];
@@ -109,7 +106,6 @@ function navSectionsForRole(role: Role): NavSection[] {
   if (role === "ingeniero") {
     return [
       { id: "trabajo", label: "Trabajo", items: [inicio, solicitudes, ordenes] },
-      { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
@@ -117,8 +113,7 @@ function navSectionsForRole(role: Role): NavSection[] {
 
   if (role === "recepcion") {
     return [
-      { id: "trabajo", label: "Trabajo", items: [inicio] },
-      { id: "docs", label: "Documentos", items: [expedientes] },
+      { id: "trabajo", label: "Trabajo", items: [inicio, ordenes] },
       { id: "catalogos", label: "Catálogos", items: [obras] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
@@ -127,7 +122,6 @@ function navSectionsForRole(role: Role): NavSection[] {
   if (role === "compras") {
     return [
       { id: "trabajo", label: "Trabajo", items: [inicio, ordenes, solicitudesIngenieria] },
-      { id: "docs", label: "Documentos", items: [expedientes] },
       { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
@@ -135,8 +129,7 @@ function navSectionsForRole(role: Role): NavSection[] {
 
   // contabilidad y demás
   return [
-    { id: "trabajo", label: "Trabajo", items: [inicio] },
-    { id: "docs", label: "Documentos", items: [expedientes] },
+    { id: "trabajo", label: "Trabajo", items: [inicio, ordenes] },
     { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
     { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
   ];
@@ -148,7 +141,7 @@ function mobilePrimaryHrefs(role: Role): string[] {
   if (role === "direccion") return ["/inicio", "/pagos", "/ordenes", "/reportes"];
   if (role === "compras") return ["/inicio", "/ordenes", "/solicitudes-ingenieria", "/obras"];
   if (role === "ingeniero") return ["/inicio", "/solicitudes/nueva", "/ordenes", "/obras"];
-  return ["/inicio", "/pagos", "/expedientes", "/obras"];
+  return ["/inicio", "/pagos", "/ordenes", "/obras"];
 }
 
 function NavIcon({ name }: { name: string }) {

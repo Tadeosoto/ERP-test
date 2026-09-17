@@ -153,8 +153,8 @@ export function ContabilidadRecepcionHomeDashboard({
 
   const roleSubtitle =
     role === "contabilidad"
-      ? "Consulta documentos, pagos y expedientes del sistema."
-      : "Consulta expedientes, sube facturas de OC y gastos directos (Proceso B).";
+      ? "Consulta documentos, pagos y órdenes de compra del sistema."
+      : "Consulta órdenes, sube facturas de OC y gastos directos (Proceso B).";
 
   return (
     <div className="home-dashboard flex flex-col gap-3 pb-4 sm:gap-3 lg:gap-3">
@@ -220,7 +220,7 @@ export function ContabilidadRecepcionHomeDashboard({
               type="search"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Buscar expediente"
+              placeholder="Buscar orden"
               className="block w-full rounded-2xl border border-zinc-200 bg-white py-3 pl-10 pr-4 text-sm shadow-sm focus:border-orange-300 focus:outline-none focus:ring-1 focus:ring-orange-200"
             />
           </div>
@@ -229,7 +229,7 @@ export function ContabilidadRecepcionHomeDashboard({
           {role === "recepcion" ? (
             <>
               <QuickActionButton href="/pagos#proceso-b" label="Gastos Proceso B" icon="pay" />
-              <QuickActionButton href="/expedientes" label="Ver expedientes" icon="pending" />
+              <QuickActionButton href="/ordenes" label="Ver órdenes" icon="pending" />
               <QuickActionButton href="/obras" label="Ver obras" icon="obras" />
             </>
           ) : (

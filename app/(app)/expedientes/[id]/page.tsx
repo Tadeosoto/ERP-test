@@ -1,7 +1,6 @@
-"use client";
+import { redirect } from "next/navigation";
 
-import { ExpedienteDetailView } from "@/components/expedientes/expediente-detail-view";
-
+/** Módulo Expedientes retirado: los documentos viven en cada OC. */
 export default function ExpedienteDetailPage() {
-  return <ExpedienteDetailView />;
+  redirect("/ordenes");
 }

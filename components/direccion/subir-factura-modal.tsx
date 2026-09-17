@@ -1,12 +1,10 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
-import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import type { ObraDto, SupplierDto } from "@/lib/domain/types";
-import { formatAmountInput, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
+import { parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 
 const inputCls =
   "block w-full min-h-11 rounded-xl border border-zinc-200 bg-white px-3 text-sm shadow-sm focus:border-violet-300 focus:outline-none focus:ring-1 focus:ring-violet-200";
@@ -53,8 +51,6 @@ export function SubirFacturaModal({
   const [comment, setComment] = useState("");
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [xmlFile, setXmlFile] = useState<File | null>(null);
-  const [expedienteId, setExpedienteId] = useState("");
-  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
 
@@ -68,7 +64,6 @@ export function SubirFacturaModal({
     setComment("");
     setPdfFile(null);
     setXmlFile(null);
-    setExpedienteId("");
     setError("");
   }, [open]);
 
@@ -105,7 +100,6 @@ export function SubirFacturaModal({
           currency: "MXN",
           invoiceDate,
           comment: comment.trim(),
-          expedienteId: expedienteId || null,
         }),
       });
       const data = (await res.json()) as { commitment?: { id: string; invoiceFolio: string }; error?: string };
@@ -175,16 +169,6 @@ export function SubirFacturaModal({
   }
 
   return (
-    <>
-    <NuevoExpedienteModal
-      open={nuevoExpedienteOpen}
-      onClose={() => setNuevoExpedienteOpen(false)}
-      obras={obras}
-      onSaved={(e) => {
-        setExpedienteId(e.id);
-        setNuevoExpedienteOpen(false);
-      }}
-    />
     <div className="fixed inset-0 z-50 flex items-end justify-center bg-black/40 p-4 sm:items-center">
       <div
         role="dialog"
@@ -225,16 +209,6 @@ export function SubirFacturaModal({
               ))}
             </select>
           </Field>
-
-          <div>
-            <ExpedienteCombobox
-              value={expedienteId}
-              onChange={(id) => setExpedienteId(id)}
-              allowCreate
-              onCreateClick={() => setNuevoExpedienteOpen(true)}
-              label="Expediente (contenedor)"
-            />
-          </div>
 
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
             <Field label="Monto total factura" required>
@@ -294,6 +268,5 @@ export function SubirFacturaModal({
         </form>
       </div>
     </div>
-    </>
   );
 }

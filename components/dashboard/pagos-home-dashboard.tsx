@@ -14,13 +14,15 @@ import { ProcessAHomeMap } from "@/components/dashboard/process-a-home-map";
 import { OcLink } from "@/components/ui/oc-link";
 import { RegistrarPagoModal } from "@/components/pagos/registrar-pago-modal";
 import {
-  filterPagosQueueOrders,
+  isPagosActiveOrder,
   PAGOS_PAYMENT_STATUS_LABEL,
   PAGOS_PAYMENT_STATUS_TONE,
   pagosHomeKpiCounts,
   pagosPaymentDisplayStatus,
 } from "@/lib/dashboard/pagos-dashboard";
 import { isActivePartial, isPendingAuthorization } from "@/lib/dashboard/direccion-dashboard";
+import { canUploadInvoice } from "@/lib/domain/transitions";
+import { formatFxBanner, orderTracksPaymentsInMxn, paymentProgressPct } from "@/lib/domain/order-fx";
 import { payableOrders } from "@/lib/pagos/registrar-pago-form";
 import type {
   InvoiceFirstCommitmentDto,
@@ -30,9 +32,9 @@ import type {
 } from "@/lib/domain/types";
 import { formatMoney } from "@/lib/format";
 
-const QUEUE_LIMIT = 8;
+const AUTH_LIMIT = 12;
 
-type PagosHomeTab = "pagar" | "autorizar" | "parciales" | "compromisos" | "mapa";
+type PagosHomeTab = "activas" | "autorizar" | "parciales" | "compromisos" | "mapa";
 
 export function PagosHomeDashboard({
   userName,
@@ -55,7 +57,7 @@ export function PagosHomeDashboard({
   onOrdersMutated?: () => void;
   onCommitmentsMutated?: () => void;
 }) {
-  const [tab, setTab] = useState<PagosHomeTab>("pagar");
+  const [tab, setTab] = useState<PagosHomeTab>("activas");
   const [pagoModalOpen, setPagoModalOpen] = useState(false);
   const [pagoModalOrderId, setPagoModalOrderId] = useState<string | null>(null);
 
@@ -66,7 +68,7 @@ export function PagosHomeDashboard({
 
   const partials = useMemo(() => orders.filter(isActivePartial), [orders]);
   const authorizeQueue = useMemo(
-    () => orders.filter(isPendingAuthorization).slice(0, QUEUE_LIMIT),
+    () => orders.filter(isPendingAuthorization).slice(0, AUTH_LIMIT),
     [orders]
   );
 
@@ -78,6 +80,25 @@ export function PagosHomeDashboard({
     [invoiceCommitments]
   );
 
+  const activeOrders = useMemo(
+    () =>
+      orders
+        .filter(isPagosActiveOrder)
+        .sort((a, b) => {
+          const rank = (o: PurchaseOrderDto) => {
+            if (o.status === "awaitingPayment") return 0;
+            if (o.status === "paid" || o.status === "awaitingInvoice") return 1;
+            if (o.status === "awaitingPatyDeadline") return 2;
+            return 3;
+          };
+          const ra = rank(a);
+          const rb = rank(b);
+          if (ra !== rb) return ra - rb;
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        }),
+    [orders]
+  );
+
   const saldoPendiente = useMemo(
     () =>
       orders
@@ -86,64 +107,33 @@ export function PagosHomeDashboard({
     [orders]
   );
 
-  const currency =
-    orders.find((o) => o.status === "awaitingPayment")?.currency ??
-    orders[0]?.currency ??
-    "MXN";
-
-  const payQueue = useMemo(
-    () =>
-      filterPagosQueueOrders({
-        orders,
-        search: "",
-        obraId: "all",
-        supplier: "all",
-        estado: "all",
-      }).slice(0, QUEUE_LIMIT),
-    [orders]
-  );
-
-  const queueTotal = useMemo(
-    () =>
-      filterPagosQueueOrders({
-        orders,
-        search: "",
-        obraId: "all",
-        supplier: "all",
-        estado: "all",
-      }).length,
-    [orders]
-  );
-
   const payable = useMemo(() => payableOrders(orders), [orders]);
 
   const pulse = useMemo(() => {
-    if (counts.pagosPorRealizar === 0 && authorizeQueue.length === 0) {
+    if (counts.pagosPorRealizar === 0 && authorizeQueue.length === 0 && activeOrders.length === 0) {
       return "Nada urgente. Autoriza OC, registra pagos o revisa compromisos.";
     }
     const bits: string[] = [];
     if (authorizeQueue.length > 0) {
-      bits.push(
-        `${authorizeQueue.length} por autorizar (tú o Dirección)`
-      );
+      bits.push(`${authorizeQueue.length} por autorizar (tú o Dirección)`);
     }
     if (counts.pagosPorRealizar > 0) {
       bits.push(
         `${counts.pagosPorRealizar} lista${counts.pagosPorRealizar === 1 ? "" : "s"} para pagar`
       );
     }
-    return bits.join(" · ");
-  }, [counts.pagosPorRealizar, authorizeQueue.length]);
+    return bits.join(" · ") || `${activeOrders.length} órdenes activas`;
+  }, [counts.pagosPorRealizar, authorizeQueue.length, activeOrders.length]);
 
   const tabs = useMemo(
     () => [
-      { id: "pagar", label: "Órdenes de compra pendientes", count: counts.pagosPorRealizar },
+      { id: "activas", label: "Órdenes activas", count: activeOrders.length },
       { id: "autorizar", label: "Autorizar", count: authorizeQueue.length },
       { id: "parciales", label: "Parciales", count: partials.length },
       { id: "compromisos", label: "Compromisos" },
       { id: "mapa", label: "Mapa" },
     ],
-    [counts.pagosPorRealizar, authorizeQueue.length, partials.length]
+    [activeOrders.length, authorizeQueue.length, partials.length]
   );
 
   function openRegistrarPago(orderId?: string | null) {
@@ -151,10 +141,89 @@ export function PagosHomeDashboard({
     setPagoModalOpen(true);
   }
 
-  function renderOrderRow(
-    order: PurchaseOrderDto,
-    action: "pagar" | "revisar"
-  ) {
+  function renderActiveRow(order: PurchaseOrderDto) {
+    const status = pagosPaymentDisplayStatus(order);
+    const canPay = order.status === "awaitingPayment" && Boolean(order.paymentType);
+    const canInvoice = canUploadInvoice(order.status, "pagos");
+    const pct = paymentProgressPct(order);
+    const payCurrency = orderTracksPaymentsInMxn(order) ? "MXN" : order.currency;
+    const amount =
+      order.status === "awaitingPayment" || order.amountRemaining > 0
+        ? order.amountRemaining
+        : orderTracksPaymentsInMxn(order)
+          ? (order.totalAmountMxn ?? order.totalAmount)
+          : order.totalAmount;
+    const fx = formatFxBanner(order);
+
+    return (
+      <li key={order.id} className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:flex-wrap sm:items-center sm:px-5">
+        <div className="min-w-0 flex-1">
+          <OcLink order={order} showPdfIcon className="text-sm" />
+          <p className="dash-caption mt-0.5 truncate">
+            {order.obraName} · {order.supplierName}
+          </p>
+          {fx ? <p className="mt-1 text-[11px] text-sky-800">{fx}</p> : null}
+          {(canPay || order.amountPaidSoFar > 0) && (
+            <div className="mt-2 max-w-xs">
+              <div className="flex items-center justify-between text-[11px] text-zinc-500">
+                <span>Pagado en pesos</span>
+                <span className="font-semibold tabular-nums text-zinc-700">{pct}%</span>
+              </div>
+              <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-zinc-100">
+                <div className="h-full rounded-full bg-orange-500" style={{ width: `${pct}%` }} />
+              </div>
+            </div>
+          )}
+        </div>
+        <span
+          className={`inline-flex shrink-0 rounded-full px-2.5 py-1 text-xs font-semibold ring-1 ring-inset ${PAGOS_PAYMENT_STATUS_TONE[status]}`}
+        >
+          {order.status === "awaitingInvoice"
+            ? "Esperando factura"
+            : order.status === "paid"
+              ? "Saldada · factura"
+              : PAGOS_PAYMENT_STATUS_LABEL[status]}
+        </span>
+        <span className="shrink-0 text-base font-bold tabular-nums text-zinc-900">
+          {formatMoney(amount, payCurrency)}
+          {order.currency === "USD" && orderTracksPaymentsInMxn(order) ? (
+            <span className="ml-1 text-xs font-medium text-zinc-500">
+              ({formatMoney(order.totalAmount, "USD")})
+            </span>
+          ) : null}
+        </span>
+        <div className="flex shrink-0 flex-wrap gap-2">
+          {canPay ? (
+            <button
+              type="button"
+              onClick={() => openRegistrarPago(order.id)}
+              className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs"
+            >
+              Abonar / Pagar
+            </button>
+          ) : null}
+          {canInvoice ? (
+            <Link
+              href={`/ordenes/${order.id}#tarea`}
+              className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
+            >
+              Subir factura
+            </Link>
+          ) : null}
+          {!canPay && !canInvoice ? (
+            <Link
+              href={`/ordenes/${order.id}`}
+              className="btn-secondary !min-h-9 !px-3 !py-1.5 !text-xs"
+            >
+              Abrir
+            </Link>
+          ) : null}
+        </div>
+      </li>
+    );
+  }
+
+  function renderSimpleRow(order: PurchaseOrderDto, action: "pagar" | "revisar") {
     const status = pagosPaymentDisplayStatus(order);
     const amount =
       order.status === "awaitingPayment" ? order.amountRemaining : order.totalAmount;
@@ -172,7 +241,7 @@ export function PagosHomeDashboard({
           {PAGOS_PAYMENT_STATUS_LABEL[status]}
         </span>
         <span className="shrink-0 text-base font-bold tabular-nums text-zinc-900">
-          {formatMoney(amount, order.currency)}
+          {formatMoney(amount, orderTracksPaymentsInMxn(order) ? "MXN" : order.currency)}
         </span>
         {action === "pagar" ? (
           <button
@@ -222,8 +291,8 @@ export function PagosHomeDashboard({
       <div className="grid gap-4 lg:grid-cols-12">
         <div className="lg:col-span-6">
           <HomeHeroMetric
-            label="Saldo por pagar"
-            value={formatMoney(saldoPendiente, currency)}
+            label="Saldo por pagar (MXN)"
+            value={formatMoney(saldoPendiente, "MXN")}
             hint={
               counts.pagosPorRealizar > 0
                 ? `${counts.pagosPorRealizar} OC en cola`
@@ -233,12 +302,12 @@ export function PagosHomeDashboard({
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-6">
           <CalmKpiTile
-            label="Órdenes pendientes"
-            value={counts.pagosPorRealizar}
-            sub="Por pagar"
+            label="Órdenes activas"
+            value={activeOrders.length}
+            sub="Para abonar o factura"
             tint="orange"
-            selected={tab === "pagar"}
-            onClick={() => setTab("pagar")}
+            selected={tab === "activas"}
+            onClick={() => setTab("activas")}
           />
           <CalmKpiTile
             label="Parciales"
@@ -264,7 +333,7 @@ export function PagosHomeDashboard({
         <HomeLauncherLink href="/pagos" label="Centro de pagos" primary />
         <HomeLauncherLink href="/compromisos" label="Compromisos" />
         <HomeLauncherLink href="/obras" label="Obras" />
-        <HomeLauncherLink href="/expedientes" label="Expedientes" />
+        <HomeLauncherLink href="/ordenes" label="Órdenes" />
       </div>
 
       {tab === "mapa" ? (
@@ -284,17 +353,17 @@ export function PagosHomeDashboard({
         <section className="dash-panel">
           <DashPanelHeader
             title={
-              tab === "pagar"
-                ? "Órdenes de compra pendientes"
+              tab === "activas"
+                ? "Órdenes de compra activas"
                 : tab === "autorizar"
                   ? "Autorizar OC"
                   : "Pagos parciales"
             }
             meta={
-              tab === "pagar"
-                ? queueTotal === 0
-                  ? "Cola vacía"
-                  : `${queueTotal} en cola`
+              tab === "activas"
+                ? activeOrders.length === 0
+                  ? "Sin órdenes activas"
+                  : `${activeOrders.length} activas · abona o sube factura desde aquí`
                 : tab === "autorizar"
                   ? authorizeQueue.length === 0
                     ? "Nada por autorizar"
@@ -315,7 +384,7 @@ export function PagosHomeDashboard({
               </p>
             ) : (
               <ul className="divide-y divide-zinc-100">
-                {authorizeQueue.map((o) => renderOrderRow(o, "revisar"))}
+                {authorizeQueue.map((o) => renderSimpleRow(o, "revisar"))}
               </ul>
             )
           ) : tab === "parciales" ? (
@@ -325,17 +394,15 @@ export function PagosHomeDashboard({
               </p>
             ) : (
               <ul className="divide-y divide-zinc-100">
-                {partials.slice(0, QUEUE_LIMIT).map((o) => renderOrderRow(o, "pagar"))}
+                {partials.map((o) => renderSimpleRow(o, "pagar"))}
               </ul>
             )
-          ) : payQueue.length === 0 ? (
+          ) : activeOrders.length === 0 ? (
             <p className="dash-body px-4 py-12 text-center text-zinc-500 sm:px-5">
-              Nada en cola. Cuando una OC esté autorizada aparece aquí para pagar.
+              No hay órdenes activas. Cuando una OC esté autorizada aparece aquí para abonar.
             </p>
           ) : (
-            <ul className="divide-y divide-zinc-100">
-              {payQueue.map((o) => renderOrderRow(o, "pagar"))}
-            </ul>
+            <ul className="divide-y divide-zinc-100">{activeOrders.map(renderActiveRow)}</ul>
           )}
         </section>
       )}

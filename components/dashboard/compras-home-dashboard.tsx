@@ -182,7 +182,7 @@ export function ComprasHomeDashboard({
         <HomeLauncherLink href="/solicitudes-ingenieria" label="Solicitudes Ingeniería" primary />
         <HomeLauncherLink href="/ordenes" label="Todas las OC" />
         <HomeLauncherLink href="/proveedores" label="Proveedores" />
-        <HomeLauncherLink href="/expedientes" label="Expedientes" />
+        <HomeLauncherLink href="/obras" label="Obras" />
       </div>
 
       {tab === "mapa" ? (

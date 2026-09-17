@@ -55,7 +55,7 @@ export const REPORTES_TABS: { key: ReportesTab; label: string }[] = [
   { key: "pagos", label: "Pagos" },
   { key: "proveedores", label: "Proveedores" },
   { key: "obras", label: "Obras" },
-  { key: "expedientes", label: "Expedientes" },
+  { key: "expedientes", label: "Órdenes" },
 ];
 
 export const REPORTES_COMPARE_OPTIONS: { value: ReportesCompareMode; label: string }[] = [
@@ -407,7 +407,7 @@ export function reportesKpis(
     },
     {
       key: "expedientes_activos",
-      label: "Expedientes activos",
+      label: "Órdenes activas",
       value: exp.enProceso + exp.atencion,
       displayAsCount: true,
       trend: null,

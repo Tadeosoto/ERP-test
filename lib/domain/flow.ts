@@ -57,7 +57,7 @@ export const FLOW_STEPS_A: readonly FlowStepDef[] = [
   {
     step: 7,
     shortTitle: "Saldada",
-    detail: "Total pagado. Compras coordina factura con el proveedor; todos consultan documentos",
+    detail: "Total pagado. Compras o Administración suben la factura del proveedor",
     primaryRole: "compras",
   },
 ] as const;
@@ -266,9 +266,9 @@ export function describeGate(status: OrderStatus, paymentType?: PaymentType | nu
       }
       return "OC en órdenes de compra pendientes. Carolina registra el pago y sube el comprobante.";
     case "paid":
-      return "Total saldado. Compras envía comprobante al proveedor y registra la factura.";
+      return "Total saldado. Compras o Administración envían el comprobante al proveedor y pueden subir la factura.";
     case "awaitingInvoice":
-      return "Pueden subir el PDF de la factura del proveedor. La OC ya está saldada.";
+      return "Compras o Administración (Carolina) pueden subir el PDF de la factura del proveedor.";
     case "invoiceReceived":
       return "Factura registrada. Pueden consultar documentos de la OC y los pagos.";
     case "difference":
@@ -305,7 +305,7 @@ export function rolePlaybook(role: Role): string[] {
       return [
         "Recibe solicitudes de materiales, elige proveedor y arma la OC con plazos y PDF.",
         "Si Ingeniería pide corrección, actualiza y reenvía la OC.",
-        "Tras el pago, manda el comprobante al proveedor y registra la factura.",
+        "Tras el pago, manda el comprobante al proveedor (fuera de la app) y sube la factura junto con Administración.",
       ];
     case "ingeniero":
       return [
@@ -315,9 +315,9 @@ export function rolePlaybook(role: Role): string[] {
       ];
     case "pagos":
       return [
-        "Autoriza OC (tú o Dirección; un sí basta) y registra pagos con comprobante.",
-        "Si hay plazos, sube comprobantes hasta saldar el total de la OC.",
-        "Los compromisos recurrentes son un proceso aparte de servicios.",
+        "Autoriza OC (tú o Dirección; un sí basta) y registra abonos en pesos desde Inicio.",
+        "Si la OC está en USD, el total ya viene convertido a MXN con el FIX de Banxico del día.",
+        "Tras el pago, Compras o tú pueden subir la factura del proveedor a la OC.",
       ];
     case "recepcion":
       return [

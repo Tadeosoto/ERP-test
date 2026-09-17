@@ -2,8 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AgregarFacturaCommitmentsList } from "@/components/direccion/agregar-factura-commitments-list";
-import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
-import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { DireccionHomeSidebar } from "@/components/dashboard/direccion-home-sidebar";
 import { LoadingScreen } from "@/components/ui/loading-screen";
@@ -110,8 +108,6 @@ export function AgregarFacturaView() {
   const [error, setError] = useState("");
   const [form, setForm] = useState(EMPTY_FORM);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
-  const [expedienteId, setExpedienteId] = useState("");
-  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
@@ -174,10 +170,9 @@ export function AgregarFacturaView() {
     }
   }
 
-  function resetForm(keepExpediente = false) {
+  function resetForm() {
     setForm({ ...EMPTY_FORM, invoiceDate: new Date().toISOString().slice(0, 10) });
     setPdfFile(null);
-    if (!keepExpediente) setExpedienteId("");
     setError("");
   }
 
@@ -204,10 +199,6 @@ export function AgregarFacturaView() {
       setError("Adjunta el PDF de la factura.");
       return;
     }
-    if (!expedienteId) {
-      setError("Selecciona o crea el expediente donde se guardará esta factura.");
-      return;
-    }
     const amount = parseAmountInput(form.totalAmount);
     if (!(amount > 0)) {
       setError("Indica un monto total válido.");
@@ -229,7 +220,6 @@ export function AgregarFacturaView() {
           currency: form.currency,
           invoiceDate: form.invoiceDate,
           comment: form.comment.trim(),
-          expedienteId: expedienteId || null,
         }),
       });
       const data = (await res.json()) as { commitment?: { id: string; invoiceFolio: string }; error?: string };
@@ -244,10 +234,8 @@ export function AgregarFacturaView() {
       const upData = (await up.json()) as { error?: string };
       if (!up.ok) throw new Error(upData.error ?? "Error al subir el PDF.");
 
-      showSuccess(
-        `Solicitud ${data.commitment.invoiceFolio} registrada en el expediente. Puedes agregar otra factura al mismo expediente abajo.`
-      );
-      resetForm(true);
+      showSuccess(`Factura ${data.commitment.invoiceFolio} registrada. Administración fue notificada.`);
+      resetForm();
       setActiveKpi("pendientes");
       await load();
     } catch (err) {
@@ -263,25 +251,16 @@ export function AgregarFacturaView() {
 
   return (
     <div className="flex flex-col gap-4 pb-6">
-      <NuevoExpedienteModal
-        open={nuevoExpedienteOpen}
-        onClose={() => setNuevoExpedienteOpen(false)}
-        obras={obras}
-        onSaved={(e) => {
-          setExpedienteId(e.id);
-          setNuevoExpedienteOpen(false);
-        }}
-      />
       <header>
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Agregar Factura</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Solicita la apertura de un expediente a partir de una factura cuando no existe Orden de Compra.
+          Registra una factura cuando aún no existe Orden de Compra (Proceso C).
         </p>
       </header>
 
       <div className="grid grid-cols-1 gap-3 sm:grid-cols-3">
         <SummaryCard
-          label="Facturas pendientes de abrir expediente"
+          label="Facturas pendientes de OC"
           value={kpis.pendientesExpediente}
           accent="border-l-violet-400 bg-violet-50/35"
           iconBg="bg-violet-100 text-violet-800"
@@ -415,19 +394,6 @@ export function AgregarFacturaView() {
                   ))}
                 </select>
               </Field>
-              <div className="sm:col-span-2">
-                <ExpedienteCombobox
-                  value={expedienteId}
-                  onChange={(id) => setExpedienteId(id)}
-                  required
-                  allowCreate
-                  onCreateClick={() => setNuevoExpedienteOpen(true)}
-                  label="Expediente (contenedor)"
-                />
-                <p className="mt-1 text-xs text-zinc-500">
-                  La factura quedará visible en la página individual de este expediente.
-                </p>
-              </div>
               <div className="sm:col-span-2">
                 <Field label="Comentarios">
                   <textarea

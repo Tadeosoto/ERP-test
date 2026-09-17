@@ -33,6 +33,7 @@ import {
 } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType, OrderStatus } from "@/lib/domain/types";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -215,12 +216,24 @@ export async function POST(request: Request, ctx: Ctx) {
         return NextResponse.json({ error: "Modalidad de pago no definida." }, { status: 400 });
       }
       const amount = Number(body.amount);
-      const result = registerPaymentAmount({
+      const basisTotal = paymentBasisTotal({
+        currency: order.currency,
         totalAmount: order.totalAmount,
+        fxRate: order.fxRate,
+        totalAmountMxn: order.totalAmountMxn,
+      });
+      const result = registerPaymentAmount({
+        totalAmount: basisTotal,
         currentPaid: order.amountPaidSoFar,
         paymentAmount: amount,
         paymentType,
       });
+
+      const fxHint =
+        order.currency.toUpperCase() === "USD" && order.fxRate
+          ? `\n(Abono en MXN · OC USD · TC ${order.fxRate})`
+          : "";
+      const notes = `${body.notes?.trim() ?? ""}${fxHint}`.trim();
 
       const updated = await prisma.$transaction(async (tx) => {
         await tx.paymentRecord.create({
@@ -228,7 +241,7 @@ export async function POST(request: Request, ctx: Ctx) {
             orderId: id,
             amount,
             reference: body.reference?.trim() ?? "",
-            notes: body.notes?.trim() ?? "",
+            notes,
             recordedByUserId: user.id,
           },
         });
@@ -270,13 +283,19 @@ export async function POST(request: Request, ctx: Ctx) {
           orderBy: { createdAt: "asc" },
         });
         const amountPaidSoFar = remaining.reduce((sum, row) => sum + row.amount, 0);
-        const paymentLabel = computePaymentLabel(order.totalAmount, amountPaidSoFar);
-        const nextStatus = statusAfterPaymentRemoval(status, order.totalAmount, amountPaidSoFar);
+        const basisTotal = paymentBasisTotal({
+          currency: order.currency,
+          totalAmount: order.totalAmount,
+          fxRate: order.fxRate,
+          totalAmountMxn: order.totalAmountMxn,
+        });
+        const paymentLabel = computePaymentLabel(basisTotal, amountPaidSoFar);
+        const nextStatus = statusAfterPaymentRemoval(status, basisTotal, amountPaidSoFar);
 
         return tx.purchaseOrder.update({
           where: { id },
           data: {
-            amountPaidSoFar: amountPaidSoFar >= order.totalAmount - 0.01 ? order.totalAmount : amountPaidSoFar,
+            amountPaidSoFar: amountPaidSoFar >= basisTotal - 0.01 ? basisTotal : amountPaidSoFar,
             paymentLabel,
             status: nextStatus,
           },

@@ -87,6 +87,10 @@ export interface PurchaseOrderDto {
   amountPaidSoFar: number;
   amountRemaining: number;
   currency: string;
+  fxRate: number | null;
+  fxRateDate: string | null;
+  totalAmountMxn: number | null;
+  fxNote: string;
   paymentLabel: PaymentLabel;
   paymentType: PaymentType | null;
   suggestedPaymentType: PaymentType | null;

@@ -4,15 +4,12 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { ProveedorModal } from "@/components/compras/proveedor-modal";
-import { ExpedienteCombobox } from "@/components/expedientes/expediente-combobox";
-import { NuevoExpedienteModal } from "@/components/expedientes/nuevo-expediente-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import { canComprasEditOrder, canCreateOrder } from "@/lib/domain/transitions";
-import { canCreateExpedientes } from "@/lib/domain/expedientes";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
@@ -229,6 +226,14 @@ function NuevaOcWizard() {
   const [totalAmount, setTotalAmount] = useState("");
   const [currency, setCurrency] = useState("MXN");
   const [documentDate, setDocumentDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const [fxPreview, setFxPreview] = useState<{
+    rate: number;
+    date: string;
+    mxnAmount: number | null;
+    note: string;
+    loading: boolean;
+    error: string;
+  } | null>(null);
   const [pdfFile, setPdfFile] = useState<File | null>(null);
   const [uploadedPdf, setUploadedPdf] = useState<{ name: string; size: number; at: string } | null>(null);
   const [assignedEngineerId, setAssignedEngineerId] = useState("");
@@ -237,7 +242,7 @@ function NuevaOcWizard() {
   const [materialRequestId, setMaterialRequestId] = useState<string | null>(solicitudIdParam);
   const [invoiceFirstCommitmentId, setInvoiceFirstCommitmentId] = useState<string | null>(compromisoFacturaIdParam);
   const [expedienteId, setExpedienteId] = useState("");
-  const [nuevoExpedienteOpen, setNuevoExpedienteOpen] = useState(false);
+  // expedienteId se conserva opcional en API por compatibilidad; ya no se muestra en UI.
   const [solicitudBanner, setSolicitudBanner] = useState("");
   const [history, setHistory] = useState<{ at: string; text: string }[]>([]);
 
@@ -250,6 +255,64 @@ function NuevaOcWizard() {
   const isProcesoC = sendTarget === "proceso_c";
   const engineerUserIdForApi = isProcesoC ? null : assignedEngineerId || null;
   const sendSelectValue = isProcesoC ? DEST_PROCESO_C : assignedEngineerId;
+
+  useEffect(() => {
+    if (currency !== "USD") {
+      setFxPreview(null);
+      return;
+    }
+    const amount = parseAmountInput(totalAmount);
+    const date = documentDate || new Date().toISOString().slice(0, 10);
+    let cancelled = false;
+    setFxPreview((prev) => ({
+      rate: prev?.rate ?? 0,
+      date: prev?.date ?? date,
+      mxnAmount: prev?.mxnAmount ?? null,
+      note: prev?.note ?? "",
+      loading: true,
+      error: "",
+    }));
+    const t = window.setTimeout(() => {
+      void (async () => {
+        try {
+          const params = new URLSearchParams({ date });
+          if (amount > 0) params.set("amount", String(amount));
+          const res = await fetch(`/api/fx/usd-mxn?${params}`, { credentials: "include" });
+          const data = (await res.json()) as {
+            rate?: number;
+            date?: string;
+            mxnAmount?: number | null;
+            note?: string;
+            error?: string;
+          };
+          if (cancelled) return;
+          if (!res.ok) throw new Error(data.error ?? "No se pudo obtener el tipo de cambio Banxico.");
+          setFxPreview({
+            rate: data.rate ?? 0,
+            date: data.date ?? date,
+            mxnAmount: data.mxnAmount ?? null,
+            note: data.note ?? "",
+            loading: false,
+            error: "",
+          });
+        } catch (e) {
+          if (cancelled) return;
+          setFxPreview({
+            rate: 0,
+            date,
+            mxnAmount: null,
+            note: "",
+            loading: false,
+            error: e instanceof Error ? e.message : "Error Banxico",
+          });
+        }
+      })();
+    }, 350);
+    return () => {
+      cancelled = true;
+      window.clearTimeout(t);
+    };
+  }, [currency, totalAmount, documentDate]);
 
   const loadCatalogs = useCallback(async () => {
     const [oRes, sRes, uRes] = await Promise.all([
@@ -655,15 +718,6 @@ function NuevaOcWizard() {
           setSupplierName(s.displayName);
         }}
       />
-      <NuevoExpedienteModal
-        open={nuevoExpedienteOpen}
-        onClose={() => setNuevoExpedienteOpen(false)}
-        obras={obras}
-        onSaved={(e) => {
-          setExpedienteId(e.id);
-          setNuevoExpedienteOpen(false);
-        }}
-      />
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
@@ -769,18 +823,6 @@ function NuevaOcWizard() {
                     className={inputCls}
                   />
                 </label>
-                <div className="sm:col-span-2">
-                  <ExpedienteCombobox
-                    value={expedienteId}
-                    onChange={(id) => setExpedienteId(id)}
-                    allowCreate={user ? canCreateExpedientes(user.role) : false}
-                    onCreateClick={() => setNuevoExpedienteOpen(true)}
-                    label="Expediente (contenedor)"
-                  />
-                  <p className="mt-1 text-xs text-zinc-500">
-                    Agrupa esta OC con otros pagos del mismo asunto. Puedes crearlo después si aún no existe.
-                  </p>
-                </div>
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-medium text-zinc-800">
                     Modalidad de pago acordada <span className="text-red-500">*</span>
@@ -1009,6 +1051,42 @@ function NuevaOcWizard() {
                       <option value="USD">USD — Dólar</option>
                     </select>
                   </label>
+                  {currency === "USD" && (
+                    <div className="sm:col-span-2 rounded-xl border border-sky-100 bg-sky-50/70 px-3 py-3 text-sm text-sky-950">
+                      {fxPreview?.loading ? (
+                        <p>Consultando tipo de cambio Banxico FIX…</p>
+                      ) : fxPreview?.error ? (
+                        <p className="text-red-700">{fxPreview.error}</p>
+                      ) : fxPreview ? (
+                        <>
+                          <p className="font-semibold">Conversión a pesos (Banxico FIX)</p>
+                          <p className="mt-1 text-xs sm:text-sm">
+                            TC del día {fxPreview.date}:{" "}
+                            <span className="font-bold tabular-nums">
+                              {fxPreview.rate.toLocaleString("es-MX", {
+                                minimumFractionDigits: 4,
+                                maximumFractionDigits: 4,
+                              })}{" "}
+                              MXN/USD
+                            </span>
+                          </p>
+                          {fxPreview.mxnAmount != null ? (
+                            <p className="mt-1 text-xs sm:text-sm">
+                              Total en pesos:{" "}
+                              <span className="font-bold tabular-nums">
+                                {formatMoney(fxPreview.mxnAmount, "MXN")}
+                              </span>
+                              . Los abonos se registran en MXN sobre este total.
+                            </p>
+                          ) : (
+                            <p className="mt-1 text-xs text-sky-800">
+                              Indica el monto en USD para ver el equivalente en pesos.
+                            </p>
+                          )}
+                        </>
+                      ) : null}
+                    </div>
+                  )}
                   <label className="block">
                     <span className="text-sm font-medium">
                       Fecha del documento <span className="text-red-500">*</span>
@@ -1091,6 +1169,20 @@ function NuevaOcWizard() {
                     <dt className="text-zinc-500">Moneda</dt>
                     <dd className="font-medium">{currency === "MXN" ? "MXN — Peso mexicano" : currency}</dd>
                   </div>
+                  {currency === "USD" && fxPreview && !fxPreview.loading && !fxPreview.error && (
+                    <div className="sm:col-span-2">
+                      <dt className="text-zinc-500">Equivalente MXN (Banxico)</dt>
+                      <dd className="font-medium text-sky-900">
+                        {fxPreview.mxnAmount != null
+                          ? formatMoney(fxPreview.mxnAmount, "MXN")
+                          : "—"}{" "}
+                        <span className="text-xs font-normal text-zinc-500">
+                          · TC {fxPreview.rate.toLocaleString("es-MX", { minimumFractionDigits: 4 })} (
+                          {fxPreview.date})
+                        </span>
+                      </dd>
+                    </div>
+                  )}
                   <div>
                     <dt className="text-zinc-500">Fecha del documento</dt>
                     <dd className="font-medium">{formatDateShort(documentDate)}</dd>
@@ -1169,7 +1261,7 @@ function NuevaOcWizard() {
 
               {history.length > 0 && (
                 <section className="card p-5 sm:p-6">
-                  <h2 className="text-lg font-bold text-zinc-900">Historial del expediente</h2>
+                  <h2 className="text-lg font-bold text-zinc-900">Historial</h2>
                   <ol className="mt-4 space-y-4 border-l-2 border-orange-100 pl-4">
                     {history.map((h, i) => (
                       <li key={i} className="relative">

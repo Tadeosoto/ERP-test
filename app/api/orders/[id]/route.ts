@@ -6,6 +6,7 @@ import { cleanupOrderStoredFiles } from "@/lib/services/files";
 import { asOrderStatus, asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType } from "@/lib/domain/types";
+import { resolveOrderFx } from "@/lib/services/banxico-fx";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -65,6 +66,34 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     const supplierName = body.supplierName?.trim() ?? order.supplierName;
     const ocFolio = body.ocFolio?.trim() ?? order.ocFolio;
+    const nextTotal = body.totalAmount ?? order.totalAmount;
+    const nextCurrency = (body.currency?.trim() ?? order.currency).toUpperCase();
+    const nextDocumentDate =
+      body.documentDate !== undefined
+        ? body.documentDate
+          ? new Date(body.documentDate)
+          : null
+        : order.documentDate;
+
+    const amountOrCurrencyChanged =
+      nextTotal !== order.totalAmount || nextCurrency !== order.currency.toUpperCase();
+    const needsFxRefresh =
+      amountOrCurrencyChanged ||
+      nextCurrency === "USD" ||
+      (nextCurrency === "MXN" && (order.fxRate != null || order.totalAmountMxn != null));
+
+    const fx = needsFxRefresh
+      ? await resolveOrderFx({
+          currency: nextCurrency,
+          totalAmount: nextTotal,
+          documentDateIso: nextDocumentDate?.toISOString() ?? body.ocDate ?? order.ocDate?.toISOString() ?? null,
+        })
+      : {
+          fxRate: order.fxRate,
+          fxRateDate: order.fxRateDate,
+          totalAmountMxn: order.totalAmountMxn ?? order.totalAmount,
+          fxNote: order.fxNote,
+        };
 
     const updated = await prisma.purchaseOrder.update({
       where: { id },
@@ -78,14 +107,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
         paymentTerms: body.paymentTerms?.trim() ?? order.paymentTerms,
         description: body.description?.trim() ?? order.description,
         internalReference: body.internalReference?.trim() ?? order.internalReference,
-        documentDate:
-          body.documentDate !== undefined
-            ? body.documentDate
-              ? new Date(body.documentDate)
-              : null
-            : order.documentDate,
-        totalAmount: body.totalAmount ?? order.totalAmount,
-        currency: body.currency?.trim() ?? order.currency,
+        documentDate: nextDocumentDate,
+        totalAmount: nextTotal,
+        currency: nextCurrency,
+        fxRate: fx.fxRate,
+        fxRateDate: fx.fxRateDate,
+        totalAmountMxn: fx.totalAmountMxn,
+        fxNote: fx.fxNote,
         paymentType: body.paymentType !== undefined ? body.paymentType : order.paymentType,
         suggestedPaymentType:
           body.paymentType === "parcialidades"
