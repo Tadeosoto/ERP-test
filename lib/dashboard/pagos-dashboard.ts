@@ -49,7 +49,7 @@ export function pagosPaymentDisplayStatus(order: PurchaseOrderDto): PagosPayment
 }
 
 export const PAGOS_PAYMENT_STATUS_LABEL: Record<PagosPaymentDisplayStatus, string> = {
-  pendiente_pago: "Listo para pagar",
+  pendiente_pago: "Órdenes de compra pendientes",
   aprobado_ing: "Por autorizar",
   programado: "Programado",
   pagado: "Saldada",

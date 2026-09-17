@@ -2,13 +2,14 @@
 
 import Link from "next/link";
 import { useParams } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useSession } from "@/components/session-provider";
 import type { MaterialRequestDto } from "@/lib/domain/types";
 import { MATERIAL_REQUEST_STATUS_LABEL } from "@/lib/domain/solicitudes";
 import { canActAsCompras } from "@/lib/domain/transitions";
 import { formatDateTime } from "@/lib/format";
+import { parseMaterialLines } from "@/lib/solicitudes/material-lines";
 
 export default function MaterialRequestDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -28,10 +29,15 @@ export default function MaterialRequestDetailPage() {
     })();
   }, [id]);
 
+  const lines = useMemo(
+    () => (req ? parseMaterialLines(req.materials, req.quantities) : []),
+    [req]
+  );
+
   if (!req) return <LoadingScreen message="Cargando solicitud" />;
 
   return (
-    <div className="mx-auto max-w-2xl space-y-6">
+    <div className="mx-auto max-w-3xl space-y-6">
       <header>
         <p className="text-xs font-bold uppercase text-orange-600">Proceso A · Solicitud de material</p>
         <h1 className="text-2xl font-bold text-zinc-900">{req.obraName}</h1>
@@ -44,16 +50,37 @@ export default function MaterialRequestDetailPage() {
 
       <section className="card space-y-4 p-5">
         <div>
-          <p className="text-xs text-zinc-500">Centro de costo</p>
-          <p className="font-medium">{req.costCenter || "—"}</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">Materiales</p>
-          <p className="whitespace-pre-wrap">{req.materials}</p>
-        </div>
-        <div>
-          <p className="text-xs text-zinc-500">Cantidades</p>
-          <p className="whitespace-pre-wrap">{req.quantities || "—"}</p>
+          <p className="mb-2 text-xs font-semibold uppercase tracking-wide text-zinc-500">
+            Materiales
+          </p>
+          {lines.length === 0 ? (
+            <p className="whitespace-pre-wrap text-sm text-zinc-700">{req.materials || "—"}</p>
+          ) : (
+            <div className="overflow-x-auto rounded-xl border border-zinc-200">
+              <table className="min-w-full text-left text-sm">
+                <thead className="bg-orange-50 text-xs font-semibold uppercase tracking-wide text-orange-900">
+                  <tr>
+                    <th className="px-3 py-2">Cant.</th>
+                    <th className="px-3 py-2">Unidad</th>
+                    <th className="px-3 py-2">Código</th>
+                    <th className="px-3 py-2">Descripción</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-zinc-100 bg-white">
+                  {lines.map((l) => (
+                    <tr key={l.id}>
+                      <td className="px-3 py-2.5 tabular-nums font-medium">{l.quantity}</td>
+                      <td className="px-3 py-2.5 uppercase text-zinc-600">{l.unit}</td>
+                      <td className="px-3 py-2.5 font-mono text-xs text-zinc-700">
+                        {l.code || "—"}
+                      </td>
+                      <td className="px-3 py-2.5 text-zinc-800">{l.description}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
         <div>
           <p className="text-xs text-zinc-500">Justificación</p>

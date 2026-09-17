@@ -137,7 +137,7 @@ export function PagosHomeDashboard({
 
   const tabs = useMemo(
     () => [
-      { id: "pagar", label: "Listo para pagar", count: counts.pagosPorRealizar },
+      { id: "pagar", label: "Órdenes de compra pendientes", count: counts.pagosPorRealizar },
       { id: "autorizar", label: "Autorizar", count: authorizeQueue.length },
       { id: "parciales", label: "Parciales", count: partials.length },
       { id: "compromisos", label: "Compromisos" },
@@ -233,9 +233,9 @@ export function PagosHomeDashboard({
         </div>
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-3 lg:col-span-6">
           <CalmKpiTile
-            label="Listas para pagar"
+            label="Órdenes pendientes"
             value={counts.pagosPorRealizar}
-            sub="Tras autorización"
+            sub="Por pagar"
             tint="orange"
             selected={tab === "pagar"}
             onClick={() => setTab("pagar")}
@@ -285,7 +285,7 @@ export function PagosHomeDashboard({
           <DashPanelHeader
             title={
               tab === "pagar"
-                ? "Listo para pagar"
+                ? "Órdenes de compra pendientes"
                 : tab === "autorizar"
                   ? "Autorizar OC"
                   : "Pagos parciales"

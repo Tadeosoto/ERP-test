@@ -16,6 +16,21 @@ import { canCreateExpedientes } from "@/lib/domain/expedientes";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
+import { parseMaterialLines } from "@/lib/solicitudes/material-lines";
+
+function formatSolicitudDescription(materials: string, quantities: string, justification: string): string {
+  const lines = parseMaterialLines(materials, quantities);
+  const materialBlock =
+    lines.length > 0
+      ? lines
+          .map((l) => {
+            const code = l.code ? `[${l.code}] ` : "";
+            return `• ${l.quantity} ${l.unit.toUpperCase()} — ${code}${l.description}`;
+          })
+          .join("\n")
+      : materials;
+  return [materialBlock, justification].filter(Boolean).join("\n\n");
+}
 
 const PAYMENT_TERMS = [
   "Contado",
@@ -368,10 +383,8 @@ function NuevaOcWizard() {
           const s = sd.request;
           setMaterialRequestId(s.id);
           setObraId(s.obraId);
-          setDescription(
-            [s.materials, s.quantities ? `Cantidades: ${s.quantities}` : "", s.justification].filter(Boolean).join("\n")
-          );
-          setInternalReference(s.costCenter ? `CC: ${s.costCenter}` : "");
+          setDescription(formatSolicitudDescription(s.materials, s.quantities, s.justification));
+          setInternalReference("");
           setAssignedEngineerId(s.createdByUserId);
           setSendTarget("engineer");
           setSolicitudBanner(`Solicitud de ${s.createdByName} · ${s.obraName}`);

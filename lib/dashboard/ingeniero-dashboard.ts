@@ -200,7 +200,14 @@ export function filterIngenieroPendingOrders(input: {
     );
 }
 
+import { parseMaterialLines, materialLinesSummary } from "@/lib/solicitudes/material-lines";
+
 export function materialRequestDisplayLabel(request: MaterialRequestDto): string {
+  const lines = parseMaterialLines(request.materials, request.quantities);
+  if (lines.length > 0) {
+    const summary = materialLinesSummary(lines);
+    if (summary) return summary;
+  }
   const text = request.materials.trim();
   if (text.length <= 48) return text;
   return `${text.slice(0, 48)}…`;

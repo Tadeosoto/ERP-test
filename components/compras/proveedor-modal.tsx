@@ -464,29 +464,14 @@ export function ProveedorModal({
                 <SectionTitle n={3} title="Dirección fiscal" />
                 <div className="grid gap-3">
                   <Field label="Código postal" required>
-                    <div className="flex gap-2">
-                      <input
-                        required
-                        value={form.zipCode}
-                        onChange={(e) => set("zipCode", e.target.value.replace(/\D/g, "").slice(0, 5))}
-                        placeholder="Ej. 44100"
-                        className={inputCls}
-                        inputMode="numeric"
-                      />
-                      <button
-                        type="button"
-                        className="shrink-0 rounded-xl border border-zinc-200 bg-zinc-50 px-3 text-xs font-semibold text-zinc-700 hover:bg-zinc-100"
-                        onClick={() => {
-                          if (form.zipCode.length !== 5) {
-                            setError("Ingresa un código postal de 5 dígitos.");
-                            return;
-                          }
-                          setError("");
-                        }}
-                      >
-                        Buscar C.P.
-                      </button>
-                    </div>
+                    <input
+                      required
+                      value={form.zipCode}
+                      onChange={(e) => set("zipCode", e.target.value.replace(/\D/g, "").slice(0, 5))}
+                      placeholder="Ej. 44100"
+                      className={inputCls}
+                      inputMode="numeric"
+                    />
                   </Field>
                   <Field label="Estado">
                     <select

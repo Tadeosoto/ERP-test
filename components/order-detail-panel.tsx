@@ -563,7 +563,7 @@ export function OrderDetailPanel({
             <p className="rounded-2xl bg-violet-50 px-4 py-3 text-base text-violet-950">
               Revisa la OC firmada por Ingeniería. Tú o{" "}
               {user.role === "pagos" ? "Dirección" : "Administración"} pueden autorizar; el primero
-              que aprueba avanza a <strong>listo para pagar</strong>.
+              que aprueba avanza a <strong>órdenes de compra pendientes</strong>.
             </p>
             <textarea
               value={comment}

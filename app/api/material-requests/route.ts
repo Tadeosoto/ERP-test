@@ -9,6 +9,7 @@ import {
   materialRequestInclude,
 } from "@/lib/services/solicitud-mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
+import { parseMaterialLines, validateMaterialLines } from "@/lib/solicitudes/material-lines";
 
 export async function GET(request: Request) {
   try {
@@ -62,8 +63,11 @@ export async function POST(request: Request) {
     if (!body.materials?.trim()) {
       return NextResponse.json({ error: "Indica los materiales solicitados." }, { status: 400 });
     }
-    if (!body.quantities?.trim()) {
-      return NextResponse.json({ error: "Indica las cantidades de cada material." }, { status: 400 });
+
+    const lines = parseMaterialLines(body.materials, body.quantities ?? "");
+    const linesError = validateMaterialLines(lines);
+    if (linesError) {
+      return NextResponse.json({ error: linesError }, { status: 400 });
     }
 
     const obra = await prisma.obra.findUnique({
@@ -88,7 +92,7 @@ export async function POST(request: Request) {
         obraId: body.obraId,
         costCenter: body.costCenter?.trim() ?? "",
         materials: body.materials.trim(),
-        quantities: body.quantities.trim(),
+        quantities: body.quantities?.trim() ?? "",
         justification: body.justification?.trim() ?? "",
         status: "draft",
         createdByUserId: user.id,
