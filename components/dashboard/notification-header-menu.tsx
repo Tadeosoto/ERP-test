@@ -47,8 +47,15 @@ export function NotificationHeaderMenu() {
       <button
         type="button"
         onClick={() => {
-          setOpen((v) => !v);
-          void refresh();
+          setOpen((v) => {
+            const next = !v;
+            if (next) {
+              // Al abrir la campanita, quitar el numerito (marcar leídas).
+              if (unreadCount > 0) void markAllRead();
+              else void refresh();
+            }
+            return next;
+          });
         }}
         className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl border border-orange-100 bg-white text-orange-800 transition hover:bg-orange-50"
         aria-label={`Notificaciones${unreadCount ? `, ${unreadCount} sin leer` : ""}`}

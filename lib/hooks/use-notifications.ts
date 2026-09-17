@@ -32,6 +32,9 @@ export function useNotifications(pollMs = 35000) {
   }, [refresh, pollMs]);
 
   const markAllRead = useCallback(async () => {
+    // Quitar el badge de inmediato; el POST confirma en servidor.
+    setUnreadCount(0);
+    setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
     await fetch("/api/notifications", { method: "POST", credentials: "include" });
     await refresh();
   }, [refresh]);
