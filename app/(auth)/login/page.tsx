@@ -2,28 +2,42 @@
 
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CcpLogoIcon } from "@/components/ccp-logo";
 import { useSession } from "@/components/session-provider";
 import { IconLogIn } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { DEMO_USERS } from "@/lib/auth/demo-users";
 
-const QUICK_USERS = [
-  { email: "carolina@ccp.local", name: "Rosa Carolina", role: "Administración" },
-  { email: "paty@ccp.local", name: "Paty", role: "Compras" },
-  { email: "santiago@ccp.local", name: "Santiago", role: "Ingeniero" },
-  { email: "recepcion@ccp.local", name: "Recepción", role: "Recepción" },
-  { email: "helena@ccp.local", name: "Elena", role: "Contabilidad" },
-  { email: "diomedes@ccp.local", name: "Ing. Diomedes", role: "Dirección General" },
-];
+const ROLE_ORDER = [
+  "Administración",
+  "Compras",
+  "Dirección",
+  "Contabilidad",
+  "Recepción",
+  "Ingeniería",
+] as const;
 
 export default function LoginPage() {
   const { user, ready, login, quickLogin } = useSession();
   const router = useRouter();
-  const [email, setEmail] = useState(QUICK_USERS[0].email);
+  const [email, setEmail] = useState<string>(DEMO_USERS[0].email);
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+
+  const grouped = useMemo(() => {
+    const map = new Map<string, (typeof DEMO_USERS)[number][]>();
+    for (const label of ROLE_ORDER) map.set(label, []);
+    for (const u of DEMO_USERS) {
+      const list = map.get(u.roleLabel) ?? [];
+      list.push(u);
+      map.set(u.roleLabel, list);
+    }
+    return ROLE_ORDER.map((label) => ({ label, users: map.get(label) ?? [] })).filter(
+      (g) => g.users.length > 0
+    );
+  }, []);
 
   useEffect(() => {
     if (!ready) return;
@@ -72,33 +86,40 @@ export default function LoginPage() {
         </div>
         <h1 className="text-center text-3xl font-bold text-orange-950">CCP ERP</h1>
         <p className="mt-3 text-center text-base text-zinc-600">
-          Demo: elige tu usuario abajo (sin contraseña). También puedes usar correo y contraseña{" "}
+          Elige tu nombre para entrar (acceso de prueba). También puedes usar correo y contraseña{" "}
           <code className="rounded bg-orange-50 px-2 py-1 text-orange-800">ccp2026</code>
         </p>
 
         <div className="mt-6">
           <p className="text-center text-base font-semibold text-zinc-800">Acceso rápido</p>
-          <p className="mt-1 text-center text-sm text-zinc-500">Un clic para entrar</p>
-          <ul className="mt-3 space-y-2">
-            {QUICK_USERS.map((u) => (
-              <li key={u.email}>
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={() => void enterAs(u.email)}
-                  className="flex w-full items-center gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50/80 px-4 py-3.5 text-left transition hover:border-orange-400 hover:bg-orange-100"
-                >
-                  <IconLogIn className="h-5 w-5 shrink-0 text-orange-600" />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="text-base font-semibold text-zinc-900">{u.name}</span>
-                    <span className="text-sm text-zinc-600">
-                      {u.role} · {u.email}
-                    </span>
-                  </span>
-                </button>
-              </li>
+          <p className="mt-1 text-center text-sm text-zinc-500">Un clic para entrar · sin contraseña aún</p>
+          <div className="mt-3 max-h-[min(28rem,55vh)] space-y-4 overflow-y-auto pr-1">
+            {grouped.map((group) => (
+              <div key={group.label}>
+                <p className="mb-1.5 px-1 text-[11px] font-semibold uppercase tracking-wide text-zinc-400">
+                  {group.label}
+                </p>
+                <ul className="space-y-2">
+                  {group.users.map((u) => (
+                    <li key={u.email}>
+                      <button
+                        type="button"
+                        disabled={busy}
+                        onClick={() => void enterAs(u.email)}
+                        className="flex w-full items-center gap-3 rounded-2xl border-2 border-orange-200 bg-orange-50/80 px-4 py-3 text-left transition hover:border-orange-400 hover:bg-orange-100"
+                      >
+                        <IconLogIn className="h-5 w-5 shrink-0 text-orange-600" />
+                        <span className="flex min-w-0 flex-1 flex-col">
+                          <span className="text-base font-semibold text-zinc-900">{u.name}</span>
+                          <span className="truncate text-sm text-zinc-600">{u.email}</span>
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
             ))}
-          </ul>
+          </div>
         </div>
 
         <details className="mt-8 group">

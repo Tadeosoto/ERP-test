@@ -1,14 +1,9 @@
-/** Correos del seed — solo estos pueden usar acceso rápido sin contraseña. */
-export const QUICK_LOGIN_EMAILS = [
-  "carolina@ccp.local",
-  "paty@ccp.local",
-  "santiago@ccp.local",
-  "recepcion@ccp.local",
-  "helena@ccp.local",
-  "diomedes@ccp.local",
-] as const;
+import { DEMO_USER_EMAILS, type DemoUserEmail } from "@/lib/auth/demo-users";
 
-export type QuickLoginEmail = (typeof QUICK_LOGIN_EMAILS)[number];
+/** Correos del seed — solo estos pueden usar acceso rápido sin contraseña. */
+export const QUICK_LOGIN_EMAILS = DEMO_USER_EMAILS;
+
+export type QuickLoginEmail = DemoUserEmail;
 
 export function isQuickLoginEnabled(): boolean {
   return process.env.ALLOW_QUICK_LOGIN !== "false";

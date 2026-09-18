@@ -1,23 +1,15 @@
 import { PrismaClient } from "@prisma/client";
 import { hashPassword } from "../lib/auth/password";
+import { DEMO_USERS } from "../lib/auth/demo-users";
 
 const prisma = new PrismaClient();
 
 const INITIAL_PASSWORD = process.env.INITIAL_PASSWORD ?? "ccp2026";
 
-const USERS = [
-  { email: "carolina@ccp.local", name: "Rosa Carolina", role: "pagos" },
-  { email: "paty@ccp.local", name: "Paty", role: "compras" },
-  { email: "santiago@ccp.local", name: "Santiago", role: "ingeniero" },
-  { email: "recepcion@ccp.local", name: "Recepción", role: "recepcion" },
-  { email: "helena@ccp.local", name: "Elena", role: "contabilidad" },
-  { email: "diomedes@ccp.local", name: "Ing. Diomedes", role: "direccion" },
-] as const;
-
 async function main() {
   const passwordHash = await hashPassword(INITIAL_PASSWORD);
 
-  for (const u of USERS) {
+  for (const u of DEMO_USERS) {
     await prisma.user.upsert({
       where: { email: u.email },
       update: { name: u.name, role: u.role, passwordHash },
@@ -27,7 +19,8 @@ async function main() {
 
   const paty = await prisma.user.findUnique({ where: { email: "paty@ccp.local" } });
   const santiago = await prisma.user.findUnique({ where: { email: "santiago@ccp.local" } });
-  if (!paty) throw new Error("Usuario Paty no creado");
+  if (!paty) throw new Error("Usuario Patricia Ibarra no creado");
+  if (!santiago) throw new Error("Usuario Santiago Cortes no creado");
 
   const supplierCount = await prisma.supplier.count();
   if (supplierCount === 0) {
@@ -258,7 +251,12 @@ async function main() {
     });
   }
 
-  console.log("Seed OK. Contraseña inicial:", INITIAL_PASSWORD);
+  console.log(
+    `Seed OK. ${DEMO_USERS.length} usuarios. Contraseña inicial (formulario): ${INITIAL_PASSWORD}`
+  );
+  for (const u of DEMO_USERS) {
+    console.log(`  - ${u.name} (${u.roleLabel}) <${u.email}>`);
+  }
 }
 
 main()
