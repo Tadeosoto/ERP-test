@@ -32,6 +32,10 @@ import type { DirectExpenseDto, ObraDto, PurchaseOrderDto, RecurringCommitmentDt
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { PagosRecurringCommitmentsPanel } from "@/components/dashboard/pagos-recurring-commitments-panel";
 import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
+import {
+  canManageRecurringCommitments,
+  canViewRecurringCommitments,
+} from "@/lib/domain/transitions";
 
 const PAGE_SIZE_OPTIONS = [8, 15, 25, 50] as const;
 
@@ -195,17 +199,21 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
   const [compromisoModalOpen, setCompromisoModalOpen] = useState(false);
   const [editingCommitment, setEditingCommitment] = useState<RecurringCommitmentDto | null>(null);
 
-  const canManageCommitments = user?.role === "pagos";
+  const canViewCommitments = Boolean(user && canViewRecurringCommitments(user.role));
+  const canManageCommitments = Boolean(user && canManageRecurringCommitments(user.role));
   const canOpenReportes = user?.role === "direccion";
 
   const load = useCallback(async () => {
-    const [oRes, ordRes, expRes, comRes, supRes] = await Promise.all([
+    const fetches: Promise<Response>[] = [
       fetch("/api/obras", { credentials: "include" }),
       fetch("/api/orders", { credentials: "include" }),
       fetch("/api/direct-expenses?includeCompleted=1", { credentials: "include" }),
-      fetch("/api/recurring-commitments", { credentials: "include" }),
       fetch("/api/suppliers", { credentials: "include" }),
-    ]);
+    ];
+    if (canViewCommitments) {
+      fetches.push(fetch("/api/recurring-commitments", { credentials: "include" }));
+    }
+    const [oRes, ordRes, expRes, supRes, comRes] = await Promise.all(fetches);
     if (oRes.ok) {
       const d = (await oRes.json()) as { obras: ObraDto[] };
       setObras(d.obras);
@@ -218,16 +226,18 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
       setExpenses(d.expenses);
     }
-    if (comRes.ok) {
-      const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
-      setCommitments(d.commitments);
-    }
     if (supRes.ok) {
       const d = (await supRes.json()) as { suppliers: SupplierDto[] };
       setSuppliers(d.suppliers);
     }
+    if (comRes?.ok) {
+      const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
+      setCommitments(d.commitments);
+    } else if (!canViewCommitments) {
+      setCommitments([]);
+    }
     setLoading(false);
-  }, []);
+  }, [canViewCommitments]);
 
   useEffect(() => {
     void load();
@@ -709,24 +719,26 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
         </section>
       </div>
 
-      {/* Compromisos recurrentes — también son pagos; módulo completo en /compromisos */}
-      <section id="compromisos" className="scroll-mt-24 space-y-2">
-        <div>
-          <h2 className="dash-section-title">Compromisos recurrentes</h2>
-          <p className="dash-caption mt-0.5">
-            Servicios y gastos que se repiten. El módulo completo está en Compromisos.
-          </p>
-        </div>
-        <PagosRecurringCommitmentsPanel
-          commitments={commitments}
-          onNew={openNewCompromiso}
-          onEdit={openEditCompromiso}
-          onMutated={() => void load()}
-          variant="embedded"
-          canManage={canManageCommitments}
-          showModuleLink
-        />
-      </section>
+      {/* Compromisos recurrentes — Carolina, Diomedes, Elena, Daniela */}
+      {canViewCommitments && (
+        <section id="compromisos" className="scroll-mt-24 space-y-2">
+          <div>
+            <h2 className="dash-section-title">Compromisos recurrentes</h2>
+            <p className="dash-caption mt-0.5">
+              Servicios y gastos que se repiten. El módulo completo está en Compromisos.
+            </p>
+          </div>
+          <PagosRecurringCommitmentsPanel
+            commitments={commitments}
+            onNew={openNewCompromiso}
+            onEdit={openEditCompromiso}
+            onMutated={() => void load()}
+            variant="embedded"
+            canManage={canManageCommitments}
+            showModuleLink
+          />
+        </section>
+      )}
 
       {/* 3) Gastos directos Proceso B — jerarquía inferior */}
       {(user?.role === "pagos" || user?.role === "direccion") && (

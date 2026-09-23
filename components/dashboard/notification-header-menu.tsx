@@ -89,7 +89,9 @@ export function NotificationHeaderMenu() {
                 ? `/ordenes/${latest.orderId}`
                 : latest.materialRequestId
                   ? `/solicitudes/material/${latest.materialRequestId}`
-                  : "/notificaciones"
+                  : latest.type === "recurring_due_reminder"
+                    ? "/compromisos"
+                    : "/notificaciones"
           }
           onDismiss={() => setDismissedId(latest.id)}
           align="right"
@@ -124,7 +126,9 @@ export function NotificationHeaderMenu() {
                       ? `/ordenes/${n.orderId}`
                       : n.materialRequestId
                         ? `/solicitudes/material/${n.materialRequestId}`
-                        : null;
+                        : n.type === "recurring_due_reminder"
+                          ? "/compromisos"
+                          : null;
                 return (
                   <li
                     key={n.id}

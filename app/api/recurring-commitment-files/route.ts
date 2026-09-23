@@ -1,16 +1,16 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { canConsultPaymentDocuments } from "@/lib/domain/transitions";
+import { canViewRecurringCommitments } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
-/** Listado de factura/pago de compromisos (Contabilidad, Recepción, Administración). */
+/** Listado de factura/pago de compromisos (Carolina, Diomedes, Elena, Daniela). */
 export async function GET() {
   try {
     const user = await requireSessionUser();
     const role = asRole(user.role);
-    if (!canConsultPaymentDocuments(role)) {
+    if (!canViewRecurringCommitments(role)) {
       return NextResponse.json({ error: "No tienes permiso para consultar estos documentos." }, { status: 403 });
     }
 

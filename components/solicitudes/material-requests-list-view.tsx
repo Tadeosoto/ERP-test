@@ -4,6 +4,8 @@ import Link from "next/link";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { CalmKpiTile } from "@/components/dashboard/calm-kpi-tile";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { OcLink } from "@/components/ui/oc-link";
+import { RegistrarPagoModal } from "@/components/pagos/registrar-pago-modal";
 import { useSession } from "@/components/session-provider";
 import { materialRequestCode } from "@/lib/dashboard/ingeniero-dashboard";
 import {
@@ -17,17 +19,26 @@ import {
 } from "@/lib/dashboard/material-requests-dashboard";
 import { MATERIAL_REQUEST_STATUS_LABEL } from "@/lib/domain/solicitudes";
 import { canActAsCompras } from "@/lib/domain/transitions";
-import type { MaterialRequestDto, ObraDto } from "@/lib/domain/types";
-import { formatDateTime } from "@/lib/format";
+import type {
+  DirectExpenseDto,
+  MaterialRequestDto,
+  ObraDto,
+  PurchaseOrderDto,
+} from "@/lib/domain/types";
+import { formatDateShort, formatDateTime, formatMoney } from "@/lib/format";
+import { payableOrders } from "@/lib/pagos/registrar-pago-form";
 
 const PAGE_SIZES = [10, 20, 40] as const;
 
 export function MaterialRequestsListView() {
   const { user } = useSession();
   const canManage = user ? canActAsCompras(user.role) : false;
+  const isPagos = user?.role === "pagos";
 
   const [requests, setRequests] = useState<MaterialRequestDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
+  const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
+  const [expenses, setExpenses] = useState<DirectExpenseDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [tab, setTab] = useState<MaterialRequestTab>("pendientes");
   const [search, setSearch] = useState("");
@@ -38,12 +49,19 @@ export function MaterialRequestsListView() {
   const [sort, setSort] = useState<MaterialRequestSort>("sent_desc");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState<(typeof PAGE_SIZES)[number]>(20);
+  const [pagoModalOpen, setPagoModalOpen] = useState(false);
+  const [pagoModalOrderId, setPagoModalOrderId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
-    const [rRes, oRes] = await Promise.all([
+    const fetches: Promise<Response>[] = [
       fetch("/api/material-requests?all=1", { credentials: "include" }),
       fetch("/api/obras", { credentials: "include" }),
-    ]);
+    ];
+    if (isPagos) {
+      fetches.push(fetch("/api/orders", { credentials: "include" }));
+      fetches.push(fetch("/api/direct-expenses", { credentials: "include" }));
+    }
+    const [rRes, oRes, ordRes, expRes] = await Promise.all(fetches);
     if (rRes.ok) {
       const d = (await rRes.json()) as { requests: MaterialRequestDto[] };
       setRequests(d.requests);
@@ -52,8 +70,16 @@ export function MaterialRequestsListView() {
       const d = (await oRes.json()) as { obras: ObraDto[] };
       setObras(d.obras);
     }
+    if (ordRes?.ok) {
+      const d = (await ordRes.json()) as { orders: PurchaseOrderDto[] };
+      setOrders(d.orders);
+    }
+    if (expRes?.ok) {
+      const d = (await expRes.json()) as { expenses: DirectExpenseDto[] };
+      setExpenses(d.expenses);
+    }
     setLoading(false);
-  }, []);
+  }, [isPagos]);
 
   useEffect(() => {
     void load();
@@ -61,6 +87,22 @@ export function MaterialRequestsListView() {
 
   const kpiCounts = useMemo(() => materialRequestKpiCounts(requests), [requests]);
   const engineers = useMemo(() => uniqueEngineers(requests), [requests]);
+
+  const pendingPayments = useMemo(
+    () =>
+      payableOrders(orders).sort(
+        (a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()
+      ),
+    [orders]
+  );
+
+  const pendingDirectExpenses = useMemo(
+    () =>
+      expenses
+        .filter((e) => e.status === "sent")
+        .sort((a, b) => new Date(a.updatedAt).getTime() - new Date(b.updatedAt).getTime()),
+    [expenses]
+  );
 
   const filtered = useMemo(
     () =>
@@ -84,6 +126,11 @@ export function MaterialRequestsListView() {
     return filtered.slice(start, start + pageSize);
   }, [filtered, safePage, pageSize]);
 
+  const openPago = (orderId?: string) => {
+    setPagoModalOrderId(orderId ?? pendingPayments[0]?.id ?? null);
+    setPagoModalOpen(true);
+  };
+
   if (!canManage && !loading) {
     return (
       <div className="card py-12 text-center text-sm text-zinc-500">
@@ -100,9 +147,98 @@ export function MaterialRequestsListView() {
         <p className="text-xs font-bold uppercase tracking-wide text-orange-600">Proceso A</p>
         <h1 className="text-2xl font-bold text-zinc-900 sm:text-3xl">Solicitudes de Ingeniería</h1>
         <p className="mt-1 text-sm text-zinc-600">
-          Solicitudes de material enviadas por Ingeniería. Cotiza, crea la OC y sube el PDF.
+          {isPagos ? (
+            <>
+              Solicitudes de material pendientes de OC y{" "}
+              <span className="font-semibold text-orange-800">pagos por realizar</span> (OC y gastos
+              directos listos para que Administración registre el pago).
+            </>
+          ) : (
+            <>
+              Aquí ves las solicitudes de material que Ingeniería envió a Compras. Las{" "}
+              <span className="font-semibold text-orange-800">pendientes de OC</span> esperan que cotices y
+              crees la orden de compra.
+            </>
+          )}
         </p>
       </div>
+
+      {isPagos && (pendingPayments.length > 0 || pendingDirectExpenses.length > 0) && (
+        <section className="rounded-2xl border border-amber-200 bg-amber-50/50 p-4 sm:p-5">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-amber-950">Pagos por realizar</h2>
+              <p className="mt-0.5 text-xs text-amber-900/80">
+                OC aprobadas y gastos directos que esperan el pago de Administración.
+              </p>
+            </div>
+            <span className="rounded-full bg-amber-200/80 px-2.5 py-1 text-xs font-semibold text-amber-950">
+              {pendingPayments.length + pendingDirectExpenses.length}
+            </span>
+          </div>
+
+          {pendingPayments.length > 0 && (
+            <ul className="mt-3 divide-y divide-amber-100/80">
+              {pendingPayments.map((order) => (
+                <li key={order.id} className="flex flex-wrap items-center gap-2 py-2.5 first:pt-0">
+                  <div className="min-w-0 flex-1">
+                    <OcLink order={order} className="text-sm font-semibold text-amber-950 hover:underline" />
+                    <p className="truncate text-xs text-amber-900/70">
+                      {order.obraName} · {order.supplierName}
+                      {order.paymentDueDate
+                        ? ` · vence ${formatDateShort(order.paymentDueDate)}`
+                        : ""}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold tabular-nums text-amber-950">
+                    {formatMoney(order.amountRemaining, order.currency)}
+                  </p>
+                  <button
+                    type="button"
+                    onClick={() => openPago(order.id)}
+                    className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs"
+                  >
+                    Registrar pago
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+
+          {pendingDirectExpenses.length > 0 && (
+            <ul
+              className={`divide-y divide-amber-100/80 ${pendingPayments.length > 0 ? "mt-2 border-t border-amber-100 pt-2" : "mt-3"}`}
+            >
+              {pendingDirectExpenses.map((e) => (
+                <li key={e.id} className="flex flex-wrap items-center gap-2 py-2.5 first:pt-0">
+                  <div className="min-w-0 flex-1">
+                    <Link
+                      href={`/solicitudes/gasto/${e.id}`}
+                      className="text-sm font-semibold text-amber-950 hover:underline"
+                    >
+                      Gasto directo · {e.category || e.obraName}
+                      {e.supplierName ? ` · ${e.supplierName}` : ""}
+                    </Link>
+                    <p className="truncate text-xs text-amber-900/70">
+                      {e.obraName}
+                      {e.sentAt ? ` · enviado ${formatDateShort(e.sentAt)}` : ""}
+                    </p>
+                  </div>
+                  <p className="text-sm font-semibold tabular-nums text-amber-950">
+                    {formatMoney(e.estimatedAmount, e.currency)}
+                  </p>
+                  <Link
+                    href={`/solicitudes/gasto/${e.id}`}
+                    className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs"
+                  >
+                    Registrar pago
+                  </Link>
+                </li>
+              ))}
+            </ul>
+          )}
+        </section>
+      )}
 
       <div className="dash-grid-3">
         {MATERIAL_REQUEST_KPI_CONFIG.map((cfg) => (
@@ -126,8 +262,8 @@ export function MaterialRequestsListView() {
           <div className="flex gap-1">
             {(
               [
-                { key: "pendientes" as const, label: `Pendientes (${kpiCounts.pendientes})` },
-                { key: "realizadas" as const, label: `Realizadas (${kpiCounts.realizadas})` },
+                { key: "pendientes" as const, label: `Pendientes de OC (${kpiCounts.pendientes})` },
+                { key: "realizadas" as const, label: `Con OC (${kpiCounts.realizadas})` },
                 {
                   key: "todas" as const,
                   label: `Todas (${requests.filter((r) => r.status !== "draft").length})`,
@@ -375,6 +511,17 @@ export function MaterialRequestsListView() {
           </button>
         </div>
       </section>
+
+      {isPagos && (
+        <RegistrarPagoModal
+          open={pagoModalOpen}
+          onClose={() => setPagoModalOpen(false)}
+          orders={orders}
+          obras={obras}
+          initialOrderId={pagoModalOrderId}
+          onCompleted={() => void load()}
+        />
+      )}
     </div>
   );
 }

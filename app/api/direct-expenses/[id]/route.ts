@@ -3,6 +3,7 @@ import { prisma } from "@/lib/db";
 import {
   canCorrectDirectExpense,
   canDeleteDirectExpense,
+  canDeleteOwnDirectExpense,
   canEditDirectExpense,
   type DirectExpenseStatus,
 } from "@/lib/domain/solicitudes";
@@ -135,16 +136,22 @@ export async function DELETE(_request: Request, ctx: Ctx) {
   try {
     const user = await requireSessionUser();
     const role = asRole(user.role);
-    if (!canDeleteDirectExpense(role)) {
-      return NextResponse.json(
-        { error: "Solo Dirección o Administración pueden eliminar este gasto." },
-        { status: 403 }
-      );
-    }
-
     const { id } = await ctx.params;
     const row = await prisma.directExpenseRequest.findUnique({ where: { id } });
     if (!row) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
+
+    const status = row.status as DirectExpenseStatus;
+    const asAdmin = canDeleteDirectExpense(role);
+    const asOwner = canDeleteOwnDirectExpense(status, role, row.createdByUserId, user.id);
+    if (!asAdmin && !asOwner) {
+      return NextResponse.json(
+        {
+          error:
+            "No puedes eliminar este gasto. Solo Dirección/Administración, o el ingeniero dueño mientras no esté pagado.",
+        },
+        { status: 403 }
+      );
+    }
 
     await prisma.directExpenseRequest.delete({ where: { id } });
     return NextResponse.json({ ok: true });

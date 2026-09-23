@@ -14,7 +14,7 @@ export type DirectExpenseStatus =
 
 export const MATERIAL_REQUEST_STATUS_LABEL: Record<MaterialRequestStatus, string> = {
   draft: "Borrador",
-  sent: "Solicitud enviada",
+  sent: "Pendiente de OC",
   in_oc_process: "OC en proceso",
   completed: "Completada",
 };
@@ -51,20 +51,57 @@ export function canCreateMaterialRequest(role: Role): boolean {
   return role === "ingeniero";
 }
 
-export function canEditMaterialRequest(status: MaterialRequestStatus, role: Role, ownerId: string, userId: string): boolean {
+/** El ingeniero dueño puede corregir borradores y solicitudes aún pendientes de OC. */
+export function canEditMaterialRequest(
+  status: MaterialRequestStatus,
+  role: Role,
+  ownerId: string,
+  userId: string
+): boolean {
+  return (
+    role === "ingeniero" &&
+    ownerId === userId &&
+    (status === "draft" || status === "sent")
+  );
+}
+
+export function canSendMaterialRequest(
+  status: MaterialRequestStatus,
+  role: Role,
+  ownerId: string,
+  userId: string
+): boolean {
   return role === "ingeniero" && ownerId === userId && status === "draft";
 }
 
-export function canSendMaterialRequest(status: MaterialRequestStatus, role: Role, ownerId: string, userId: string): boolean {
-  return role === "ingeniero" && ownerId === userId && status === "draft";
+/** Borrar solo si aún no hay OC vinculada (borrador o pendiente de OC). */
+export function canDeleteMaterialRequest(
+  status: MaterialRequestStatus,
+  role: Role,
+  ownerId: string,
+  userId: string,
+  hasPurchaseOrder: boolean
+): boolean {
+  if (role !== "ingeniero" || ownerId !== userId || hasPurchaseOrder) return false;
+  return status === "draft" || status === "sent";
 }
 
 export function canCreateDirectExpense(role: Role): boolean {
   return role === "ingeniero";
 }
 
-export function canEditDirectExpense(status: DirectExpenseStatus, role: Role, ownerId: string, userId: string): boolean {
-  return role === "ingeniero" && ownerId === userId && status === "draft";
+/** El ingeniero dueño puede corregir borradores y gastos aún no pagados. */
+export function canEditDirectExpense(
+  status: DirectExpenseStatus,
+  role: Role,
+  ownerId: string,
+  userId: string
+): boolean {
+  return (
+    role === "ingeniero" &&
+    ownerId === userId &&
+    (status === "draft" || status === "sent")
+  );
 }
 
 /** Administración y Dirección pueden corregir datos del gasto (incluido completado, p. ej. datos erróneos). */
@@ -77,7 +114,26 @@ export function canDeleteDirectExpense(role: Role): boolean {
   return role === "pagos" || role === "direccion";
 }
 
-export function canSendDirectExpense(status: DirectExpenseStatus, role: Role, ownerId: string, userId: string): boolean {
+/** El ingeniero dueño puede eliminar su gasto mientras no se haya pagado. */
+export function canDeleteOwnDirectExpense(
+  status: DirectExpenseStatus,
+  role: Role,
+  ownerId: string,
+  userId: string
+): boolean {
+  return (
+    role === "ingeniero" &&
+    ownerId === userId &&
+    (status === "draft" || status === "sent")
+  );
+}
+
+export function canSendDirectExpense(
+  status: DirectExpenseStatus,
+  role: Role,
+  ownerId: string,
+  userId: string
+): boolean {
   return role === "ingeniero" && ownerId === userId && status === "draft";
 }
 

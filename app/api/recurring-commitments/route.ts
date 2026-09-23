@@ -1,7 +1,10 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { parseIsoDateInput } from "@/lib/domain/recurring-commitments";
-import { canManageRecurringCommitments } from "@/lib/domain/transitions";
+import {
+  canManageRecurringCommitments,
+  canViewRecurringCommitments,
+} from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
 import {
@@ -12,7 +15,14 @@ import { apiErrorResponse } from "@/lib/api/handle-route-error";
 
 export async function GET() {
   try {
-    await requireSessionUser();
+    const user = await requireSessionUser();
+    const role = asRole(user.role);
+    if (!canViewRecurringCommitments(role)) {
+      return NextResponse.json(
+        { error: "No tienes permiso para ver compromisos recurrentes." },
+        { status: 403 }
+      );
+    }
     const rows = await prisma.recurringCommitment.findMany({
       where: { active: true },
       orderBy: [{ dueDate: "asc" }, { supplierName: "asc" }],

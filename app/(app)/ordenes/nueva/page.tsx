@@ -201,7 +201,8 @@ function NuevaOcWizard() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const resumeOrderId = searchParams.get("orderId");
-  const solicitudIdParam = searchParams.get("solicitudId");
+  const solicitudIdParam =
+    searchParams.get("solicitudId") ?? searchParams.get("materialRequestId");
   const compromisoFacturaIdParam = searchParams.get("compromisoFacturaId");
   const initialStep = (Number(searchParams.get("step")) || 1) as Step;
 

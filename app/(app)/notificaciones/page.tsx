@@ -70,7 +70,9 @@ export default function NotificacionesPage() {
                   ? `/ordenes/${n.orderId}`
                   : n.materialRequestId
                     ? `/solicitudes/material/${n.materialRequestId}`
-                    : null;
+                    : n.type === "recurring_due_reminder"
+                      ? "/compromisos"
+                      : null;
             const cardClass = `card p-5 ${n.read ? "opacity-80" : "border-teal-200 bg-teal-50/30"}`;
 
             if (href) {

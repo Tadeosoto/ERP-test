@@ -194,9 +194,9 @@ export function IngenieroHomeDashboard({
                         {r.status === "draft"
                           ? "Borrador"
                           : r.status === "sent"
-                            ? "En Compras"
+                            ? "Pendiente de OC"
                             : r.status === "in_oc_process"
-                              ? "En OC"
+                              ? "OC en proceso"
                               : r.status}
                       </span>
                     </li>

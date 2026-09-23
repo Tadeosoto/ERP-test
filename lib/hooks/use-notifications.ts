@@ -24,9 +24,11 @@ export function useNotifications(pollMs = 35000) {
   }, []);
 
   useEffect(() => {
-    refresh();
+    void refresh();
+    // pollMs <= 0 = solo carga inicial (sin intervalo). Evita setInterval(0) que satura la API.
+    if (pollMs <= 0) return;
     const id = setInterval(() => {
-      if (document.visibilityState === "visible") refresh();
+      if (document.visibilityState === "visible") void refresh();
     }, pollMs);
     return () => clearInterval(id);
   }, [refresh, pollMs]);

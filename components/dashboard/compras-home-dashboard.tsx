@@ -192,7 +192,7 @@ export function ComprasHomeDashboard({
           <DashPanelHeader
             title={
               tab === "solicitudes"
-                ? "Solicitudes de Ingeniería"
+                ? "Solicitudes pendientes de OC"
                 : tab === "armar"
                   ? "Armar o corregir OC"
                   : tab === "revision"
@@ -202,8 +202,8 @@ export function ComprasHomeDashboard({
             meta={
               tab === "solicitudes"
                 ? pendingRequests.length === 0
-                  ? "Sin solicitudes nuevas"
-                  : `${pendingRequests.length} pendiente${pendingRequests.length === 1 ? "" : "s"}`
+                  ? "Sin solicitudes pendientes de OC"
+                  : `${pendingRequests.length} esperan que crees la OC`
                 : queueOrders.length === 0
                   ? "Sin coincidencias"
                   : `Mostrando ${queueOrders.length}`
@@ -221,7 +221,7 @@ export function ComprasHomeDashboard({
           {tab === "solicitudes" ? (
             pendingRequests.length === 0 ? (
               <p className="dash-body px-4 py-10 text-center text-zinc-500 sm:px-5">
-                No hay solicitudes nuevas. Cuando Ingeniería pida material aparecerán aquí.
+                No hay solicitudes pendientes de OC. Cuando Ingeniería envíe material aparecerán aquí.
               </p>
             ) : (
               <ul className="divide-y divide-zinc-100">
@@ -239,10 +239,10 @@ export function ComprasHomeDashboard({
                       </p>
                     </div>
                     <Link
-                      href={`/ordenes/nueva?materialRequestId=${r.id}`}
+                      href={`/ordenes/nueva?solicitudId=${r.id}`}
                       className="btn-primary !min-h-9 !px-3 !py-1.5 !text-xs"
                     >
-                      Armar OC
+                      Crear OC
                     </Link>
                   </li>
                 ))}

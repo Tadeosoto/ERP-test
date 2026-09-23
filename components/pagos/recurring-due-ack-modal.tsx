@@ -6,10 +6,11 @@ import { useSession } from "@/components/session-provider";
 import { useNotifications } from "@/lib/hooks/use-notifications";
 import { formatDateTime } from "@/lib/format";
 import { RECURRING_DUE_REMINDER_TYPE } from "@/lib/domain/recurring-commitments";
+import { canViewRecurringCommitments } from "@/lib/domain/transitions";
 
 /**
- * Modal bloqueante para Administración: avisos de compromisos recurrentes
- * cercanos a vencer. Solo se cierra con «Enterado».
+ * Modal bloqueante: avisos de compromisos recurrentes cercanos a vencer
+ * (Carolina, Diomedes, Elena, Daniela). Solo se cierra con «Enterado».
  */
 export function RecurringDueAckModal() {
   const { user } = useSession();
@@ -51,7 +52,12 @@ export function RecurringDueAckModal() {
     }
   }, [pending, refresh]);
 
-  if (!mounted || !user || user.role !== "pagos" || pending.length === 0) {
+  if (
+    !mounted ||
+    !user ||
+    !canViewRecurringCommitments(user.role) ||
+    pending.length === 0
+  ) {
     return null;
   }
 
@@ -67,7 +73,7 @@ export function RecurringDueAckModal() {
       >
         <div className="border-b border-amber-100 bg-amber-50/80 px-5 py-4 sm:px-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-            Aviso obligatorio · Administración
+            Aviso obligatorio · Compromisos
           </p>
           <h2 id="recurring-ack-title" className="mt-1 text-lg font-bold text-zinc-900">
             Compromisos próximos a vencer

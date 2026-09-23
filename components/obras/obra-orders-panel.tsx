@@ -17,6 +17,7 @@ import {
   type ComprasOrderTab,
 } from "@/lib/dashboard/obra-order-table";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
+import { orderTracksPaymentsInMxn, paymentBasisTotal } from "@/lib/domain/order-fx";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
 const PAGE_SIZES = [15, 25, 50] as const;
@@ -207,7 +208,21 @@ export function ObraOrdersPanel({
                       </p>
                     </td>
                     <td className="px-2 py-2.5 text-right align-middle text-xs font-semibold tabular-nums text-zinc-900">
-                      {formatMoney(order.totalAmount, order.currency)}
+                      {orderTracksPaymentsInMxn(order) ? (
+                        <div>
+                          <div>{formatMoney(paymentBasisTotal(order), "MXN")}</div>
+                          <div className="text-[10px] font-normal text-zinc-500">
+                            ($
+                            {order.totalAmount.toLocaleString("en-US", {
+                              minimumFractionDigits: 2,
+                              maximumFractionDigits: 2,
+                            })}{" "}
+                            USD)
+                          </div>
+                        </div>
+                      ) : (
+                        formatMoney(order.totalAmount, order.currency)
+                      )}
                     </td>
                     <td className="px-2 py-2.5 align-middle">
                       <SystemStatusBadge status={order.status} size="xs" />

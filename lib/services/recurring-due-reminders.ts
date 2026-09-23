@@ -5,6 +5,7 @@ import {
   RECURRING_DUE_REMINDER_DAYS,
   RECURRING_DUE_REMINDER_TYPE,
 } from "@/lib/domain/recurring-commitments";
+import { RECURRING_COMMITMENT_VIEW_ROLES } from "@/lib/domain/transitions";
 import { formatDateShort } from "@/lib/format";
 
 function startOfToday(d = new Date()): Date {
@@ -14,8 +15,9 @@ function startOfToday(d = new Date()): Date {
 }
 
 /**
- * Crea avisos diarios a Administración desde 3 días antes de la fecha límite
- * (y mientras siga vencido / pendiente). Idempotente por compromiso + día.
+ * Crea avisos diarios a Carolina, Diomedes, Elena y Daniela desde 3 días antes
+ * de la fecha límite (y mientras siga vencido / pendiente).
+ * Idempotente por compromiso + día + usuario.
  */
 export async function ensureRecurringDueReminders(): Promise<number> {
   const today = startOfToday();
@@ -27,8 +29,10 @@ export async function ensureRecurringDueReminders(): Promise<number> {
     },
   });
 
-  const adminUsers = await prisma.user.findMany({ where: { role: "pagos" } });
-  if (adminUsers.length === 0) return 0;
+  const viewers = await prisma.user.findMany({
+    where: { role: { in: [...RECURRING_COMMITMENT_VIEW_ROLES] } },
+  });
+  if (viewers.length === 0) return 0;
 
   let created = 0;
 
@@ -43,7 +47,7 @@ export async function ensureRecurringDueReminders(): Promise<number> {
         ? `Compromiso recurrente «${c.concept}» (${c.supplierName}) venció el ${dueLabel} (${relative}).`
         : `Compromiso recurrente «${c.concept}» (${c.supplierName}) vence el ${dueLabel} (${relative}).`;
 
-    for (const user of adminUsers) {
+    for (const user of viewers) {
       const already = await prisma.notification.findFirst({
         where: {
           userId: user.id,

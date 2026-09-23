@@ -182,7 +182,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
     {
       label: "Comprado (OC)",
       value: formatMoney(fin.totalComprado, "MXN"),
-      sub: "Monto total de OC",
+      sub: "Monto total de OC en pesos",
       accent: "border-l-emerald-400 bg-emerald-50/35",
     },
     {

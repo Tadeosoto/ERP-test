@@ -12,7 +12,7 @@ const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   payment_registered: ["compras", "pagos"],
   order_sent_proceso_b: ["pagos"],
   order_sent_proceso_c: ["pagos"],
-  recurring_due_reminder: ["pagos"],
+  recurring_due_reminder: ["pagos", "direccion", "contabilidad", "recepcion"],
   awaiting_invoice: ["compras", "pagos", "recepcion"],
   invoice_uploaded: [...EXPEDIENTE_CLOSE_ROLES],
   order_difference: [...EXPEDIENTE_CLOSE_ROLES, "compras", "pagos"],
@@ -62,7 +62,7 @@ export function notificationActionHref(n: NotificationDto, role: Role): string |
     return "/solicitudes-ingenieria";
   }
   if (n.type === "recurring_due_reminder") {
-    return "/inicio";
+    return "/compromisos";
   }
   if (!n.orderId) return null;
   return `/ordenes/${n.orderId}`;

@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import {
+  canDeleteMaterialRequest,
   canEditMaterialRequest,
   type MaterialRequestStatus,
 } from "@/lib/domain/solicitudes";
@@ -33,13 +34,22 @@ export async function PATCH(request: Request, ctx: Ctx) {
   try {
     const user = await requireSessionUser();
     const { id } = await ctx.params;
-    const row = await prisma.materialRequest.findUnique({ where: { id } });
+    const row = await prisma.materialRequest.findUnique({
+      where: { id },
+      include: { purchaseOrder: { select: { id: true } } },
+    });
     if (!row) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
 
     const status = row.status as MaterialRequestStatus;
     const role = asRole(user.role);
     if (!canEditMaterialRequest(status, role, row.createdByUserId, user.id)) {
       return NextResponse.json({ error: "No puedes editar esta solicitud." }, { status: 403 });
+    }
+    if (row.purchaseOrder) {
+      return NextResponse.json(
+        { error: "Ya tiene orden de compra; no se puede editar." },
+        { status: 403 }
+      );
     }
 
     const body = (await request.json()) as {
@@ -49,6 +59,13 @@ export async function PATCH(request: Request, ctx: Ctx) {
       quantities?: string;
       justification?: string;
     };
+
+    if (body.obraId && body.obraId !== row.obraId) {
+      const obra = await prisma.obra.findUnique({ where: { id: body.obraId } });
+      if (!obra) {
+        return NextResponse.json({ error: "Obra no encontrada." }, { status: 400 });
+      }
+    }
 
     const updated = await prisma.materialRequest.update({
       where: { id },
@@ -63,6 +80,43 @@ export async function PATCH(request: Request, ctx: Ctx) {
     });
 
     return NextResponse.json({ request: mapMaterialRequest(updated) });
+  } catch (e) {
+    return apiErrorResponse(e);
+  }
+}
+
+export async function DELETE(_request: Request, ctx: Ctx) {
+  try {
+    const user = await requireSessionUser();
+    const { id } = await ctx.params;
+    const row = await prisma.materialRequest.findUnique({
+      where: { id },
+      include: { purchaseOrder: { select: { id: true } } },
+    });
+    if (!row) return NextResponse.json({ error: "Solicitud no encontrada." }, { status: 404 });
+
+    const status = row.status as MaterialRequestStatus;
+    const role = asRole(user.role);
+    if (
+      !canDeleteMaterialRequest(
+        status,
+        role,
+        row.createdByUserId,
+        user.id,
+        Boolean(row.purchaseOrder)
+      )
+    ) {
+      return NextResponse.json(
+        {
+          error:
+            "No puedes eliminar esta solicitud (solo borrador o pendiente de OC sin orden).",
+        },
+        { status: 403 }
+      );
+    }
+
+    await prisma.materialRequest.delete({ where: { id } });
+    return NextResponse.json({ ok: true });
   } catch (e) {
     return apiErrorResponse(e);
   }

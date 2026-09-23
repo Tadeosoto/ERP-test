@@ -11,7 +11,10 @@ import {
   DIRECT_EXPENSE_STATUS_LABEL,
   canActOnDirectExpense,
   canCorrectDirectExpense,
+  canDeleteOwnDirectExpense,
+  canEditDirectExpense,
   canResolveDirectExpenseDifference,
+  canSendDirectExpense,
   canValidateDirectExpense,
   describeDirectExpenseGate,
   directExpensePendingRoles,
@@ -98,6 +101,16 @@ function DirectExpenseDetailInner() {
   const pendingRoles = directExpensePendingRoles(expense.status);
   const canAct = user ? canActOnDirectExpense(expense.status, user.role) : false;
   const canCorrect = user ? canCorrectDirectExpense(expense.status, user.role) : false;
+  const canOwnerEdit = Boolean(
+    user && canEditDirectExpense(expense.status, user.role, expense.createdByUserId, user.id)
+  );
+  const canOwnerDelete = Boolean(
+    user && canDeleteOwnDirectExpense(expense.status, user.role, expense.createdByUserId, user.id)
+  );
+  const canOwnerSend = Boolean(
+    user && canSendDirectExpense(expense.status, user.role, expense.createdByUserId, user.id)
+  );
+  const canEditForm = canCorrect || canOwnerEdit;
   const isPagos = user?.role === "pagos";
   const needsPayment = expense.status === "sent";
   const paymentDone = expense.status === "paid" || expense.amountPaidSoFar > 0.01;
@@ -159,26 +172,87 @@ function DirectExpenseDetailInner() {
     e.preventDefault();
     setBusy(true);
     try {
+      const payload: Record<string, unknown> = {
+        obraId: editForm.obraId,
+        category: editForm.category,
+        supplierName: editForm.supplierName,
+        costCenter: editForm.costCenter,
+        estimatedAmount: parseAmountInput(editForm.estimatedAmount),
+        justification: editForm.justification,
+      };
+      if (canCorrect) {
+        payload.amountPaidSoFar = parseAmountInput(editForm.amountPaidSoFar);
+      }
       const res = await fetch(`/api/direct-expenses/${id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          obraId: editForm.obraId,
-          category: editForm.category,
-          supplierName: editForm.supplierName,
-          costCenter: editForm.costCenter,
-          estimatedAmount: parseAmountInput(editForm.estimatedAmount),
-          amountPaidSoFar: parseAmountInput(editForm.amountPaidSoFar),
-          justification: editForm.justification,
-        }),
+        body: JSON.stringify(payload),
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
       await load();
       setEditing(false);
       router.replace(`/solicitudes/gasto/${id}`);
-      showSuccess("Corrección guardada.");
+      showSuccess(canCorrect ? "Corrección guardada." : "Solicitud actualizada.");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function deleteOwnExpense() {
+    if (!window.confirm("¿Eliminar este gasto directo? Esta acción no se puede deshacer.")) return;
+    setBusy(true);
+    try {
+      const res = await fetch(`/api/direct-expenses/${id}`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar.");
+      showSuccess("Gasto eliminado.");
+      router.push("/solicitudes/nueva");
+    } catch (err) {
+      showError(err instanceof Error ? err.message : "Error.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function sendOwnExpense() {
+    setBusy(true);
+    try {
+      if (editing && canOwnerEdit) {
+        const patchRes = await fetch(`/api/direct-expenses/${id}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          credentials: "include",
+          body: JSON.stringify({
+            obraId: editForm.obraId,
+            category: editForm.category,
+            supplierName: editForm.supplierName,
+            costCenter: editForm.costCenter,
+            estimatedAmount: parseAmountInput(editForm.estimatedAmount),
+            justification: editForm.justification,
+          }),
+        });
+        const patchData = (await patchRes.json()) as { error?: string };
+        if (!patchRes.ok) throw new Error(patchData.error ?? "No se pudo guardar.");
+      }
+      const res = await fetch(`/api/direct-expenses/${id}/actions`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ action: "send" }),
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo enviar.");
+      setEditing(false);
+      router.replace(`/solicitudes/gasto/${id}`);
+      await load();
+      showSuccess("Gasto enviado a Administración.");
     } catch (err) {
       showError(err instanceof Error ? err.message : "Error.");
     } finally {
@@ -216,17 +290,31 @@ function DirectExpenseDetailInner() {
             {expense.obraName} · {DIRECT_EXPENSE_STATUS_LABEL[expense.status]}
           </p>
         </div>
-        {canCorrect && !editing && (
-          <button
-            type="button"
-            className="btn-secondary text-sm"
-            onClick={() => {
-              setEditing(true);
-              router.replace(`/solicitudes/gasto/${id}?edit=1`);
-            }}
-          >
-            Corregir datos
-          </button>
+        {(canCorrect || canOwnerEdit || canOwnerDelete) && !editing && (
+          <div className="flex flex-wrap gap-2">
+            {(canCorrect || canOwnerEdit) && (
+              <button
+                type="button"
+                className="btn-secondary text-sm"
+                onClick={() => {
+                  setEditing(true);
+                  router.replace(`/solicitudes/gasto/${id}?edit=1`);
+                }}
+              >
+                {canCorrect ? "Corregir datos" : "Editar"}
+              </button>
+            )}
+            {canOwnerDelete && (
+              <button
+                type="button"
+                className="btn-danger text-sm"
+                disabled={busy}
+                onClick={() => void deleteOwnExpense()}
+              >
+                Eliminar
+              </button>
+            )}
+          </div>
         )}
       </header>
 
@@ -239,12 +327,16 @@ function DirectExpenseDetailInner() {
         )}
       </section>
 
-      {editing && canCorrect ? (
+      {editing && canEditForm ? (
         <form onSubmit={(ev) => void saveCorrection(ev)} className="card space-y-4 border-amber-200 p-5">
           <div>
-            <h2 className="font-bold text-zinc-900">Corregir gasto</h2>
+            <h2 className="font-bold text-zinc-900">
+              {canCorrect ? "Corregir gasto" : "Editar gasto"}
+            </h2>
             <p className="mt-0.5 text-xs text-zinc-500">
-              Usa esto si hubo un error en proveedor, montos, obra o concepto. El expediente no debe estar cerrado.
+              {canCorrect
+                ? "Usa esto si hubo un error en proveedor, montos, obra o concepto."
+                : "Corrige los datos mientras el gasto aún no esté pagado."}
             </p>
           </div>
           <label className="block text-sm">
@@ -291,17 +383,19 @@ function DirectExpenseDetailInner() {
                 }
               />
             </label>
-            <label className="block text-sm">
-              <span className="font-medium text-zinc-700">Monto pagado</span>
-              <input
-                className="mt-1 w-full rounded-xl border px-3 py-2 tabular-nums"
-                inputMode="decimal"
-                value={editForm.amountPaidSoFar}
-                onChange={(ev) =>
-                  setEditForm((f) => ({ ...f, amountPaidSoFar: sanitizeAmountInput(ev.target.value) }))
-                }
-              />
-            </label>
+            {canCorrect && (
+              <label className="block text-sm">
+                <span className="font-medium text-zinc-700">Monto pagado</span>
+                <input
+                  className="mt-1 w-full rounded-xl border px-3 py-2 tabular-nums"
+                  inputMode="decimal"
+                  value={editForm.amountPaidSoFar}
+                  onChange={(ev) =>
+                    setEditForm((f) => ({ ...f, amountPaidSoFar: sanitizeAmountInput(ev.target.value) }))
+                  }
+                />
+              </label>
+            )}
             <label className="block text-sm sm:col-span-2">
               <span className="font-medium text-zinc-700">Centro de costo</span>
               <input
@@ -322,8 +416,18 @@ function DirectExpenseDetailInner() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button type="submit" disabled={busy} className="btn-primary">
-              Guardar corrección
+              {canCorrect ? "Guardar corrección" : "Guardar cambios"}
             </button>
+            {canOwnerSend && (
+              <button
+                type="button"
+                disabled={busy}
+                className="btn-secondary"
+                onClick={() => void sendOwnExpense()}
+              >
+                Guardar y enviar
+              </button>
+            )}
             <button
               type="button"
               disabled={busy}
@@ -335,7 +439,7 @@ function DirectExpenseDetailInner() {
             >
               Cancelar
             </button>
-            {expense.status === "awaiting_invoice" && (
+            {canCorrect && expense.status === "awaiting_invoice" && (
               <button type="button" disabled={busy} className="btn-ghost text-violet-800" onClick={() => void reopenToPaid()}>
                 Quitar «Esperando factura»
               </button>
@@ -367,6 +471,18 @@ function DirectExpenseDetailInner() {
           <p className="whitespace-pre-wrap">{expense.justification}</p>
           {expense.sentAt && (
             <p className="text-xs text-zinc-400">Enviada {formatDateShort(expense.sentAt)}</p>
+          )}
+          {canOwnerSend && (
+            <div className="pt-2">
+              <button
+                type="button"
+                disabled={busy}
+                className="btn-primary"
+                onClick={() => void sendOwnExpense()}
+              >
+                Enviar a Administración
+              </button>
+            </div>
           )}
         </section>
       )}
@@ -628,9 +744,15 @@ function DirectExpenseDetailInner() {
       )}
 
       <div className="flex flex-wrap gap-3 text-sm">
-        <Link href="/pagos#proceso-b" className="text-teal-700 underline">
-          Volver a Pagos (Proceso B)
-        </Link>
+        {user?.role === "ingeniero" ? (
+          <Link href="/solicitudes/nueva" className="text-teal-700 underline">
+            Volver a Solicitudes
+          </Link>
+        ) : (
+          <Link href="/pagos#proceso-b" className="text-teal-700 underline">
+            Volver a Pagos (Proceso B)
+          </Link>
+        )}
         <Link href="/inicio" className="text-zinc-500 underline">
           Inicio
         </Link>

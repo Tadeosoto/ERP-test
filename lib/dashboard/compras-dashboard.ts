@@ -1,4 +1,5 @@
 import type { OrderStatus, PurchaseOrderDto } from "@/lib/domain/types";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 
 export type ComprasOrderTab =
   | "all"
@@ -235,20 +236,23 @@ export function computeObraFinancials(
   orders: PurchaseOrderDto[],
   obraId: string
 ): {
+  /** Totales en MXN (OC en USD usan totalAmountMxn / Banxico). */
   totalComprado: number;
   totalPagado: number;
   saldoPendiente: number;
   facturasPendientes: number;
 } {
   const obraOrders = orders.filter((o) => o.obraId === obraId && o.status !== "draft");
-  const totalComprado = obraOrders.reduce((s, o) => s + o.totalAmount, 0);
+  const totalComprado = obraOrders.reduce((s, o) => s + paymentBasisTotal(o), 0);
   const totalPagado = obraOrders.reduce((s, o) => s + o.amountPaidSoFar, 0);
   const saldoPendiente = Math.max(0, totalComprado - totalPagado);
-  const facturasPendientes = obraOrders.filter(
-    (o) =>
-      o.amountPaidSoFar >= o.totalAmount - 0.01 &&
+  const facturasPendientes = obraOrders.filter((o) => {
+    const basis = paymentBasisTotal(o);
+    return (
+      o.amountPaidSoFar >= basis - 0.01 &&
       !o.files.some((f) => f.kind === "factura") &&
       o.status !== "completed"
-  ).length;
+    );
+  }).length;
   return { totalComprado, totalPagado, saldoPendiente, facturasPendientes };
 }

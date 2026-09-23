@@ -22,8 +22,8 @@ export const MATERIAL_REQUEST_KPI_CONFIG: {
 }[] = [
   {
     key: "pendientes",
-    label: "Pendientes",
-    sublabel: "Esperan OC",
+    label: "Pendientes de OC",
+    sublabel: "Ingeniería ya envió; falta crear OC",
     tab: "pendientes",
     tint: "orange",
   },

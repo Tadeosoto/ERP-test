@@ -146,9 +146,27 @@ export function canManageSuppliers(role: Role): boolean {
   return role === "compras" || role === "pagos";
 }
 
+/** Carolina, Diomedes, Elena y Daniela pueden ver compromisos recurrentes. */
+export function canViewRecurringCommitments(role: Role): boolean {
+  return (
+    role === "pagos" ||
+    role === "direccion" ||
+    role === "contabilidad" ||
+    role === "recepcion"
+  );
+}
+
+/** Solo Carolina (Administración) crea/edita/elimina compromisos recurrentes. */
 export function canManageRecurringCommitments(role: Role): boolean {
   return role === "pagos";
 }
+
+export const RECURRING_COMMITMENT_VIEW_ROLES: Role[] = [
+  "pagos",
+  "direccion",
+  "contabilidad",
+  "recepcion",
+];
 
 /** Todos los roles autenticados pueden consultar comprobantes y documentos de pago por obra. */
 export function canConsultPaymentDocuments(_role: Role): boolean {

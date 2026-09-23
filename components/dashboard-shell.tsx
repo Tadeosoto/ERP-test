@@ -113,7 +113,15 @@ function navSectionsForRole(role: Role): NavSection[] {
 
   if (role === "recepcion") {
     return [
-      { id: "trabajo", label: "Trabajo", items: [inicio, ordenes] },
+      {
+        id: "trabajo",
+        label: "Trabajo",
+        items: [
+          inicio,
+          ordenes,
+          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+        ],
+      },
       { id: "catalogos", label: "Catálogos", items: [obras] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
@@ -127,7 +135,23 @@ function navSectionsForRole(role: Role): NavSection[] {
     ];
   }
 
-  // contabilidad y demás
+  if (role === "contabilidad") {
+    return [
+      {
+        id: "trabajo",
+        label: "Trabajo",
+        items: [
+          inicio,
+          ordenes,
+          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+        ],
+      },
+      { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
+      { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
+    ];
+  }
+
+  // demás roles
   return [
     { id: "trabajo", label: "Trabajo", items: [inicio, ordenes] },
     { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
@@ -138,7 +162,9 @@ function navSectionsForRole(role: Role): NavSection[] {
 /** Destinos críticos en mobile (máx. 4) + el resto en “Más”. */
 function mobilePrimaryHrefs(role: Role): string[] {
   if (role === "pagos") return ["/inicio", "/pagos", "/compromisos", "/ordenes"];
-  if (role === "direccion") return ["/inicio", "/pagos", "/ordenes", "/reportes"];
+  if (role === "direccion") return ["/inicio", "/pagos", "/compromisos", "/ordenes"];
+  if (role === "contabilidad") return ["/inicio", "/compromisos", "/ordenes", "/pagos"];
+  if (role === "recepcion") return ["/inicio", "/compromisos", "/ordenes", "/pagos"];
   if (role === "compras") return ["/inicio", "/ordenes", "/solicitudes-ingenieria", "/obras"];
   if (role === "ingeniero") return ["/inicio", "/solicitudes/nueva", "/ordenes", "/obras"];
   return ["/inicio", "/pagos", "/ordenes", "/obras"];
