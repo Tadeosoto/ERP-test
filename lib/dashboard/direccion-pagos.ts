@@ -1,4 +1,5 @@
 import type { PurchaseOrderDto } from "@/lib/domain/types";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 import {
   isActivePartial,
   isPendingAuthorization,
@@ -79,7 +80,7 @@ export function direccionPagoEstatus(order: PurchaseOrderDto): DireccionPagoEsta
   }
   if (isActivePartial(order)) return "parcial";
   if (
-    order.amountPaidSoFar >= order.totalAmount - 0.01 ||
+    order.amountPaidSoFar >= paymentBasisTotal(order) - 0.01 ||
     ["paid", "awaitingInvoice", "invoiceReceived", "completed"].includes(order.status)
   ) {
     return "pagado";
@@ -158,8 +159,9 @@ export function uniqueSuppliers(orders: PurchaseOrderDto[]): string[] {
 }
 
 export function amountToPay(order: PurchaseOrderDto): number {
+  const basis = paymentBasisTotal(order);
   if (isPendingAuthorization(order)) {
-    return order.amountRemaining > 0 ? order.amountRemaining : order.totalAmount;
+    return order.amountRemaining > 0 ? order.amountRemaining : basis;
   }
   return order.amountRemaining > 0 ? order.amountRemaining : 0;
 }
@@ -209,7 +211,8 @@ export function pagosPageKpis(orders: PurchaseOrderDto[]) {
 export function partialInstallmentLabel(order: PurchaseOrderDto): string {
   const prog = partialProgress(order);
   const paid = order.paymentRecords.length || (order.amountPaidSoFar > 0 ? 1 : 0);
-  const estimated = Math.max(paid + 1, Math.ceil(order.totalAmount / Math.max(order.amountPaidSoFar, 1)));
+  const basis = paymentBasisTotal(order);
+  const estimated = Math.max(paid + 1, Math.ceil(basis / Math.max(order.amountPaidSoFar, 1)));
   if (order.paymentType === "parcialidades" && paid > 0) {
     return `${paid} de ${estimated}`;
   }

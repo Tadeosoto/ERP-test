@@ -182,7 +182,7 @@ export function DireccionHomeDashboard({
         <section className="dash-panel">
           <DashPanelHeader
             title="Autorizar órdenes de compra"
-            meta="Tú o Carolina — el primero que aprueba avanza a órdenes de compra pendientes"
+            meta="Tú o Carolina — el primero que aprueba avanza a pendiente de pago"
             action={
               <Link href="/pagos" className="text-sm font-semibold text-orange-700 hover:text-orange-900">
                 Ir a pagos →

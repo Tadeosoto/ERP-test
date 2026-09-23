@@ -231,37 +231,28 @@ export function RegistrarPagoModal({
 
   async function submitPayment() {
     if (!order) return;
+    if (!receiptFile) {
+      showError("Debes adjuntar el comprobante de pago (PDF).");
+      setStep(2);
+      return;
+    }
     setBusy(true);
     try {
+      const fd = new FormData();
+      fd.set("action", "register_payment");
+      fd.set("amount", String(payAmount));
+      fd.set("reference", buildPaymentReference(form));
+      fd.set("notes", buildPaymentNotes(form));
+      fd.set("file", receiptFile);
       const res = await fetch(`/api/orders/${order.id}/actions`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
         credentials: "include",
-        body: JSON.stringify({
-          action: "register_payment",
-          amount: payAmount,
-          reference: buildPaymentReference(form),
-          notes: buildPaymentNotes(form),
-        }),
+        body: fd,
       });
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo registrar el pago.");
 
-      if (receiptFile) {
-        const fd = new FormData();
-        fd.set("orderId", order.id);
-        fd.set("kind", "comprobante_pago");
-        fd.set("file", receiptFile);
-        const up = await fetch("/api/files/upload", { method: "POST", credentials: "include", body: fd });
-        const upData = (await up.json()) as { error?: string };
-        if (!up.ok) throw new Error(upData.error ?? "Pago registrado, pero falló la subida del comprobante.");
-      }
-
-      showSuccess(
-        receiptFile
-          ? actionSuccessMessage("register_payment")
-          : "Pago registrado. Puedes adjuntar el comprobante más adelante desde el expediente."
-      );
+      showSuccess(actionSuccessMessage("register_payment"));
       onCompleted?.();
       onClose();
     } catch (e) {
@@ -441,15 +432,15 @@ export function RegistrarPagoModal({
                 />
               </Field>
 
-              <div className="rounded-2xl border border-violet-100 bg-violet-50/70 px-4 py-3 text-sm text-violet-900">
-                <span className="font-semibold">Importante:</span> El comprobante es opcional. Puedes registrar el
-                pago ahora y adjuntarlo después desde el expediente.
+              <div className="rounded-2xl border border-amber-100 bg-amber-50/70 px-4 py-3 text-sm text-amber-950">
+                <span className="font-semibold">Obligatorio:</span> cada abono debe ir acompañado del
+                comprobante de pago en PDF (siguiente paso).
               </div>
             </div>
           ) : step === 2 ? (
             <div className="grid gap-5 lg:grid-cols-2">
               <div className="space-y-4">
-                <h3 className="text-sm font-bold text-zinc-900">2. Comprobante de pago (opcional)</h3>
+                <h3 className="text-sm font-bold text-zinc-900">2. Comprobante de pago (obligatorio)</h3>
                 <div
                   role="button"
                   tabIndex={0}
@@ -639,8 +630,8 @@ export function RegistrarPagoModal({
                   </div>
                 )}
                 {!receiptFile && (
-                  <div className="rounded-2xl border border-amber-100 bg-amber-50/60 px-4 py-3 text-sm text-amber-900">
-                    Sin comprobante por ahora. Podrás adjuntarlo más adelante desde el expediente.
+                  <div className="rounded-2xl border border-red-100 bg-red-50/60 px-4 py-3 text-sm text-red-800">
+                    Falta el comprobante PDF. Vuelve al paso anterior para adjuntarlo.
                   </div>
                 )}
 
@@ -756,11 +747,17 @@ export function RegistrarPagoModal({
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !receiptFile}
                 className="btn-primary min-h-11 px-6 text-sm"
-                onClick={() => setStep(3)}
+                onClick={() => {
+                  if (!receiptFile) {
+                    showError("Adjunta el comprobante de pago (PDF) para continuar.");
+                    return;
+                  }
+                  setStep(3);
+                }}
               >
-                {receiptFile ? "Continuar →" : "Continuar sin comprobante →"}
+                Continuar →
               </button>
             </>
           ) : (
@@ -775,7 +772,7 @@ export function RegistrarPagoModal({
               </button>
               <button
                 type="button"
-                disabled={busy}
+                disabled={busy || !receiptFile}
                 className="btn-primary min-h-11 px-6 text-sm"
                 onClick={() => void submitPayment()}
               >

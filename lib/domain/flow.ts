@@ -256,15 +256,15 @@ export function describeGate(status: OrderStatus, paymentType?: PaymentType | nu
     case "awaitingPatyDeadline":
       return "Compras indica la fecha límite de pago; luego pasa a autorización de Admin o Dirección.";
     case "awaitingAuthorization":
-      return "Carolina o Diomedes autorizan la OC. El primero que aprueba avanza a órdenes de compra pendientes.";
+      return "Carolina o Diomedes autorizan la OC. El primero que aprueba avanza a pendiente de pago.";
     case "awaitingPayment":
       if (paymentType === "parcialidades") {
-        return "OC en órdenes de compra pendientes. Carolina registra abonos y comprobantes hasta saldar.";
+        return "OC autorizada · pendiente de pago. Carolina registra abonos y comprobantes hasta saldar.";
       }
       if (paymentType === "programado") {
-        return "OC en órdenes de compra pendientes. Carolina registra el pago completo antes de la fecha límite.";
+        return "OC autorizada · pendiente de pago. Carolina registra el pago completo antes de la fecha límite.";
       }
-      return "OC en órdenes de compra pendientes. Carolina registra el pago y sube el comprobante.";
+      return "OC autorizada · pendiente de pago. Carolina registra el pago y sube el comprobante.";
     case "paid":
       return "Total saldado. Compras o Administración envían el comprobante al proveedor y pueden subir la factura.";
     case "awaitingInvoice":

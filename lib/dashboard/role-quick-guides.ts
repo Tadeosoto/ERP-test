@@ -141,7 +141,7 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         heading: "Autorizar",
         steps: [
           "En Inicio → Por autorizar revisa la OC aprobada por Ingeniería.",
-          "Si das el sí, avanza a órdenes de compra pendientes (Carolina ejecuta el pago).",
+          "Si das el sí, avanza a pendiente de pago (Carolina ejecuta el pago).",
         ],
       },
       {

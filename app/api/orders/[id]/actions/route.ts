@@ -34,6 +34,7 @@ import {
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import type { PaymentType, OrderStatus } from "@/lib/domain/types";
 import { paymentBasisTotal } from "@/lib/domain/order-fx";
+import { isPdf, saveOrderFile } from "@/lib/services/files";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -60,7 +61,9 @@ export async function POST(request: Request, ctx: Ctx) {
   try {
     const user = await requireSessionUser();
     const { id } = await ctx.params;
-    const body = (await request.json()) as {
+
+    const contentType = request.headers.get("content-type") ?? "";
+    let body: {
       action?: string;
       comment?: string;
       amount?: number;
@@ -71,6 +74,25 @@ export async function POST(request: Request, ctx: Ctx) {
       assignedEngineerUserId?: string;
       paymentId?: string;
     };
+    let receiptFile: File | null = null;
+
+    if (contentType.includes("multipart/form-data")) {
+      const form = await request.formData();
+      const fileRaw = form.get("file");
+      receiptFile = fileRaw instanceof File && fileRaw.size > 0 ? fileRaw : null;
+      body = {
+        action: String(form.get("action") ?? ""),
+        comment: String(form.get("comment") ?? ""),
+        amount: Number(form.get("amount")),
+        reference: String(form.get("reference") ?? ""),
+        notes: String(form.get("notes") ?? ""),
+        paymentDueDate: String(form.get("paymentDueDate") ?? ""),
+        paymentId: String(form.get("paymentId") ?? ""),
+        assignedEngineerUserId: String(form.get("assignedEngineerUserId") ?? ""),
+      };
+    } else {
+      body = (await request.json()) as typeof body;
+    }
 
     const order = await prisma.purchaseOrder.findUnique({ where: { id } });
     if (!order) return NextResponse.json({ error: "Orden no encontrada." }, { status: 404 });
@@ -211,6 +233,16 @@ export async function POST(request: Request, ctx: Ctx) {
       if (!canRegisterPayment(status, role)) {
         return NextResponse.json({ error: "No puedes registrar pagos en este estado." }, { status: 403 });
       }
+      if (!receiptFile) {
+        return NextResponse.json(
+          { error: "Debes adjuntar el comprobante de pago (PDF) junto con el abono." },
+          { status: 400 }
+        );
+      }
+      if (!isPdf(receiptFile)) {
+        return NextResponse.json({ error: "El comprobante debe ser un archivo PDF." }, { status: 400 });
+      }
+
       const paymentType = asPaymentType(order.paymentType);
       if (!paymentType) {
         return NextResponse.json({ error: "Modalidad de pago no definida." }, { status: 400 });
@@ -235,25 +267,41 @@ export async function POST(request: Request, ctx: Ctx) {
           : "";
       const notes = `${body.notes?.trim() ?? ""}${fxHint}`.trim();
 
-      const updated = await prisma.$transaction(async (tx) => {
-        await tx.paymentRecord.create({
-          data: {
-            orderId: id,
-            amount,
-            reference: body.reference?.trim() ?? "",
-            notes,
-            recordedByUserId: user.id,
-          },
+      const payment = await prisma.paymentRecord.create({
+        data: {
+          orderId: id,
+          amount,
+          reference: body.reference?.trim() ?? "",
+          notes,
+          recordedByUserId: user.id,
+        },
+      });
+
+      try {
+        await saveOrderFile({
+          orderId: id,
+          kind: "comprobante_pago",
+          file: receiptFile,
+          uploadedByUserId: user.id,
         });
-        return tx.purchaseOrder.update({
-          where: { id },
-          data: {
-            amountPaidSoFar: result.amountPaidSoFar,
-            paymentLabel: result.paymentLabel,
-            status: result.status,
-          },
-          include: orderInclude,
-        });
+      } catch (fileErr) {
+        await prisma.paymentRecord.delete({ where: { id: payment.id } });
+        const msg =
+          fileErr instanceof Error ? fileErr.message : "No se pudo guardar el comprobante.";
+        return NextResponse.json(
+          { error: `No se registró el abono: ${msg}` },
+          { status: 400 }
+        );
+      }
+
+      const updated = await prisma.purchaseOrder.update({
+        where: { id },
+        data: {
+          amountPaidSoFar: result.amountPaidSoFar,
+          paymentLabel: result.paymentLabel,
+          status: result.status,
+        },
+        include: orderInclude,
       });
 
       const evt = NotificationEvents.paymentRegistered(updated.title, result.fullyPaid);

@@ -73,6 +73,7 @@ export function OrderDetailPanel({
   const [payAmount, setPayAmount] = useState("");
   const [payReference, setPayReference] = useState("");
   const [payNotes, setPayNotes] = useState("");
+  const [payReceipt, setPayReceipt] = useState<File | null>(null);
 
   const [accountingComment, setAccountingComment] = useState("");
 
@@ -93,6 +94,45 @@ export function OrderDetailPanel({
       onUpdated();
       router.refresh();
       showSuccess(actionSuccessMessage(action));
+    } catch (e) {
+      showError(e instanceof Error ? e.message : "No se pudo completar la acción.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function registerPaymentWithReceipt() {
+    const amount = parseAmountInput(payAmount || defaultPayAmount);
+    if (!(amount > 0)) {
+      showError("Indica un monto válido.");
+      return;
+    }
+    if (!payReceipt) {
+      showError("Debes adjuntar el comprobante de pago (PDF) junto con el abono.");
+      return;
+    }
+    setBusy(true);
+    try {
+      const fd = new FormData();
+      fd.set("action", "register_payment");
+      fd.set("amount", String(amount));
+      fd.set("reference", payReference);
+      fd.set("notes", payNotes);
+      fd.set("file", payReceipt);
+      const res = await fetch(`/api/orders/${order.id}/actions`, {
+        method: "POST",
+        credentials: "include",
+        body: fd,
+      });
+      const data = (await res.json()) as { error?: string };
+      if (!res.ok) throw new Error(data.error ?? "No se pudo registrar el pago.");
+      setPayAmount("");
+      setPayReference("");
+      setPayNotes("");
+      setPayReceipt(null);
+      onUpdated();
+      router.refresh();
+      showSuccess(actionSuccessMessage("register_payment"));
     } catch (e) {
       showError(e instanceof Error ? e.message : "No se pudo completar la acción.");
     } finally {
@@ -577,7 +617,7 @@ export function OrderDetailPanel({
             <p className="rounded-2xl bg-violet-50 px-4 py-3 text-base text-violet-950">
               Revisa la OC firmada por Ingeniería. Tú o{" "}
               {user.role === "pagos" ? "Dirección" : "Administración"} pueden autorizar; el primero
-              que aprueba avanza a <strong>órdenes de compra pendientes</strong>.
+              que aprueba avanza a <strong>pendiente de pago</strong>.
             </p>
             <textarea
               value={comment}
@@ -628,10 +668,10 @@ export function OrderDetailPanel({
           <div className="mt-4 space-y-4 sm:max-w-md">
             <p className="text-base text-zinc-700">
               {order.paymentType === "parcialidades"
-                ? "Registra cada abono en pesos. El sistema lleva el % pagado sobre el total en MXN."
+                ? "Registra cada abono en pesos con su comprobante PDF. El sistema lleva el % pagado sobre el total en MXN."
                 : order.paymentType === "programado"
-                  ? "Registra el pago completo en pesos (programado)."
-                  : "Registra el pago inmediato del 100% en pesos."}
+                  ? "Registra el pago completo en pesos (programado) con su comprobante PDF."
+                  : "Registra el pago inmediato del 100% en pesos con su comprobante PDF."}
               {orderTracksPaymentsInMxn(order)
                 ? ` OC en USD · abonos contra ${formatMoney(order.totalAmountMxn ?? 0, "MXN")}.`
                 : ""}
@@ -663,18 +703,33 @@ export function OrderDetailPanel({
               rows={2}
               className="w-full rounded-2xl border border-orange-100 px-4 py-3 text-base"
             />
+            <div>
+              <p className="mb-2 text-sm font-medium text-zinc-700">
+                Comprobante de pago (PDF, obligatorio)
+              </p>
+              <FilePickButton
+                disabled={busy}
+                label={payReceipt ? "Cambiar comprobante PDF" : "Adjuntar comprobante PDF"}
+                hint={payReceipt ? payReceipt.name : "requerido para registrar el abono"}
+                onPick={(file) => {
+                  if (file.type !== "application/pdf" && !file.name.toLowerCase().endsWith(".pdf")) {
+                    showError("Solo se permiten archivos PDF.");
+                    return;
+                  }
+                  setPayReceipt(file);
+                }}
+              />
+              {payReceipt && (
+                <p className="mt-1.5 text-xs font-medium text-emerald-700">
+                  Listo: {payReceipt.name}
+                </p>
+              )}
+            </div>
             <button
               type="button"
-              disabled={busy}
+              disabled={busy || !payReceipt}
               className="btn-primary"
-              onClick={() =>
-                void postAction({
-                  action: "register_payment",
-                  amount: parseAmountInput(payAmount || defaultPayAmount),
-                  reference: payReference,
-                  notes: payNotes,
-                })
-              }
+              onClick={() => void registerPaymentWithReceipt()}
             >
               <IconBanknote />
               {order.paymentType === "parcialidades" ? "Registrar abono" : "Registrar pago total"}
@@ -685,11 +740,11 @@ export function OrderDetailPanel({
         {canUploadPaymentReceipt(order.status, user.role) && (
           <div className="mt-4 space-y-3">
             <p className="text-base text-zinc-700">
-              Sube el comprobante bancario del pago (PDF).
+              Si ya registraste un abono, puedes agregar comprobantes adicionales (PDF).
             </p>
             <FilePickButton
               disabled={busy}
-              label="Agregar comprobante de pago"
+              label="Agregar comprobante adicional"
               hint="cada pago puede tener su PDF; no reemplaza los anteriores"
               onPick={(file) => void uploadFile("comprobante_pago", file)}
             />

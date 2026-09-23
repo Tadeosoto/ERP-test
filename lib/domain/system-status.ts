@@ -35,8 +35,8 @@ export const SYSTEM_STATUS: Record<
     icon: "clock",
   },
   awaitingPayment: {
-    label: "OC pendiente",
-    subtitle: "Órdenes de compra pendientes",
+    label: "Pendiente de pago",
+    subtitle: "Administración registra abonos",
     tone: "orange",
     icon: "clock",
   },

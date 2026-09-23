@@ -29,6 +29,7 @@ import {
   type DireccionPagosFilters,
 } from "@/lib/dashboard/direccion-pagos";
 import type { DirectExpenseDto, ObraDto, PurchaseOrderDto, RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
+import { orderTracksPaymentsInMxn, paymentBasisTotal } from "@/lib/domain/order-fx";
 import { formatDateShort, formatMoney } from "@/lib/format";
 import { PagosRecurringCommitmentsPanel } from "@/components/dashboard/pagos-recurring-commitments-panel";
 import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
@@ -36,6 +37,28 @@ import {
   canManageRecurringCommitments,
   canViewRecurringCommitments,
 } from "@/lib/domain/transitions";
+
+function formatUsdParen(amount: number): string {
+  return `($${amount.toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  })} USD)`;
+}
+
+/** Monto de la OC: pesos; si nació en USD, dólares entre paréntesis. */
+function OcAmountCell({ order }: { order: PurchaseOrderDto }) {
+  if (orderTracksPaymentsInMxn(order)) {
+    return (
+      <div className="text-right">
+        <div className="tabular-nums">{formatMoney(paymentBasisTotal(order), "MXN")}</div>
+        <div className="text-[10px] font-normal text-zinc-500">{formatUsdParen(order.totalAmount)}</div>
+      </div>
+    );
+  }
+  return (
+    <span className="tabular-nums">{formatMoney(order.totalAmount, order.currency || "MXN")}</span>
+  );
+}
 
 const PAGE_SIZE_OPTIONS = [8, 15, 25, 50] as const;
 
@@ -258,7 +281,6 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
     return () => window.removeEventListener("hashchange", scrollToHash);
   }, [loading]);
 
-  const currency = orders[0]?.currency ?? "MXN";
   const kpis = useMemo(() => pagosPageKpis(orders), [orders]);
   const supplierNames = useMemo(() => uniqueSuppliers(orders), [orders]);
 
@@ -340,7 +362,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
         <KpiCard
           label="Pendientes de autorizar"
-          value={formatMoney(kpis.pendientesAmount, currency)}
+          value={formatMoney(kpis.pendientesAmount, "MXN")}
           sub={`${kpis.pendientesCount} pago${kpis.pendientesCount === 1 ? "" : "s"} · acción prioritaria`}
           accent="border-l-orange-500 bg-orange-50/50"
           icon="pending"
@@ -350,7 +372,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
         />
         <KpiCard
           label="Realizados este mes"
-          value={formatMoney(kpis.realizadosMes, currency)}
+          value={formatMoney(kpis.realizadosMes, "MXN")}
           sub={`${kpis.realizadosCount} pago${kpis.realizadosCount === 1 ? "" : "s"}`}
           accent="border-l-emerald-500 bg-emerald-50/45"
           icon="paid"
@@ -368,7 +390,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
         />
         <KpiCard
           label="Total comprometido"
-          value={formatMoney(kpis.totalComprometido, currency)}
+          value={formatMoney(kpis.totalComprometido, "MXN")}
           sub={canOpenReportes ? "Ver resumen en reportes →" : "Ver gasto por obra abajo →"}
           accent="border-l-violet-500 bg-violet-50/45"
           icon="committed"
@@ -520,17 +542,17 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
                       </td>
                       <td className="max-w-[9rem] truncate px-4 py-2.5 text-zinc-700">{order.supplierName}</td>
                       <td className="max-w-[8rem] truncate px-4 py-2.5 font-medium text-sky-800">{order.obraName}</td>
-                      <td className="px-4 py-2.5 text-right tabular-nums text-zinc-700">
-                        {formatMoney(order.totalAmount, order.currency)}
+                      <td className="px-4 py-2.5 text-right text-zinc-700">
+                        <OcAmountCell order={order} />
                       </td>
                       <td className="px-4 py-2.5 text-right font-medium tabular-nums text-zinc-900">
-                        {formatMoney(amountToPay(order), order.currency)}
+                        {formatMoney(amountToPay(order), "MXN")}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-emerald-700">
-                        {formatMoney(order.amountPaidSoFar, order.currency)}
+                        {formatMoney(order.amountPaidSoFar, "MXN")}
                       </td>
                       <td className="px-4 py-2.5 text-right tabular-nums text-orange-700">
-                        {formatMoney(order.amountRemaining, order.currency)}
+                        {formatMoney(order.amountRemaining, "MXN")}
                       </td>
                       <td className="px-4 py-2.5 tabular-nums text-zinc-600">
                         {payDate ? formatDateShort(payDate) : "—"}
@@ -629,7 +651,13 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
                         <span className="shrink-0 text-[10px] font-semibold text-sky-700">{prog.pct}%</span>
                       </div>
                       <p className="mt-0.5 text-[11px] tabular-nums text-zinc-500">
-                        {formatMoney(o.amountPaidSoFar, o.currency)} de {formatMoney(o.totalAmount, o.currency)}
+                        {formatMoney(o.amountPaidSoFar, "MXN")} de{" "}
+                        {formatMoney(paymentBasisTotal(o), "MXN")}
+                        {orderTracksPaymentsInMxn(o) ? (
+                          <span className="block text-[10px] text-zinc-400">
+                            {formatUsdParen(o.totalAmount)}
+                          </span>
+                        ) : null}
                       </p>
                     </Link>
                   </li>
@@ -669,7 +697,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
                       </span>
                     </span>
                     <span className="shrink-0 text-xs font-bold tabular-nums text-zinc-900">
-                      {formatMoney(amountToPay(o), o.currency)}
+                      {formatMoney(amountToPay(o), "MXN")}
                     </span>
                   </Link>
                 </li>
@@ -701,7 +729,7 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
                     <div className="flex items-center justify-between gap-2 text-xs">
                       <span className="truncate font-semibold text-zinc-800">{row.name}</span>
                       <span className="shrink-0 font-bold tabular-nums text-zinc-900">
-                        {formatMoney(row.total, currency)}
+                        {formatMoney(row.total, "MXN")}
                       </span>
                     </div>
                     <div className="mt-1.5 h-1.5 overflow-hidden rounded-full bg-zinc-200">

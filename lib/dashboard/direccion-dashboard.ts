@@ -1,4 +1,5 @@
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 
 const MX_TZ = "America/Mexico_City";
 
@@ -115,7 +116,7 @@ export function direccionKpiCounts(orders: PurchaseOrderDto[]): Record<Direccion
   return {
     gastoTotalMes: paymentsInMonth(orders, month),
     pagosPendientesAutorizar: pending.reduce(
-      (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : o.totalAmount),
+      (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : paymentBasisTotal(o)),
       0
     ),
     pagosParcialesActivos: partials.length,
@@ -192,7 +193,7 @@ export function paymentSummary(orders: PurchaseOrderDto[]): PaymentSummary {
 
   const pagadoAmount = paidOrders.reduce((s, o) => s + orderPaymentTotal(o), 0);
   const pendienteAmount = pending.reduce(
-    (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : o.totalAmount),
+    (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : paymentBasisTotal(o)),
     0
   );
   const parcialAmount = partials.reduce((s, o) => s + o.amountRemaining, 0);
@@ -245,7 +246,8 @@ export function topSuppliersThisMonth(orders: PurchaseOrderDto[], limit = 5): { 
 }
 
 export function partialProgress(order: PurchaseOrderDto): { done: number; pct: number } {
-  const pct = order.totalAmount > 0 ? Math.min(100, Math.round((order.amountPaidSoFar / order.totalAmount) * 100)) : 0;
+  const basis = paymentBasisTotal(order);
+  const pct = basis > 0 ? Math.min(100, Math.round((order.amountPaidSoFar / basis) * 100)) : 0;
   const done = order.paymentRecords.length || (order.amountPaidSoFar > 0 ? 1 : 0);
   return { done, pct };
 }
@@ -270,7 +272,7 @@ export function partialsDueSoon(orders: PurchaseOrderDto[], withinDays = 7): num
 export function direccionAlerts(orders: PurchaseOrderDto[]): DireccionAlert[] {
   const pending = orders.filter(isPendingAuthorization);
   const pendingSum = pending.reduce(
-    (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : o.totalAmount),
+    (s, o) => s + (o.amountRemaining > 0 ? o.amountRemaining : paymentBasisTotal(o)),
     0
   );
   const dueSoon = partialsDueSoon(orders);
