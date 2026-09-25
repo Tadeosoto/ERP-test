@@ -271,7 +271,10 @@ export function canMarkAwaitingInvoice(status: OrderStatus, role: Role): boolean
 }
 
 export function canUploadInvoice(status: OrderStatus, role: Role): boolean {
-  return INVOICE_UPLOAD_ROLES.includes(role) && (status === "paid" || status === "awaitingInvoice");
+  return (
+    INVOICE_UPLOAD_ROLES.includes(role) &&
+    (status === "awaitingPayment" || status === "paid" || status === "awaitingInvoice")
+  );
 }
 
 export function canAccountingValidate(status: OrderStatus, role: Role): boolean {

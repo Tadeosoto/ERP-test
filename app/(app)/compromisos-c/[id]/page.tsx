@@ -9,9 +9,8 @@ import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { FilePickButton } from "@/components/file-pick-button";
-import { commitmentDisplayStatus } from "@/lib/dashboard/direccion-proceso-c-dashboard";
+import { commitmentDisplayStatus, commitmentHasInvoicePdf, commitmentStatusTone } from "@/lib/dashboard/direccion-proceso-c-dashboard";
 import {
-  INVOICE_FIRST_STATUS_LABEL,
   canDeleteInvoiceFirstCommitment,
   canEditInvoiceFirstCommitment,
   describeInvoiceFirstGate,
@@ -227,14 +226,14 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
   const paid = order?.amountPaidSoFar ?? commitment.amountPaidSoFar;
   const total = order?.totalAmount ?? commitment.displayTotal;
   const remaining = order?.amountRemaining ?? commitment.amountRemaining;
-  const displayStatus = order
-    ? commitmentDisplayStatus({
-        ...commitment,
-        amountPaidSoFar: paid,
-        amountRemaining: remaining,
-        purchaseOrderStatus: order.status,
-      })
-    : INVOICE_FIRST_STATUS_LABEL[commitment.status];
+  const displayCommitment: InvoiceFirstCommitmentDto = {
+    ...commitment,
+    amountPaidSoFar: paid,
+    amountRemaining: remaining,
+    purchaseOrderStatus: order?.status ?? commitment.purchaseOrderStatus,
+  };
+  const displayStatus = commitmentDisplayStatus(displayCommitment);
+  const missingInvoicePdf = !commitmentHasInvoicePdf(commitment);
 
   const canEdit = user ? canEditInvoiceFirstCommitment(user.role) : false;
   const canDelete = user
@@ -262,11 +261,17 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
             <h1 className="text-2xl font-bold text-zinc-900">{commitment.invoiceFolio}</h1>
             <p className="mt-1 text-sm text-zinc-600">{commitment.supplierName}</p>
           </div>
-          <span className="rounded-full bg-orange-100 px-3 py-1 text-xs font-semibold text-orange-800 ring-1 ring-orange-200">
+          <span
+            className={`rounded-full px-3 py-1 text-xs font-semibold ring-1 ring-inset ${commitmentStatusTone(displayCommitment)}`}
+          >
             {displayStatus}
           </span>
         </div>
-        <p className="mt-3 text-sm text-zinc-600">{describeInvoiceFirstGate(commitment.status)}</p>
+        <p className="mt-3 text-sm text-zinc-600">
+          {missingInvoicePdf && (commitment.status === "awaiting_oc" || commitment.status === "oc_requested")
+            ? "Falta el PDF de la factura. Súbelo para continuar."
+            : describeInvoiceFirstGate(commitment.status)}
+        </p>
       </header>
 
       {editing ? (

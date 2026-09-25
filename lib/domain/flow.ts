@@ -259,12 +259,12 @@ export function describeGate(status: OrderStatus, paymentType?: PaymentType | nu
       return "Carolina o Diomedes autorizan la OC. El primero que aprueba avanza a pendiente de pago.";
     case "awaitingPayment":
       if (paymentType === "parcialidades") {
-        return "OC autorizada · pendiente de pago. Carolina registra abonos y comprobantes hasta saldar.";
+        return "OC autorizada · pendiente de pago. Carolina registra abonos y comprobantes hasta saldar. La factura del proveedor se puede subir desde ahora, sin esperar el pago.";
       }
       if (paymentType === "programado") {
-        return "OC autorizada · pendiente de pago. Carolina registra el pago completo antes de la fecha límite.";
+        return "OC autorizada · pendiente de pago. Carolina registra el pago completo antes de la fecha límite. La factura del proveedor se puede subir desde ahora, sin esperar el pago.";
       }
-      return "OC autorizada · pendiente de pago. Carolina registra el pago y sube el comprobante.";
+      return "OC autorizada · pendiente de pago. Carolina registra el pago y sube el comprobante. La factura del proveedor se puede subir desde ahora, sin esperar el pago.";
     case "paid":
       return "Total saldado. Compras o Administración envían el comprobante al proveedor y pueden subir la factura.";
     case "awaitingInvoice":
@@ -317,7 +317,7 @@ export function rolePlaybook(role: Role): string[] {
       return [
         "Autoriza OC (tú o Dirección; un sí basta) y registra abonos en pesos desde Inicio.",
         "Si la OC está en USD, el total ya viene convertido a MXN con el FIX de Banxico del día.",
-        "Tras el pago, Compras o tú pueden subir la factura del proveedor a la OC.",
+        "Puedes subir la factura del proveedor desde que la OC está autorizada, aunque el pago sea a crédito y todavía no se registre.",
       ];
     case "recepcion":
       return [

@@ -4,8 +4,8 @@ import { canActAsCompras } from "./transitions";
 export type InvoiceFirstStatus = "awaiting_oc" | "oc_requested" | "in_payment" | "completed";
 
 export const INVOICE_FIRST_STATUS_LABEL: Record<InvoiceFirstStatus, string> = {
-  awaiting_oc: "Esperando OC",
-  oc_requested: "Esperando OC",
+  awaiting_oc: "Pendiente de solicitar OC",
+  oc_requested: "Pendiente de generar OC",
   in_payment: "En pago",
   completed: "Pagos completados",
 };

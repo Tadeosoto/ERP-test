@@ -13,8 +13,20 @@ import {
   type ComprasOrderTab,
 } from "@/lib/dashboard/compras-dashboard";
 import { PAYMENT_TYPE_SHORT } from "@/lib/domain/labels";
+import { paymentBasisCurrency, paymentBasisTotal } from "@/lib/domain/order-fx";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
+
+function listMoney(order: PurchaseOrderDto, kind: "total" | "paid" | "remaining"): string {
+  const currency = paymentBasisCurrency(order);
+  const amount =
+    kind === "total"
+      ? paymentBasisTotal(order)
+      : kind === "paid"
+        ? order.amountPaidSoFar
+        : order.amountRemaining;
+  return formatMoney(amount, currency);
+}
 
 const PAGE_SIZES = [15, 25, 50] as const;
 const FILTER_ICON = "h-5 w-5";
@@ -186,7 +198,7 @@ function ComprasOrderMobileCard({
           <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(order.createdAt)}</span>
         </div>
         <p className="text-sm font-semibold tabular-nums text-orange-700">
-          {formatMoney(order.totalAmount, order.currency)}
+          {listMoney(order, "total")}
         </p>
         <div className="inline-flex items-center gap-1.5" title="OC · Pago · Factura">
           <DocDot ok={docs.oc} label="OC" />
@@ -442,10 +454,10 @@ export function ComprasOrdersPanel({
                       {order.supplierName}
                     </td>
                     <td className={`${td} text-right font-semibold ${money} text-zinc-900`}>
-                      {formatMoney(order.totalAmount, order.currency)}
+                      {listMoney(order, "total")}
                     </td>
                     <td className={`${td} text-right ${money} text-zinc-600`}>
-                      {formatMoney(order.amountPaidSoFar, order.currency)}
+                      {listMoney(order, "paid")}
                     </td>
                     <td className={`${td} text-right ${money}`}>
                       <span
@@ -456,7 +468,7 @@ export function ComprasOrdersPanel({
                         }
                         title={order.amountRemaining > 0.01 ? "Saldo pendiente" : "Saldada"}
                       >
-                        {formatMoney(order.amountRemaining, order.currency)}
+                        {listMoney(order, "remaining")}
                       </span>
                     </td>
                     <td

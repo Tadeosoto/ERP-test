@@ -5,6 +5,7 @@ import {
   afterAccountingDifference,
   afterAuthorizeOrder,
   afterEngineerReject,
+  afterInvoiceUploaded,
   afterMarkAwaitingInvoice,
   afterPatySetsDeadline,
   afterSendToEngineer,
@@ -51,7 +52,7 @@ function statusAfterPaymentRemoval(currentStatus: OrderStatus, totalAmount: numb
     }
     return currentStatus;
   }
-  if (["paid", "awaitingInvoice"].includes(currentStatus)) {
+  if (["paid", "awaitingInvoice", "invoiceReceived"].includes(currentStatus)) {
     return "awaitingPayment";
   }
   return currentStatus;
@@ -294,18 +295,31 @@ export async function POST(request: Request, ctx: Ctx) {
         );
       }
 
+      const existingInvoice = result.fullyPaid
+        ? await prisma.storedFile.findFirst({
+            where: { orderId: id, kind: "factura" },
+            select: { id: true },
+          })
+        : null;
+      const nextStatus =
+        result.fullyPaid && existingInvoice ? afterInvoiceUploaded() : result.status;
+
       const updated = await prisma.purchaseOrder.update({
         where: { id },
         data: {
           amountPaidSoFar: result.amountPaidSoFar,
           paymentLabel: result.paymentLabel,
-          status: result.status,
+          status: nextStatus,
         },
         include: orderInclude,
       });
 
       const evt = NotificationEvents.paymentRegistered(updated.title, result.fullyPaid);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
+      if (nextStatus === "invoiceReceived") {
+        const invoiceEvt = NotificationEvents.invoiceUploaded(updated.title);
+        await notifyByRoles(id, invoiceEvt.type, invoiceEvt.message, invoiceEvt.roles);
+      }
       return NextResponse.json({ order: mapOrder(updated) });
     }
 

@@ -46,6 +46,19 @@ export function paymentProgressPct(order: {
   return Math.min(100, Math.max(0, Math.round((order.amountPaidSoFar / total) * 100)));
 }
 
+/** Pesos registrados de un abono, vistos en la moneda original de la OC (USD / TC Banxico). */
+export function paymentAmountInOrderCurrency(
+  order: {
+    currency: string;
+    fxRate?: number | null;
+    totalAmountMxn?: number | null;
+  },
+  amountInPaymentBasis: number
+): number | null {
+  if (!orderTracksPaymentsInMxn(order) || !(order.fxRate! > 0)) return null;
+  return amountInPaymentBasis / order.fxRate!;
+}
+
 export function formatFxBanner(order: Pick<PurchaseOrderDto, "currency" | "fxRate" | "fxRateDate" | "totalAmountMxn" | "fxNote" | "totalAmount">): string | null {
   if (!orderTracksPaymentsInMxn(order)) return null;
   if (order.fxNote?.trim()) return order.fxNote;

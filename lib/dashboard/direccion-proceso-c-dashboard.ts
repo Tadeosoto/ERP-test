@@ -61,17 +61,29 @@ export function commitmentDisplayTab(c: InvoiceFirstCommitmentDto): DireccionCom
   return invoiceFirstTabKey(c) as DireccionCommitmentTab;
 }
 
+export function commitmentHasInvoicePdf(c: Pick<InvoiceFirstCommitmentDto, "files">): boolean {
+  return (c.files ?? []).some((f) => f.kind === "factura_pdf" || f.kind === "factura");
+}
+
 export function commitmentDisplayStatus(c: InvoiceFirstCommitmentDto): string {
-  if (c.status === "awaiting_oc" || c.status === "oc_requested") return "Esperando OC";
   if (c.status === "completed" || c.purchaseOrderStatus === "completed") return "Pagos completados";
   if (c.amountPaidSoFar > 0.01 && c.amountRemaining > 0.01) return "Pago parcial";
   if (c.status === "in_payment") return "En pago";
-  return "Esperando OC";
+  if ((c.status === "awaiting_oc" || c.status === "oc_requested") && !commitmentHasInvoicePdf(c)) {
+    return "Falta factura";
+  }
+  if (c.status === "oc_requested") return "Pendiente de generar OC";
+  if (c.status === "awaiting_oc") return "Pendiente de solicitar OC";
+  return "Pendiente de solicitar OC";
 }
 
 export function commitmentStatusTone(c: InvoiceFirstCommitmentDto): string {
   const label = commitmentDisplayStatus(c);
-  if (label === "Esperando OC") return "bg-orange-100 text-orange-800 ring-orange-200/80";
+  if (label === "Falta factura") return "bg-amber-100 text-amber-900 ring-amber-200/80";
+  if (label === "Pendiente de solicitar OC" || label === "Esperando OC") {
+    return "bg-orange-100 text-orange-800 ring-orange-200/80";
+  }
+  if (label === "Pendiente de generar OC") return "bg-sky-100 text-sky-800 ring-sky-200/80";
   if (label === "Pago parcial") return "bg-sky-100 text-sky-800 ring-sky-200/80";
   if (label === "Pagos completados") return "bg-emerald-100 text-emerald-800 ring-emerald-200/80";
   return "bg-violet-100 text-violet-800 ring-violet-200/80";
@@ -99,9 +111,10 @@ export const AGREGAR_FACTURA_KPI_META: Record<
   AgregarFacturaKpiKey,
   { title: string; empty: string; description: string }
 > = {
-  pendientes: {
+    pendientes: {
     title: "Facturas pendientes de OC",
-    description: "Esperan que Administración solicite la OC a Compras. Puedes editar o eliminar mientras no haya OC.",
+    description:
+      "El estado indica si falta el PDF, si Administración debe solicitar la OC o si Compras debe generarla.",
     empty: "No hay facturas pendientes de OC.",
   },
   mes: {

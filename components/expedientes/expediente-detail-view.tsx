@@ -8,7 +8,7 @@ import { useSession } from "@/components/session-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { canEditExpedientes } from "@/lib/domain/expedientes";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
-import { INVOICE_FIRST_STATUS_LABEL } from "@/lib/domain/proceso-c";
+import { commitmentDisplayStatus } from "@/lib/dashboard/direccion-proceso-c-dashboard";
 import type { ExpedienteDetailDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
@@ -108,7 +108,7 @@ export function ExpedienteDetailView() {
         href: `/compromisos-c/${c.id}`,
         amount: c.displayTotal,
         currency: c.currency,
-        status: INVOICE_FIRST_STATUS_LABEL[c.status] ?? c.status,
+        status: commitmentDisplayStatus(c),
         at: c.updatedAt,
         files: c.files.map((f) => ({
           id: f.id,

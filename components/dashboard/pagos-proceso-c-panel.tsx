@@ -3,13 +3,19 @@
 import Link from "next/link";
 import { useMemo } from "react";
 import type { InvoiceFirstCommitmentDto, Role } from "@/lib/domain/types";
-import { INVOICE_FIRST_STATUS_LABEL } from "@/lib/domain/proceso-c";
+import { commitmentDisplayStatus, commitmentHasInvoicePdf } from "@/lib/dashboard/direccion-proceso-c-dashboard";
 import { canActAsCompras } from "@/lib/domain/transitions";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
-function actionFor(role: Role, status: InvoiceFirstCommitmentDto["status"]): string {
-  if (role === "pagos" && status === "awaiting_oc") return "Solicitar OC";
-  if (canActAsCompras(role) && status === "oc_requested") return "Generar OC";
+function actionFor(role: Role, commitment: InvoiceFirstCommitmentDto): string {
+  if (
+    (commitment.status === "awaiting_oc" || commitment.status === "oc_requested") &&
+    !commitmentHasInvoicePdf(commitment)
+  ) {
+    return "Subir factura";
+  }
+  if (role === "pagos" && commitment.status === "awaiting_oc") return "Solicitar OC";
+  if (canActAsCompras(role) && commitment.status === "oc_requested") return "Generar OC";
   return "Ver detalle";
 }
 
@@ -73,14 +79,16 @@ export function PagosProcesoCPanel({
               </p>
               {!compact && (
                 <p className="text-xs text-zinc-400">
-                  {formatDateShort(c.invoiceDate)} · {INVOICE_FIRST_STATUS_LABEL[c.status]}
+                  {formatDateShort(c.invoiceDate)} · {commitmentDisplayStatus(c)}
                 </p>
               )}
             </Link>
             <div className="flex shrink-0 flex-wrap gap-1.5">
               <Link
                 href={
-                  canActAsCompras(role) && c.status === "oc_requested"
+                  canActAsCompras(role) &&
+                  c.status === "oc_requested" &&
+                  commitmentHasInvoicePdf(c)
                     ? `/ordenes/nueva?compromisoFacturaId=${c.id}`
                     : `/compromisos-c/${c.id}`
                 }
@@ -88,7 +96,7 @@ export function PagosProcesoCPanel({
                   compact ? "px-2.5 py-1 text-[11px]" : "text-xs"
                 }`}
               >
-                {actionFor(role, c.status)}
+                {actionFor(role, c)}
               </Link>
               {(role === "pagos" || role === "direccion") && (
                 <Link

@@ -39,6 +39,7 @@ import {
 import {
   formatFxBanner,
   orderTracksPaymentsInMxn,
+  paymentAmountInOrderCurrency,
   paymentBasisCurrency,
   paymentProgressPct,
 } from "@/lib/domain/order-fx";
@@ -253,6 +254,8 @@ export function OrderDetailPanel({
   const payPct = paymentProgressPct(order);
   const payCurrency = paymentBasisCurrency(order);
   const fxBanner = formatFxBanner(order);
+  const paidInOrderCurrency = paymentAmountInOrderCurrency(order, order.amountPaidSoFar);
+  const remainingInOrderCurrency = paymentAmountInOrderCurrency(order, order.amountRemaining);
 
   const headerPanel = (
     <div className="dash-panel overflow-hidden p-3 sm:p-4">
@@ -318,12 +321,22 @@ export function OrderDetailPanel({
           <p className="mt-0.5 text-base font-bold tabular-nums text-teal-800 sm:text-xl">
             {formatMoney(order.amountPaidSoFar, payCurrency)}
           </p>
+          {paidInOrderCurrency != null ? (
+            <p className="mt-0.5 text-[11px] font-medium text-teal-800/80">
+              = {formatMoney(paidInOrderCurrency, "USD")}
+            </p>
+          ) : null}
         </div>
         <div className="rounded-xl border border-amber-100 bg-amber-50/50 px-2.5 py-2 sm:px-3">
           <p className="dash-label text-zinc-500">Falta {orderTracksPaymentsInMxn(order) ? "(MXN)" : ""}</p>
           <p className="mt-0.5 text-base font-bold tabular-nums text-amber-800 sm:text-xl">
             {formatMoney(order.amountRemaining, payCurrency)}
           </p>
+          {remainingInOrderCurrency != null ? (
+            <p className="mt-0.5 text-[11px] font-medium text-amber-800/80">
+              = {formatMoney(remainingInOrderCurrency, "USD")}
+            </p>
+          ) : null}
         </div>
       </div>
 
@@ -387,14 +400,21 @@ export function OrderDetailPanel({
         <p className="mt-2 text-xs text-zinc-400">Sin abonos registrados.</p>
       ) : (
         <ul className="mt-2 max-h-[22rem] space-y-2 overflow-y-auto pr-0.5">
-          {order.paymentRecords.map((p) => (
+          {order.paymentRecords.map((p) => {
+            const inOrderCurrency = paymentAmountInOrderCurrency(order, p.amount);
+            return (
             <li
               key={p.id}
               className="rounded-xl border border-teal-100/80 bg-teal-50/40 px-2.5 py-2"
             >
               <p className="text-sm font-bold tabular-nums text-teal-900">
-                {formatMoney(p.amount, order.currency)}
+                {formatMoney(p.amount, payCurrency)}
               </p>
+              {inOrderCurrency != null ? (
+                <p className="text-[11px] font-medium tabular-nums text-teal-800/80">
+                  = {formatMoney(inOrderCurrency, "USD")}
+                </p>
+              ) : null}
               <p className="mt-0.5 text-[11px] leading-snug text-zinc-600">
                 <span className="font-medium text-zinc-800">{p.recordedByName}</span>
                 <br />
@@ -424,7 +444,8 @@ export function OrderDetailPanel({
                 </button>
               )}
             </li>
-          ))}
+            );
+          })}
         </ul>
       )}
     </div>
@@ -772,9 +793,9 @@ export function OrderDetailPanel({
         {canUploadInvoice(order.status, user.role) && (
           <div className="mt-4 space-y-4">
             <p className="text-base text-zinc-700">
-              Agrega el PDF de la factura del proveedor (cada una se conserva). Para corregir una
-              existente, usa «Reemplazar» en Documentos. Paty (Compras) o Carolina (Administración)
-              pueden cargarla después de enviar el comprobante al proveedor.
+              {order.status === "awaitingPayment"
+                ? "Puedes subir el PDF de la factura del proveedor aunque el pago todavía no esté registrado (crédito a plazo). El abono sigue siendo aparte y siempre lleva su comprobante."
+                : "Agrega el PDF de la factura del proveedor (cada una se conserva). Para corregir una existente, usa «Reemplazar» en Documentos."}
             </p>
             <div>
               <p className="font-medium text-zinc-800">Factura (PDF)</p>

@@ -81,6 +81,7 @@ export const ROLE_QUICK_GUIDES: Record<Role, RoleQuickGuide> = {
         steps: [
           "Tras la firma de Ingeniería, tú o Diomedes dan el sí (basta uno).",
           "La OC queda lista para pagar: registra monto y sube el comprobante PDF.",
+          "Si es crédito, puedes subir el PDF de la factura aunque el pago todavía no esté registrado.",
           "Con plazos, sube más comprobantes hasta completar el total.",
         ],
       },
