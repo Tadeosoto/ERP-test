@@ -9,9 +9,75 @@ export type ComprasOrderTab =
   | "diferencias"
   | "completadas"
   | "rechazadas"
-  | "borrador";
+  | "borrador"
+  | "vencidas";
 
-export const COMPRAS_TAB_STATUSES: Record<Exclude<ComprasOrderTab, "all">, OrderStatus[]> = {
+export type DueUrgency = "overdue" | "soon";
+
+/** Día civil en hora de México, el mismo que muestra «Límite de pago». */
+function mexicoDay(iso: string | null | undefined, now?: Date): string | null {
+  const d = now ?? (iso ? new Date(iso) : null);
+  if (!d || Number.isNaN(d.getTime())) return null;
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(d);
+}
+
+function daysFromToday(due: string, now = new Date()): number {
+  const today = mexicoDay(null, now);
+  if (!today) return 99;
+  const a = Date.parse(`${today}T00:00:00Z`);
+  const b = Date.parse(`${due}T00:00:00Z`);
+  return Math.round((b - a) / 86_400_000);
+}
+
+function addCalendarDays(yyyyMmDd: string, days: number): string {
+  const [y, m, d] = yyyyMmDd.split("-").map(Number);
+  const utc = new Date(Date.UTC(y, m - 1, d));
+  utc.setUTCDate(utc.getUTCDate() + days);
+  return utc.toISOString().slice(0, 10);
+}
+
+/** Fecha de límite de pago, si Compras ya la fijó. */
+export function orderPaymentDueDay(order: PurchaseOrderDto): string | null {
+  return mexicoDay(order.paymentDueDate);
+}
+
+/** Plazo a N días contado desde la fecha de creación. «A 30 días» son 30. */
+function termDueDay(order: PurchaseOrderDto): string | null {
+  const start = mexicoDay(order.createdAt);
+  if (!start) return null;
+  if (order.paymentType === "programado") return addCalendarDays(start, 30);
+  const terms = order.paymentTerms.trim().toLowerCase();
+  if (terms.includes("después") || terms.includes("factura")) return null;
+  const match = terms.match(/^(\d+)\s*d[ií]as?\b/);
+  if (!match) return null;
+  return addCalendarDays(start, Number(match[1]));
+}
+
+function urgencyForDueDay(due: string, now: Date): DueUrgency | null {
+  const left = daysFromToday(due, now);
+  if (left < 0) return "overdue";
+  if (left <= 3) return "soon";
+  return null;
+}
+
+/** Órdenes por pagar: ya vencidas, o a las que les faltan 3 días o menos. */
+export function orderDueUrgency(order: PurchaseOrderDto, now = new Date()): DueUrgency | null {
+  if (order.status === "draft" || order.status === "completed") return null;
+  if (order.amountRemaining <= 0.01) return null;
+  const marks = [orderPaymentDueDay(order), termDueDay(order)]
+    .filter((due): due is string => Boolean(due))
+    .map((due) => urgencyForDueDay(due, now));
+  if (marks.includes("overdue")) return "overdue";
+  if (marks.includes("soon")) return "soon";
+  return null;
+}
+
+export const DUE_URGENCY_LABEL: Record<DueUrgency, string> = {
+  overdue: "Vencidas",
+  soon: "A punto de vencer",
+};
+
+export const COMPRAS_TAB_STATUSES: Record<Exclude<ComprasOrderTab, "all" | "vencidas">, OrderStatus[]> = {
   aprobar: ["awaitingEngineer"],
   pago: ["awaitingAuthorization", "awaitingPatyDeadline", "awaitingPayment"],
   factura: ["paid", "awaitingInvoice"],
@@ -73,6 +139,7 @@ export function comprasTabCounts(orders: PurchaseOrderDto[]): Record<ComprasOrde
     completadas: orders.filter((o) => o.status === "completed").length,
     rechazadas,
     borrador,
+    vencidas: orders.filter((o) => orderDueUrgency(o) != null).length,
   };
 }
 
@@ -86,7 +153,9 @@ export function filterComprasOrders(input: {
 }): PurchaseOrderDto[] {
   let result = [...input.orders];
 
-  if (input.tab !== "all") {
+  if (input.tab === "vencidas") {
+    result = result.filter((o) => orderDueUrgency(o) != null);
+  } else if (input.tab !== "all") {
     const statuses = COMPRAS_TAB_STATUSES[input.tab];
     result = result.filter((o) => statuses.includes(o.status));
   }
@@ -144,6 +213,7 @@ export const COMPRAS_TAB_LABEL: Record<ComprasOrderTab, string> = {
   completadas: "Completadas",
   rechazadas: "Corrección solicitada",
   borrador: "Borrador",
+  vencidas: "Vencidas",
 };
 
 export const COMPRAS_TAB_SHORT_LABEL: Record<ComprasOrderTab, string> = {
@@ -155,6 +225,7 @@ export const COMPRAS_TAB_SHORT_LABEL: Record<ComprasOrderTab, string> = {
   completadas: "Completadas",
   rechazadas: "Corrección solicitada",
   borrador: "Borrador",
+  vencidas: "Vencidas",
 };
 
 export const COMPRAS_ESTADO_OPTIONS: { value: ComprasOrderTab; label: string }[] = (
@@ -163,6 +234,7 @@ export const COMPRAS_ESTADO_OPTIONS: { value: ComprasOrderTab; label: string }[]
     "aprobar",
     "rechazadas",
     "pago",
+    "vencidas",
     "factura",
     "diferencias",
     "completadas",

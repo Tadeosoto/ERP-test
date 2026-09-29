@@ -14,6 +14,7 @@ import { canCreateObra, canCreateOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
 import { filterObras, sortByCreatedAtDesc } from "@/lib/list-utils";
+import { engineerIsOnObra } from "@/lib/obras/obra-members";
 
 const inputCls =
   "mt-1.5 block w-full rounded-xl border border-zinc-200 bg-white px-3 py-2.5 text-sm shadow-sm focus:border-teal-300 focus:outline-none focus:ring-1 focus:ring-teal-200";
@@ -33,6 +34,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [orders, setOrders] = useState<PurchaseOrderDto[]>([]);
   const [search, setSearch] = useState("");
+  const [scope, setScope] = useState<"all" | "mine">("all");
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [showCreate, setShowCreate] = useState(false);
@@ -73,7 +75,11 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
   }, [load, onRegisterRefresh]);
 
   const sorted = useMemo(() => sortByCreatedAtDesc(obras), [obras]);
-  const visible = useMemo(() => filterObras(sorted, search), [sorted, search]);
+  const scoped = useMemo(() => {
+    if (user?.role !== "ingeniero" || scope !== "mine" || !user.id) return sorted;
+    return sorted.filter((obra) => engineerIsOnObra(obra, user.id));
+  }, [sorted, scope, user]);
+  const visible = useMemo(() => filterObras(scoped, search), [scoped, search]);
 
   async function createObra(e: React.FormEvent) {
     e.preventDefault();
@@ -248,7 +254,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
       )}
 
       <section className="card overflow-hidden">
-        <div className="border-b border-orange-50 px-4 py-3">
+        <div className="flex flex-wrap items-center gap-2 border-b border-orange-50 px-4 py-3">
           <input
             type="search"
             value={search}
@@ -256,6 +262,17 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
             placeholder="Buscar por nombre, código o cliente…"
             className="h-10 w-full max-w-md rounded-xl border border-zinc-200 px-3 text-sm shadow-sm"
           />
+          {user?.role === "ingeniero" && (
+            <select
+              value={scope}
+              onChange={(e) => setScope(e.target.value as "all" | "mine")}
+              className="h-10 rounded-xl border border-zinc-200 bg-white px-3 text-sm font-medium shadow-sm"
+              aria-label="Filtrar obras"
+            >
+              <option value="all">Todas las obras</option>
+              <option value="mine">Mis obras</option>
+            </select>
+          )}
         </div>
         <div className="overflow-x-auto">
           <table className="w-full min-w-[800px] text-left text-sm">
@@ -264,6 +281,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
                 <th className="px-3 py-2">Código</th>
                 <th className="px-3 py-2">Obra</th>
                 <th className="px-3 py-2">Cliente</th>
+                <th className="px-3 py-2">Ingenieros</th>
                 <th className="px-3 py-2">Estado</th>
                 <th className="px-3 py-2 text-right">OC</th>
                 <th className="px-3 py-2 text-right">Comprado</th>
@@ -275,7 +293,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
             <tbody>
               {visible.length === 0 ? (
                 <tr>
-                  <td colSpan={isAdmin ? 9 : 8} className="px-4 py-12 text-center text-zinc-500">
+                  <td colSpan={isAdmin ? 10 : 9} className="px-4 py-12 text-center text-zinc-500">
                     No hay obras con ese criterio.
                   </td>
                 </tr>
@@ -292,6 +310,9 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
                       <td className="px-3 py-3 font-medium text-zinc-700">{obraDisplayCode(obra)}</td>
                       <td className="px-3 py-3 font-semibold text-zinc-900">{obra.name}</td>
                       <td className="px-3 py-3 text-zinc-600">{obra.client || "—"}</td>
+                      <td className="max-w-[14rem] px-3 py-3 text-zinc-700" title={obra.members.map((m) => m.name).join(", ")}>
+                        {obra.members.length > 0 ? obra.members.map((m) => m.name).join(", ") : "—"}
+                      </td>
                       <td className="px-3 py-3">
                         <span
                           className={`rounded-full px-2 py-0.5 text-xs font-semibold ${

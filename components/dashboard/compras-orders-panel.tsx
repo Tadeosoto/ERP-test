@@ -7,9 +7,11 @@ import { SystemStatusBadge } from "@/components/ui/system-status-badge";
 import { OcLink } from "@/components/ui/oc-link";
 import {
   COMPRAS_ESTADO_OPTIONS,
+  DUE_URGENCY_LABEL,
   filterComprasOrders,
   hasOcPdf,
   orderDisplayCode,
+  orderDueUrgency,
   type ComprasOrderTab,
 } from "@/lib/dashboard/compras-dashboard";
 import { PAYMENT_TYPE_SHORT } from "@/lib/domain/labels";
@@ -30,6 +32,22 @@ function listMoney(order: PurchaseOrderDto, kind: "total" | "paid" | "remaining"
 
 const PAGE_SIZES = [15, 25, 50] as const;
 const FILTER_ICON = "h-5 w-5";
+
+function DueUrgencyBadge({ order }: { order: PurchaseOrderDto }) {
+  const urgency = orderDueUrgency(order);
+  if (!urgency) return <SystemStatusBadge status={order.status} size="xs" />;
+  const tone =
+    urgency === "overdue"
+      ? "border-red-300 bg-red-50 text-red-800"
+      : "border-amber-300 bg-amber-50 text-amber-900";
+  return (
+    <span
+      className={`inline-flex max-w-full items-center truncate rounded-full border px-1.5 py-0.5 text-[10px] font-semibold leading-tight ${tone}`}
+    >
+      {DUE_URGENCY_LABEL[urgency]}
+    </span>
+  );
+}
 
 function paymentTypeShort(order: PurchaseOrderDto): string {
   if (order.paymentType) return PAYMENT_TYPE_SHORT[order.paymentType];
@@ -194,7 +212,7 @@ function ComprasOrderMobileCard({
         className="mt-2 flex w-full flex-wrap items-center justify-between gap-2 text-left"
       >
         <div className="flex flex-wrap items-center gap-2">
-          <SystemStatusBadge status={order.status} size="xs" />
+          <DueUrgencyBadge order={order} />
           <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(order.createdAt)}</span>
         </div>
         <p className="text-sm font-semibold tabular-nums text-orange-700">
@@ -482,7 +500,7 @@ export function ComprasOrdersPanel({
                     </td>
                     <td className={`${td} max-w-0`}>
                       <div className="min-w-0 overflow-hidden">
-                        <SystemStatusBadge status={order.status} size="xs" />
+                        <DueUrgencyBadge order={order} />
                       </div>
                     </td>
                     <td className={`${td} text-right`} onClick={(e) => e.stopPropagation()}>

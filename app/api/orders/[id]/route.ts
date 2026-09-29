@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
-import { canComprasEditOrder, canDeleteOrder } from "@/lib/domain/transitions";
+import { canDeleteOrder, canEditPurchaseOrder } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { cleanupOrderStoredFiles } from "@/lib/services/files";
 import { asOrderStatus, asRole, mapOrder, orderInclude } from "@/lib/services/mappers";
@@ -39,9 +39,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
 
     const status = asOrderStatus(order.status);
     const role = asRole(user.role);
-    if (!canComprasEditOrder(status, role)) {
+    if (!canEditPurchaseOrder(status, role)) {
       return NextResponse.json(
-        { error: "Solo puedes editar órdenes antes del pago o cierre documental." },
+        { error: "No puedes editar esta orden." },
         { status: 403 }
       );
     }
@@ -59,6 +59,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
       totalAmount?: number;
       currency?: string;
       paymentType?: PaymentType | null;
+      paymentDueDate?: string | null;
       assignedEngineerUserId?: string | null;
       processKind?: "a" | "c" | null;
       expedienteId?: string | null;
@@ -74,6 +75,20 @@ export async function PATCH(request: Request, ctx: Ctx) {
           ? new Date(body.documentDate)
           : null
         : order.documentDate;
+
+    let paymentDueDate = order.paymentDueDate;
+    if (body.paymentDueDate !== undefined) {
+      if (!body.paymentDueDate) {
+        paymentDueDate = null;
+      } else {
+        const day = body.paymentDueDate.slice(0, 10);
+        const due = new Date(`${day}T12:00:00.000Z`);
+        if (Number.isNaN(due.getTime())) {
+          return NextResponse.json({ error: "La fecha límite de pago no es válida." }, { status: 400 });
+        }
+        paymentDueDate = due;
+      }
+    }
 
     const amountOrCurrencyChanged =
       nextTotal !== order.totalAmount || nextCurrency !== order.currency.toUpperCase();
@@ -115,6 +130,7 @@ export async function PATCH(request: Request, ctx: Ctx) {
         totalAmountMxn: fx.totalAmountMxn,
         fxNote: fx.fxNote,
         paymentType: body.paymentType !== undefined ? body.paymentType : order.paymentType,
+        paymentDueDate,
         suggestedPaymentType:
           body.paymentType === "parcialidades"
             ? "parcialidades"

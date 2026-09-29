@@ -26,19 +26,9 @@ function newMemberId() {
 
 export async function GET() {
   try {
-    const user = await requireSessionUser();
-    const role = asRole(user.role);
+    await requireSessionUser();
 
     const obras = await prisma.obra.findMany({
-      where:
-        role === "ingeniero"
-          ? {
-              OR: [
-                { createdByUserId: user.id },
-                { members: { some: { userId: user.id } } },
-              ],
-            }
-          : undefined,
       orderBy: { createdAt: "desc" },
       include: obraInclude,
     });

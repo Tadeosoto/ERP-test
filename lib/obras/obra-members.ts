@@ -1,6 +1,6 @@
 import type { Role } from "@/lib/domain/types";
 
-/** ¿El ingeniero puede ver/actuar en esta obra? (miembro o creador). */
+/** ¿El ingeniero está en el equipo o creó la obra? Sirve para editar, no para ocultar la consulta. */
 export function engineerCanAccessObra(input: {
   role: Role;
   userId: string;
@@ -10,6 +10,14 @@ export function engineerCanAccessObra(input: {
   if (input.role !== "ingeniero") return true;
   if (input.createdByUserId && input.createdByUserId === input.userId) return true;
   return input.memberUserIds.includes(input.userId);
+}
+
+export function engineerIsOnObra(
+  obra: { createdByUserId: string | null; members: { userId: string }[] },
+  userId: string
+): boolean {
+  if (obra.createdByUserId === userId) return true;
+  return obra.members.some((member) => member.userId === userId);
 }
 
 /** Valida IDs de ingenieros y asegura que el creador ingeniero quede en el equipo. */

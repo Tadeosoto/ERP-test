@@ -219,6 +219,15 @@ export function canComprasEditOrder(status: OrderStatus, role: Role): boolean {
   return !COMPRAS_LOCKED_STATUSES.includes(status);
 }
 
+/** Carolina (Administración) corrige OC ya avanzadas, por ejemplo un límite de pago mal capturado. */
+export function canAdministrationEditOrder(status: OrderStatus, role: Role): boolean {
+  return role === "pagos" && status !== "completed";
+}
+
+export function canEditPurchaseOrder(status: OrderStatus, role: Role): boolean {
+  return canComprasEditOrder(status, role) || canAdministrationEditOrder(status, role);
+}
+
 export function canDeleteOrder(status: OrderStatus, role: Role, amountPaidSoFar: number): boolean {
   if (role === "pagos" || role === "direccion") return true;
   if (role !== "compras") return false;

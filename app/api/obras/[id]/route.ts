@@ -31,8 +31,7 @@ function newMemberId() {
 
 export async function GET(_request: Request, ctx: Ctx) {
   try {
-    const user = await requireSessionUser();
-    const role = asRole(user.role);
+    await requireSessionUser();
     const { id } = await ctx.params;
     const obra = await prisma.obra.findUnique({
       where: { id },
@@ -40,16 +39,6 @@ export async function GET(_request: Request, ctx: Ctx) {
     });
     if (!obra) {
       return NextResponse.json({ error: "Obra no encontrada." }, { status: 404 });
-    }
-    if (
-      !engineerCanAccessObra({
-        role,
-        userId: user.id,
-        createdByUserId: obra.createdByUserId,
-        memberUserIds: obra.members.map((m) => m.userId),
-      })
-    ) {
-      return NextResponse.json({ error: "No tienes acceso a esta obra." }, { status: 403 });
     }
     return NextResponse.json({ obra: mapObra(obra) });
   } catch (e) {

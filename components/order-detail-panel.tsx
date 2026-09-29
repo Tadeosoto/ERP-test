@@ -22,7 +22,7 @@ import {
   canAccountingResolveDifference,
   canAccountingValidate,
   canActAsCompras,
-  canComprasEditOrder,
+  canEditPurchaseOrder,
   canDeleteOrder,
   canDeleteOrderFile,
   canDeletePayment,
@@ -497,7 +497,7 @@ export function OrderDetailPanel({
 
         {canActAsCompras(user.role) && (
           <div className="mt-4 flex flex-wrap gap-3">
-            {canComprasEditOrder(order.status, user.role) ? (
+            {canEditPurchaseOrder(order.status, user.role) ? (
               <Link href={`/ordenes/nueva?orderId=${order.id}`} className="btn-secondary">
                 <IconEdit />
                 Editar OC
@@ -505,7 +505,11 @@ export function OrderDetailPanel({
             ) : (
               <span
                 className="btn-secondary cursor-not-allowed opacity-50"
-                title="Solo puedes editar antes del pago o cierre documental"
+                title={
+                  user.role === "pagos"
+                    ? "La orden ya está cerrada."
+                    : "Solo puedes editar antes del pago o cierre documental"
+                }
               >
                 <IconEdit />
                 Editar OC

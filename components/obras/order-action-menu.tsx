@@ -8,7 +8,7 @@ import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import {
   canActAsCompras,
-  canComprasEditOrder,
+  canEditPurchaseOrder,
   canDeleteOrder,
   canRegisterPayment,
   canUploadInvoice,
@@ -116,7 +116,7 @@ function buildMenuEntries(
   const entries: MenuEntry[] = [];
 
   if (role && canActAsCompras(role)) {
-    const canEdit = canComprasEditOrder(order.status, role);
+    const canEdit = canEditPurchaseOrder(order.status, role);
     const canUpload = canUploadOcPdf(order.status, role);
 
     entries.push({

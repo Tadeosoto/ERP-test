@@ -22,6 +22,7 @@ import type {
   PurchaseOrderDto,
 } from "@/lib/domain/types";
 import { sortByCreatedAtDesc } from "@/lib/list-utils";
+import { engineerIsOnObra } from "@/lib/obras/obra-members";
 
 const KPI_TINT: Record<string, "orange" | "amber" | "sky" | "emerald" | "violet"> = {
   pendingApproval: "orange",
@@ -75,7 +76,10 @@ export function IngenieroHomeDashboard({
     [materialRequests, userId]
   );
 
-  const recentObras = useMemo(() => sortByCreatedAtDesc(obras).slice(0, 6), [obras]);
+  const recentObras = useMemo(
+    () => sortByCreatedAtDesc(obras.filter((obra) => engineerIsOnObra(obra, userId))).slice(0, 6),
+    [obras, userId]
+  );
 
   const pulse = useMemo(() => {
     const n = counts.pendingApproval;

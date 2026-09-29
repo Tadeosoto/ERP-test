@@ -9,7 +9,7 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
-import { canComprasEditOrder, canCreateOrder } from "@/lib/domain/transitions";
+import { canComprasEditOrder, canCreateOrder, canEditPurchaseOrder } from "@/lib/domain/transitions";
 import type { ObraDto, PurchaseOrderDto, SupplierDto, PaymentType } from "@/lib/domain/types";
 import { COMPRAS_PAYMENT_OPTIONS } from "@/lib/domain/solicitudes";
 import { formatAmountInput, formatDateShort, formatMoney, parseAmountInput, sanitizeAmountInput } from "@/lib/format";
@@ -221,6 +221,7 @@ function NuevaOcWizard() {
   const [supplierName, setSupplierName] = useState("");
   const [ocDate, setOcDate] = useState(() => new Date().toISOString().slice(0, 10));
   const [paymentTerms, setPaymentTerms] = useState("30 días");
+  const [paymentDueDate, setPaymentDueDate] = useState("");
   const [description, setDescription] = useState("");
   const [internalReference, setInternalReference] = useState("");
   const [ocFolio, setOcFolio] = useState("");
@@ -253,6 +254,8 @@ function NuevaOcWizard() {
     if (s) return s.displayName;
     return supplierName;
   }, [suppliers, supplierId, supplierName]);
+  const correctingLiveOrder =
+    Boolean(order) && user?.role === "pagos" && !canComprasEditOrder(order!.status, "compras");
   const isProcesoC = sendTarget === "proceso_c";
   const engineerUserIdForApi = isProcesoC ? null : assignedEngineerId || null;
   const sendSelectValue = isProcesoC ? DEST_PROCESO_C : assignedEngineerId;
@@ -348,6 +351,13 @@ function NuevaOcWizard() {
     setSupplierName(o.supplierName);
     setOcDate(o.ocDate?.slice(0, 10) ?? new Date().toISOString().slice(0, 10));
     setPaymentTerms(o.paymentTerms || "30 días");
+    setPaymentDueDate(
+      o.paymentDueDate
+        ? new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(
+            new Date(o.paymentDueDate)
+          )
+        : ""
+    );
     setDescription(o.description);
     setInternalReference(o.internalReference);
     setOcFolio(o.ocFolio);
@@ -387,7 +397,7 @@ function NuevaOcWizard() {
         const res = await fetch(`/api/orders/${resumeOrderId}`, { credentials: "include" });
         if (res.ok) {
           const d = (await res.json()) as { order: PurchaseOrderDto };
-          if (canComprasEditOrder(d.order.status, "compras")) {
+          if (user && canEditPurchaseOrder(d.order.status, user.role)) {
             setOrder(d.order);
             setOrderId(d.order.id);
             hydrateFromOrder(d.order);
@@ -456,7 +466,7 @@ function NuevaOcWizard() {
       }
       setLoading(false);
     })();
-  }, [resumeOrderId, solicitudIdParam, compromisoFacturaIdParam, loadCatalogs, hydrateFromOrder]);
+  }, [resumeOrderId, solicitudIdParam, compromisoFacturaIdParam, loadCatalogs, hydrateFromOrder, user]);
 
   useEffect(() => {
     const s = Number(searchParams.get("step"));
@@ -492,6 +502,7 @@ function NuevaOcWizard() {
       description,
       internalReference,
       paymentType: paymentModality,
+      paymentDueDate: paymentDueDate || null,
       materialRequestId,
       invoiceFirstCommitmentId,
       assignedEngineerUserId: engineerUserIdForApi,
@@ -544,6 +555,7 @@ function NuevaOcWizard() {
         currency,
         documentDate,
         paymentType: paymentModality,
+        paymentDueDate: paymentDueDate || null,
       }),
     });
     const data = (await res.json()) as { order?: PurchaseOrderDto; error?: string };
@@ -613,6 +625,21 @@ function NuevaOcWizard() {
         await saveStep2(id);
       }
       showSuccess("Borrador guardado correctamente.");
+    } catch (ex) {
+      showError(ex instanceof Error ? ex.message : "Error al guardar.");
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  async function saveCorrection() {
+    setBusy(true);
+    try {
+      const id = await ensureDraft();
+      if (totalAmount) await saveStep2(id);
+      showSuccess("La orden se actualizó.", () => {
+        router.push(`/ordenes/${id}`);
+      });
     } catch (ex) {
       showError(ex instanceof Error ? ex.message : "Error al guardar.");
     } finally {
@@ -746,7 +773,11 @@ function NuevaOcWizard() {
               Atrás
             </button>
           )}
-          {step < 3 ? (
+          {correctingLiveOrder ? (
+            <button type="button" className="btn-primary" onClick={() => void saveCorrection()} disabled={busy}>
+              Guardar cambios
+            </button>
+          ) : step < 3 ? (
             <button type="button" className="btn-primary" onClick={() => void goNext()} disabled={busy}>
               Siguiente →
             </button>
@@ -872,6 +903,18 @@ function NuevaOcWizard() {
                       </option>
                     ))}
                   </select>
+                </label>
+                <label className="block sm:col-span-2">
+                  <span className="text-sm font-medium text-zinc-800">Límite de pago</span>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Fecha en la que vence el pago. Corrígelo aquí si el año o el día quedaron mal.
+                  </p>
+                  <input
+                    type="date"
+                    value={paymentDueDate}
+                    onChange={(e) => setPaymentDueDate(e.target.value)}
+                    className={inputCls}
+                  />
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-medium text-zinc-800">Comentarios / Observaciones (opcional)</span>
@@ -1289,17 +1332,25 @@ function NuevaOcWizard() {
               </button>
             )}
             <div className="ml-auto flex flex-wrap gap-2">
-              <button type="button" className="btn-secondary" onClick={() => void saveDraft()} disabled={busy}>
-                Guardar borrador
-              </button>
-              {step < 3 ? (
-                <button type="button" className="btn-primary" onClick={() => void goNext()} disabled={busy}>
-                  Siguiente →
+              {correctingLiveOrder ? (
+                <button type="button" className="btn-primary" onClick={() => void saveCorrection()} disabled={busy}>
+                  Guardar cambios
                 </button>
               ) : (
-                <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
-                  {isProcesoC ? "Enviar a administración/Carolina →" : "Enviar a Ingeniería →"}
-                </button>
+                <>
+                  <button type="button" className="btn-secondary" onClick={() => void saveDraft()} disabled={busy}>
+                    Guardar borrador
+                  </button>
+                  {step < 3 ? (
+                    <button type="button" className="btn-primary" onClick={() => void goNext()} disabled={busy}>
+                      Siguiente →
+                    </button>
+                  ) : (
+                    <button type="button" className="btn-primary" onClick={() => void sendOrder()} disabled={busy}>
+                      {isProcesoC ? "Enviar a administración/Carolina →" : "Enviar a Ingeniería →"}
+                    </button>
+                  )}
+                </>
               )}
             </div>
           </div>
