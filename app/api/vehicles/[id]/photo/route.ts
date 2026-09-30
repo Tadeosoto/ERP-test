@@ -5,6 +5,7 @@ import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import { asRole } from "@/lib/services/mappers";
 import { canAccessFleet } from "@/lib/flota/access";
 import { mapVehicle, vehicleDetailSelect } from "@/app/api/vehicles/route";
+import { prepareVehicleImage } from "@/lib/flota/vehicle-image";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -23,15 +24,10 @@ export async function POST(request: Request, ctx: Ctx) {
       return NextResponse.json({ error: "Elige una imagen del vehículo." }, { status: 400 });
     }
     if (image.size > 8 * 1024 * 1024) return NextResponse.json({ error: "La foto supera 8 MB." }, { status: 400 });
-    const sharp = (await import("sharp")).default;
-    const imageData = await sharp(Buffer.from(await image.arrayBuffer()))
-      .rotate()
-      .resize({ width: 1600, withoutEnlargement: true })
-      .webp({ quality: 80 })
-      .toBuffer();
+    const prepared = await prepareVehicleImage(image);
     const row = await prisma.vehicle.update({
       where: { id },
-      data: { imageData, imageMime: "image/webp" },
+      data: { imageData: prepared.data, imageMime: prepared.mime },
       select: vehicleDetailSelect,
     });
     return NextResponse.json({ vehicle: mapVehicle(row) });

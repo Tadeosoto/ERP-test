@@ -63,9 +63,7 @@ export function apiErrorResponse(
       400
     : fallbackStatus;
 
-  if (process.env.NODE_ENV === "development") {
-    console.error("[API]", error);
-  }
+  console.error("[API]", error);
 
   return NextResponse.json({ error: message }, { status });
 }

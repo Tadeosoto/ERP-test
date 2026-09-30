@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
+import { prepareVehicleImage } from "@/lib/flota/vehicle-image";
 import { asRole } from "@/lib/services/mappers";
 import { canAccessFleet } from "@/lib/flota/access";
 import { documentTone, mexicoDay, parseDay, pricePerLiter, sameMonth, sameYear } from "@/lib/flota/dates";
@@ -276,13 +277,9 @@ export async function POST(request: Request) {
       if (image.size > 8 * 1024 * 1024) {
         return NextResponse.json({ error: "La foto supera 8 MB." }, { status: 400 });
       }
-      const sharp = (await import("sharp")).default;
-      imageData = await sharp(Buffer.from(await image.arrayBuffer()))
-        .rotate()
-        .resize({ width: 1600, withoutEnlargement: true })
-        .webp({ quality: 80 })
-        .toBuffer();
-      imageMime = "image/webp";
+      const prepared = await prepareVehicleImage(image);
+      imageData = prepared.data;
+      imageMime = prepared.mime;
     }
     const created = await prisma.vehicle.create({
       data: {
