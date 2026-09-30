@@ -29,6 +29,7 @@ export const vehicleDetailSelect = {
   vehicleType: true,
   color: true,
   vin: true,
+  engineNumber: true,
   ownerName: true,
   status: true,
   currentKm: true,
@@ -60,6 +61,7 @@ export function mapVehicle(row: {
   vehicleType: string;
   color: string;
   vin: string;
+  engineNumber: string;
   ownerName: string;
   status: string;
   currentKm: number;
@@ -125,6 +127,7 @@ export function mapVehicle(row: {
     vehicleType: row.vehicleType,
     color: row.color,
     vin: row.vin,
+    engineNumber: row.engineNumber,
     ownerName: row.ownerName,
     status: row.status,
     currentKm: row.currentKm,
@@ -290,10 +293,9 @@ export async function POST(request: Request) {
         vehicleType: String(form.get("vehicleType") ?? "").trim(),
         color: String(form.get("color") ?? "").trim(),
         vin: String(form.get("vin") ?? "").trim(),
+        engineNumber: String(form.get("engineNumber") ?? "").trim(),
         ownerName: String(form.get("ownerName") ?? "").trim() || "Consorcio Constructor Profesional",
         currentKm: Number.isFinite(currentKm) && currentKm > 0 ? currentKm : 0,
-        responsibleUserId: String(form.get("responsibleUserId") ?? "").trim() || null,
-        obraId: String(form.get("obraId") ?? "").trim() || null,
         notes: String(form.get("notes") ?? "").trim(),
         imageData,
         imageMime,

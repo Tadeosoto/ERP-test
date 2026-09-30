@@ -550,6 +550,7 @@ model Vehicle {
   vehicleType        String               @default("")
   color              String               @default("")
   vin                String               @default("")
+  engineNumber       String               @default("")
   ownerName          String               @default("Consorcio Constructor Profesional")
   status             String               @default("activo")
   currentKm          Float                @default(0)

@@ -39,6 +39,7 @@ export type VehicleDto = {
   vehicleType: string;
   color: string;
   vin: string;
+  engineNumber: string;
   ownerName: string;
   status: string;
   currentKm: number;

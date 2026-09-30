@@ -9,7 +9,7 @@ import { VehiclePhoto } from "@/components/flota/vehicle-photo";
 import { FuelLoadForm } from "@/components/flota/fuel-load-form";
 import type { VehicleDto } from "@/components/flota/types";
 import { vehicleTitle } from "@/components/flota/types";
-import type { CompanyCardDto, ObraDto, Role } from "@/lib/domain/types";
+import type { CompanyCardDto, ObraDto } from "@/lib/domain/types";
 import { DOCUMENT_KINDS } from "@/lib/flota/dates";
 import { formatDate, formatMoney } from "@/lib/format";
 
@@ -29,24 +29,21 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
   const [vehicles, setVehicles] = useState<VehicleDto[]>([]);
   const [cards, setCards] = useState<CompanyCardDto[]>([]);
   const [obras, setObras] = useState<ObraDto[]>([]);
-  const [users, setUsers] = useState<{ id: string; name: string; role: Role }[]>([]);
   const [loading, setLoading] = useState(true);
   const [fuelOpen, setFuelOpen] = useState(false);
 
   const load = useCallback(async () => {
-    const [vRes, allRes, cRes, oRes, uRes] = await Promise.all([
+    const [vRes, allRes, cRes, oRes] = await Promise.all([
       fetch(`/api/vehicles/${vehicleId}`, { credentials: "include" }),
       fetch("/api/vehicles", { credentials: "include" }),
       fetch("/api/company-cards", { credentials: "include" }),
       fetch("/api/obras", { credentials: "include" }),
-      fetch("/api/users", { credentials: "include" }),
     ]);
     if (vRes.ok) setVehicle(((await vRes.json()) as { vehicle: VehicleDto }).vehicle);
     else setVehicle(null);
     if (allRes.ok) setVehicles(((await allRes.json()) as { vehicles: VehicleDto[] }).vehicles);
     if (cRes.ok) setCards(((await cRes.json()) as { cards: CompanyCardDto[] }).cards);
     if (oRes.ok) setObras(((await oRes.json()) as { obras: ObraDto[] }).obras);
-    if (uRes.ok) setUsers(((await uRes.json()) as { users: { id: string; name: string; role: Role }[] }).users);
     setLoading(false);
   }, [vehicleId]);
 
@@ -90,10 +87,9 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
             <Info label="Tipo" value={vehicle.vehicleType || "—"} />
             <Info label="Color" value={vehicle.color || "—"} />
-            <Info label="Responsable" value={vehicle.responsibleName || "—"} />
-            <Info label="Obra asignada" value={vehicle.obraName || "—"} />
             <Info label="Propietario" value={vehicle.ownerName || "—"} />
-            <Info label="VIN" value={vehicle.vin || "—"} />
+            <Info label="Número de serie" value={vehicle.vin || "—"} />
+            <Info label="Número de motor" value={vehicle.engineNumber || "—"} />
           </dl>
         </div>
       </div>

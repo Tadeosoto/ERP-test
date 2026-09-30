@@ -6,7 +6,6 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { VehiclePhoto } from "@/components/flota/vehicle-photo";
 import { VehiculoForm } from "@/components/flota/vehiculo-form";
 import type { DocTone, VehicleDto } from "@/components/flota/types";
-import type { ObraDto, Role } from "@/lib/domain/types";
 import { formatDate, formatMoney } from "@/lib/format";
 import { vehicleTitle } from "@/components/flota/types";
 
@@ -28,22 +27,14 @@ function Tone({ tone }: { tone: DocTone }) {
 export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: () => void) => void }) {
   const router = useRouter();
   const [vehicles, setVehicles] = useState<VehicleDto[]>([]);
-  const [users, setUsers] = useState<{ id: string; name: string; role: Role }[]>([]);
-  const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [open, setOpen] = useState(false);
   const [search, setSearch] = useState("");
   const [status, setStatus] = useState("");
 
   const load = useCallback(async () => {
-    const [vRes, uRes, oRes] = await Promise.all([
-      fetch("/api/vehicles", { credentials: "include" }),
-      fetch("/api/users", { credentials: "include" }),
-      fetch("/api/obras", { credentials: "include" }),
-    ]);
+    const vRes = await fetch("/api/vehicles", { credentials: "include" });
     if (vRes.ok) setVehicles(((await vRes.json()) as { vehicles: VehicleDto[] }).vehicles);
-    if (uRes.ok) setUsers(((await uRes.json()) as { users: { id: string; name: string; role: Role }[] }).users);
-    if (oRes.ok) setObras(((await oRes.json()) as { obras: ObraDto[] }).obras);
     setLoading(false);
   }, []);
 
@@ -70,7 +61,7 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
     if (status && item.status !== status) return false;
     const q = search.trim().toLowerCase();
     if (!q) return true;
-    return `${item.code} ${item.name} ${item.plates} ${item.responsibleName}`.toLowerCase().includes(q);
+    return `${item.code} ${item.name} ${item.plates}`.toLowerCase().includes(q);
   });
 
   if (loading) return <LoadingScreen message="Cargando vehículos" />;
@@ -93,7 +84,7 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
         <Kpi label="Pagos próximos" value={money(kpis.paymentSum)} hint={`${kpis.payments} créditos o arrendamientos`} />
       </div>
       <div className="flex flex-wrap gap-2">
-        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por placa, vehículo o responsable" className="min-w-64 flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm" />
+        <input value={search} onChange={(e) => setSearch(e.target.value)} placeholder="Buscar por placa o vehículo" className="min-w-64 flex-1 rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm" />
         <select value={status} onChange={(e) => setStatus(e.target.value)} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm">
           <option value="">Todos los estados</option>
           <option value="activo">Activos</option>
@@ -105,7 +96,7 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
           <table className="min-w-full text-left text-sm">
             <thead className="bg-zinc-50 text-xs uppercase text-zinc-500">
               <tr>
-                {["Vehículo", "Placas", "Año", "Tipo", "Responsable", "Obra", "Km actual", "Última carga", "Combustible (mes)", "Seguro", "Verificación", "Refrendo", "Financiamiento", "Estado"].map((head) => (
+                {["Vehículo", "Placas", "Año", "Tipo", "Km actual", "Última carga", "Combustible (mes)", "Seguro", "Verificación", "Refrendo", "Financiamiento", "Estado"].map((head) => (
                   <th key={head} className="px-3 py-3 font-semibold">{head}</th>
                 ))}
               </tr>
@@ -127,8 +118,6 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
                   <td className="px-3 py-3">{item.plates || "—"}</td>
                   <td className="px-3 py-3">{item.year ?? "—"}</td>
                   <td className="px-3 py-3">{item.vehicleType || "—"}</td>
-                  <td className="px-3 py-3">{item.responsibleName || "—"}</td>
-                  <td className="px-3 py-3">{item.obraName || "—"}</td>
                   <td className="px-3 py-3 tabular-nums">{item.currentKm.toLocaleString("es-MX")}</td>
                   <td className="px-3 py-3">{item.fuel.last ? formatDate(item.fuel.last.occurredOn) : "—"}</td>
                   <td className="px-3 py-3 tabular-nums">{money(item.fuel.monthAmount)}</td>
@@ -151,7 +140,7 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
               <h2 className="text-lg font-bold">Nuevo vehículo</h2>
               <button type="button" className="text-sm text-zinc-500" onClick={() => setOpen(false)}>Cerrar</button>
             </div>
-            <VehiculoForm users={users} obras={obras} onDone={(id) => router.push(`/vehiculos/${id}`)} />
+            <VehiculoForm onDone={(id) => router.push(`/vehiculos/${id}`)} />
           </div>
         </div>
       )}

@@ -2,20 +2,11 @@
 
 import { useState } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
-import type { ObraDto, Role } from "@/lib/domain/types";
 import { VEHICLE_TYPES, DOCUMENT_KINDS } from "@/lib/flota/dates";
 
 type DocDraft = { kind: string; name: string; expiresOn: string };
 
-export function VehiculoForm({
-  users,
-  obras,
-  onDone,
-}: {
-  users: { id: string; name: string; role: Role }[];
-  obras: ObraDto[];
-  onDone: (id: string) => void;
-}) {
+export function VehiculoForm({ onDone }: { onDone: (id: string) => void }) {
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
   const [year, setYear] = useState("");
@@ -23,10 +14,9 @@ export function VehiculoForm({
   const [vehicleType, setVehicleType] = useState("Pick-up");
   const [color, setColor] = useState("");
   const [vin, setVin] = useState("");
+  const [engineNumber, setEngineNumber] = useState("");
   const [ownerName, setOwnerName] = useState("Consorcio Constructor Profesional");
   const [currentKm, setCurrentKm] = useState("");
-  const [responsibleUserId, setResponsibleUserId] = useState("");
-  const [obraId, setObraId] = useState("");
   const [image, setImage] = useState<File | null>(null);
   const [docs, setDocs] = useState<DocDraft[]>([]);
   const [saving, setSaving] = useState(false);
@@ -47,10 +37,9 @@ export function VehiculoForm({
     form.set("vehicleType", vehicleType);
     form.set("color", color);
     form.set("vin", vin);
+    form.set("engineNumber", engineNumber);
     form.set("ownerName", ownerName);
     form.set("currentKm", currentKm);
-    form.set("responsibleUserId", responsibleUserId);
-    form.set("obraId", obraId);
     form.set("documents", JSON.stringify(docs));
     if (image) form.set("image", image);
     setSaving(true);
@@ -77,20 +66,9 @@ export function VehiculoForm({
           </select>
         </label>
         <label className="text-sm">Color<input value={color} onChange={(e) => setColor(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
-        <label className="text-sm">Responsable
-          <select value={responsibleUserId} onChange={(e) => setResponsibleUserId(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
-            <option value="">Sin responsable</option>
-            {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
-          </select>
-        </label>
-        <label className="text-sm">Obra
-          <select value={obraId} onChange={(e) => setObraId(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
-            <option value="">Sin obra</option>
-            {obras.filter((obra) => obra.active).map((obra) => <option key={obra.id} value={obra.id}>{obra.name}</option>)}
-          </select>
-        </label>
         <label className="text-sm">Propietario<input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
-        <label className="text-sm">VIN<input value={vin} onChange={(e) => setVin(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Número de serie<input value={vin} onChange={(e) => setVin(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Número de motor<input value={engineNumber} onChange={(e) => setEngineNumber(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
         <label className="text-sm">Kilometraje actual<input type="number" min="0" value={currentKm} onChange={(e) => setCurrentKm(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
         <div className="text-sm">
           <p className="mb-1">Foto del vehículo</p>

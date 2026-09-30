@@ -1,0 +1,1 @@
+ALTER TABLE "Vehicle" ADD COLUMN "engineNumber" TEXT NOT NULL DEFAULT '';

@@ -47,11 +47,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
         vehicleType: String(body.vehicleType ?? existing.vehicleType).trim(),
         color: String(body.color ?? existing.color).trim(),
         vin: String(body.vin ?? existing.vin).trim(),
+        engineNumber: String(body.engineNumber ?? existing.engineNumber).trim(),
         ownerName: String(body.ownerName ?? existing.ownerName).trim(),
         status: body.status === "baja" ? "baja" : "activo",
         notes: String(body.notes ?? existing.notes).trim(),
-        responsibleUserId: String(body.responsibleUserId ?? "").trim() || null,
-        obraId: String(body.obraId ?? "").trim() || null,
       },
       select: vehicleDetailSelect,
     });
