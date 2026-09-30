@@ -7,6 +7,9 @@ import { LoadingScreen } from "@/components/ui/loading-screen";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { VehiclePhoto } from "@/components/flota/vehicle-photo";
 import { FuelLoadForm } from "@/components/flota/fuel-load-form";
+import { VehiculoForm } from "@/components/flota/vehiculo-form";
+import { useSession } from "@/components/session-provider";
+import { canEditVehicleProfile } from "@/lib/flota/access";
 import type { VehicleDto } from "@/components/flota/types";
 import { vehicleTitle } from "@/components/flota/types";
 import type { CompanyCardDto, ObraDto } from "@/lib/domain/types";
@@ -22,6 +25,8 @@ function todayMx() {
 
 export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
   const params = useSearchParams();
+  const { user } = useSession();
+  const canEdit = Boolean(user && canEditVehicleProfile(user));
   const { showError, showSuccess } = useFeedback();
   const initial = params.get("tab");
   const [tab, setTab] = useState<(typeof TABS)[number]>(TABS.includes(initial as (typeof TABS)[number]) ? (initial as (typeof TABS)[number]) : "resumen");
@@ -31,6 +36,7 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
   const [obras, setObras] = useState<ObraDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [fuelOpen, setFuelOpen] = useState(false);
+  const [editing, setEditing] = useState(false);
 
   const load = useCallback(async () => {
     const [vRes, allRes, cRes, oRes] = await Promise.all([
@@ -84,6 +90,11 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
             <span className="rounded-full bg-emerald-50 px-2 py-0.5 text-xs font-semibold text-emerald-800">{vehicle.status === "activo" ? "Activo" : "Baja"}</span>
           </div>
           <p className="text-sm text-zinc-500">Placas: {vehicle.plates || "—"}</p>
+          {canEdit && (
+            <button type="button" onClick={() => setEditing((open) => !open)} className="mt-2 rounded-xl border border-orange-200 px-3 py-1.5 text-sm font-semibold text-orange-800">
+              {editing ? "Cerrar edición" : "Editar datos"}
+            </button>
+          )}
           <dl className="mt-3 grid gap-2 text-sm sm:grid-cols-3 lg:grid-cols-6">
             <Info label="Tipo" value={vehicle.vehicleType || "—"} />
             <Info label="Color" value={vehicle.color || "—"} />
@@ -93,6 +104,21 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
           </dl>
         </div>
       </div>
+
+      {editing && canEdit && (
+        <section className="rounded-2xl border border-zinc-200 bg-white p-4">
+          <h2 className="mb-3 font-bold text-zinc-900">Editar vehículo</h2>
+          <VehiculoForm
+            key={vehicle.id}
+            vehicle={vehicle}
+            onDone={() => {
+              setEditing(false);
+              showSuccess("Datos del vehículo actualizados.");
+              void load();
+            }}
+          />
+        </section>
+      )}
 
       <div className="flex gap-1 overflow-x-auto">
         {TABS.map((item) => (

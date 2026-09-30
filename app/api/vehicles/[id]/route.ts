@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import { asRole } from "@/lib/services/mappers";
-import { canAccessFleet } from "@/lib/flota/access";
+import { canAccessFleet, canEditVehicleProfile } from "@/lib/flota/access";
 import { parseDay } from "@/lib/flota/dates";
 import { mapVehicle, vehicleDetailSelect } from "@/app/api/vehicles/route";
 
@@ -30,6 +30,9 @@ export async function PATCH(request: Request, ctx: Ctx) {
   try {
     const user = await requireSessionUser();
     if (!allow(user)) return NextResponse.json({ error: "No tienes acceso a vehículos." }, { status: 403 });
+    if (!canEditVehicleProfile(user)) {
+      return NextResponse.json({ error: "Solo Carolina puede editar los datos del vehículo." }, { status: 403 });
+    }
     const { id } = await ctx.params;
     const existing = await prisma.vehicle.findUnique({ where: { id } });
     if (!existing) return NextResponse.json({ error: "Vehículo no encontrado." }, { status: 404 });
@@ -49,6 +52,10 @@ export async function PATCH(request: Request, ctx: Ctx) {
         vin: String(body.vin ?? existing.vin).trim(),
         engineNumber: String(body.engineNumber ?? existing.engineNumber).trim(),
         ownerName: String(body.ownerName ?? existing.ownerName).trim(),
+        currentKm:
+          body.currentKm == null || body.currentKm === ""
+            ? existing.currentKm
+            : Math.max(0, Number(body.currentKm) || 0),
         status: body.status === "baja" ? "baja" : "activo",
         notes: String(body.notes ?? existing.notes).trim(),
       },

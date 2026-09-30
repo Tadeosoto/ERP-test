@@ -6,17 +6,39 @@ import { VEHICLE_TYPES, DOCUMENT_KINDS } from "@/lib/flota/dates";
 
 type DocDraft = { kind: string; name: string; expiresOn: string };
 
-export function VehiculoForm({ onDone }: { onDone: (id: string) => void }) {
-  const [code, setCode] = useState("");
-  const [name, setName] = useState("");
-  const [year, setYear] = useState("");
-  const [plates, setPlates] = useState("");
-  const [vehicleType, setVehicleType] = useState("Pick-up");
-  const [color, setColor] = useState("");
-  const [vin, setVin] = useState("");
-  const [engineNumber, setEngineNumber] = useState("");
-  const [ownerName, setOwnerName] = useState("Consorcio Constructor Profesional");
-  const [currentKm, setCurrentKm] = useState("");
+type VehicleProfile = {
+  id: string;
+  code: string;
+  name: string;
+  year: number | null;
+  plates: string;
+  vehicleType: string;
+  color: string;
+  vin: string;
+  engineNumber: string;
+  ownerName: string;
+  currentKm: number;
+  status: string;
+};
+
+export function VehiculoForm({
+  onDone,
+  vehicle,
+}: {
+  onDone: (id: string) => void;
+  vehicle?: VehicleProfile | null;
+}) {
+  const editing = Boolean(vehicle);
+  const [code, setCode] = useState(vehicle?.code ?? "");
+  const [name, setName] = useState(vehicle?.name ?? "");
+  const [year, setYear] = useState(vehicle?.year != null ? String(vehicle.year) : "");
+  const [plates, setPlates] = useState(vehicle?.plates ?? "");
+  const [vehicleType, setVehicleType] = useState(vehicle?.vehicleType || "Pick-up");
+  const [color, setColor] = useState(vehicle?.color ?? "");
+  const [vin, setVin] = useState(vehicle?.vin ?? "");
+  const [engineNumber, setEngineNumber] = useState(vehicle?.engineNumber ?? "");
+  const [ownerName, setOwnerName] = useState(vehicle?.ownerName || "Consorcio Constructor Profesional");
+  const [currentKm, setCurrentKm] = useState(vehicle ? String(vehicle.currentKm) : "");
   const [image, setImage] = useState<File | null>(null);
   const [docs, setDocs] = useState<DocDraft[]>([]);
   const [saving, setSaving] = useState(false);
@@ -43,6 +65,50 @@ export function VehiculoForm({ onDone }: { onDone: (id: string) => void }) {
     form.set("documents", JSON.stringify(docs));
     if (image) form.set("image", image);
     setSaving(true);
+    if (editing && vehicle) {
+      const res = await fetch(`/api/vehicles/${vehicle.id}`, {
+        method: "PATCH",
+        credentials: "include",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          code,
+          name,
+          year,
+          plates,
+          vehicleType,
+          color,
+          vin,
+          engineNumber,
+          ownerName,
+          currentKm,
+          status: vehicle.status,
+        }),
+      });
+      const data = (await res.json().catch(() => null)) as { error?: string; vehicle?: { id: string } } | null;
+      if (!res.ok || !data?.vehicle) {
+        setSaving(false);
+        setError(data?.error ?? "No se pudieron guardar los cambios.");
+        return;
+      }
+      if (image) {
+        const photo = new FormData();
+        photo.set("image", image);
+        const photoRes = await fetch(`/api/vehicles/${vehicle.id}/photo`, {
+          method: "POST",
+          credentials: "include",
+          body: photo,
+        });
+        if (!photoRes.ok) {
+          const photoData = (await photoRes.json().catch(() => null)) as { error?: string } | null;
+          setSaving(false);
+          setError(photoData?.error ?? "Los datos se guardaron, pero la foto no.");
+          return;
+        }
+      }
+      setSaving(false);
+      onDone(data.vehicle.id);
+      return;
+    }
     const res = await fetch("/api/vehicles", { method: "POST", credentials: "include", body: form });
     const data = (await res.json().catch(() => null)) as { error?: string; vehicle?: { id: string } } | null;
     setSaving(false);
@@ -75,7 +141,7 @@ export function VehiculoForm({ onDone }: { onDone: (id: string) => void }) {
           <FilePickButton accept="image/*" label="Subir foto" hint="elegir imagen" onPick={setImage} />
         </div>
       </div>
-      <div className="space-y-2">
+      {!editing && <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-zinc-800">Documentos y vencimiento</p>
           <button type="button" onClick={addDoc} className="text-sm font-semibold text-orange-700">Agregar documento</button>
@@ -93,10 +159,10 @@ export function VehiculoForm({ onDone }: { onDone: (id: string) => void }) {
             <input type="date" value={doc.expiresOn} onChange={(e) => setDocs((current) => current.map((item, i) => i === index ? { ...item, expiresOn: e.target.value } : item))} className="rounded-xl border px-3 py-2 text-sm" />
           </div>
         ))}
-      </div>
+      </div>}
       {error && <p className="text-sm text-red-700">{error}</p>}
       <button type="submit" disabled={saving} className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
-        {saving ? "Guardando…" : "Registrar vehículo"}
+        {saving ? "Guardando…" : editing ? "Guardar cambios" : "Registrar vehículo"}
       </button>
     </form>
   );

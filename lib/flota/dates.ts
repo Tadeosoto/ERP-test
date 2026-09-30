@@ -1,7 +1,7 @@
 export const FUEL_RECEIPT_RETENTION_MONTHS = 3;
 export const DOCUMENT_SOON_DAYS = 30;
 
-export const VEHICLE_TYPES = ["Pick-up", "Sedán", "SUV", "Maquinaria", "Otro"] as const;
+export const VEHICLE_TYPES = ["Pick-up", "Coche", "Sedán", "SUV", "Maquinaria", "Otro"] as const;
 export const DOCUMENT_KINDS = [
   { kind: "seguro", label: "Seguro" },
   { kind: "verificacion", label: "Verificación" },

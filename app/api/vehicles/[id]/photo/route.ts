@@ -3,7 +3,7 @@ import { prisma } from "@/lib/db";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import { asRole } from "@/lib/services/mappers";
-import { canAccessFleet } from "@/lib/flota/access";
+import { canAccessFleet, canEditVehicleProfile } from "@/lib/flota/access";
 import { mapVehicle, vehicleDetailSelect } from "@/app/api/vehicles/route";
 import { prepareVehicleImage } from "@/lib/flota/vehicle-image";
 
@@ -14,6 +14,9 @@ export async function POST(request: Request, ctx: Ctx) {
     const user = await requireSessionUser();
     if (!canAccessFleet({ role: asRole(user.role), email: user.email })) {
       return NextResponse.json({ error: "No tienes acceso a vehículos." }, { status: 403 });
+    }
+    if (!canEditVehicleProfile(user)) {
+      return NextResponse.json({ error: "Solo Carolina puede editar los datos del vehículo." }, { status: 403 });
     }
     const { id } = await ctx.params;
     const existing = await prisma.vehicle.findUnique({ where: { id }, select: { id: true } });
