@@ -73,10 +73,10 @@ export function RecurringDueAckModal() {
       >
         <div className="border-b border-amber-100 bg-amber-50/80 px-5 py-4 sm:px-6">
           <p className="text-xs font-semibold uppercase tracking-wide text-amber-800">
-            Aviso obligatorio · Compromisos
+            Aviso obligatorio · Gastos administrativos
           </p>
           <h2 id="recurring-ack-title" className="mt-1 text-lg font-bold text-zinc-900">
-            Compromisos próximos a vencer
+            Gastos próximos a vencer
           </h2>
           <p id="recurring-ack-desc" className="mt-1 text-sm text-zinc-600">
             Debes confirmar que estás enterado. Este aviso se repite cada día desde 3 días antes de

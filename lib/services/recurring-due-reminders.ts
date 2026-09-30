@@ -7,6 +7,7 @@ import {
 } from "@/lib/domain/recurring-commitments";
 import { RECURRING_COMMITMENT_VIEW_ROLES } from "@/lib/domain/transitions";
 import { formatDateShort } from "@/lib/format";
+import { ensureAdminExpenseOccurrences } from "@/lib/services/admin-expense-roll-forward";
 
 function startOfToday(d = new Date()): Date {
   const t = new Date(d);
@@ -20,6 +21,7 @@ function startOfToday(d = new Date()): Date {
  * Idempotente por compromiso + día + usuario.
  */
 export async function ensureRecurringDueReminders(): Promise<number> {
+  await ensureAdminExpenseOccurrences();
   const today = startOfToday();
   const commitments = await prisma.recurringCommitment.findMany({
     where: {
@@ -44,8 +46,8 @@ export async function ensureRecurringDueReminders(): Promise<number> {
     const relative = relativeDayLabel(c.dueDate.toISOString());
     const message =
       diff < 0
-        ? `Compromiso recurrente «${c.concept}» (${c.supplierName}) venció el ${dueLabel} (${relative}).`
-        : `Compromiso recurrente «${c.concept}» (${c.supplierName}) vence el ${dueLabel} (${relative}).`;
+        ? `Gasto administrativo «${c.concept}» (${c.supplierName}) venció el ${dueLabel} (${relative}).`
+        : `Gasto administrativo «${c.concept}» (${c.supplierName}) vence el ${dueLabel} (${relative}).`;
 
     for (const user of viewers) {
       const already = await prisma.notification.findFirst({

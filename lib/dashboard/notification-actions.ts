@@ -80,7 +80,7 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
     case "order_sent_proceso_c":
       return "Registrar pago";
     case "recurring_due_reminder":
-      return "Ver compromisos";
+      return "Ver gastos";
     case "engineer_approved_programado":
       return "Indicar fecha";
     case "engineer_rejected":

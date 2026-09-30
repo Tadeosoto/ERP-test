@@ -33,6 +33,16 @@ model User {
   expedientes              Expediente[]
   obraMemberships          ObraMember[]
   createdObras             Obra[]                  @relation("ObraCreator")
+  viaticos                 Viatico[]               @relation("ViaticosCreated")
+  viaticoExpenses          ViaticoExpense[]        @relation("ViaticoExpensesCreated")
+  viaticoExpenseFiles      ViaticoExpenseFile[]
+  companyCardMovementsCreated     CompanyCardMovement[] @relation("CompanyCardMovementsCreated")
+  companyCardMovementsResponsible CompanyCardMovement[] @relation("CompanyCardMovementResponsible")
+  companyCardMovementFiles        CompanyCardMovementFile[]
+  vehiclesCreated                 Vehicle[]                 @relation("VehiclesCreated")
+  vehiclesResponsible             Vehicle[]                 @relation("VehicleResponsible")
+  fuelLoadsCreated                FuelLoad[]
+  fuelLoadFiles                   FuelLoadFile[]
 }
 
 model Session {
@@ -88,6 +98,10 @@ model Obra {
   recurringCommitments RecurringCommitment[]
   invoiceFirstCommitments InvoiceFirstCommitment[]
   expedientes          Expediente[]
+  viaticos             Viatico[]
+  companyCardMovements CompanyCardMovement[]
+  vehicles             Vehicle[]
+  fuelLoads            FuelLoad[]
 }
 
 // Ingenieros designados en la obra (equipo). Se define al crear/editar la obra, no en la OC.
@@ -359,6 +373,12 @@ model RecurringCommitment {
   costCenter           String                    @default("")
   currency             String                    @default("MXN")
   estimatedAmount      Float?
+  amount               Float                     @default(0)
+  occurredOn           DateTime
+  category             String                    @default("otro")
+  paymentMethod        String                    @default("")
+  seriesId             String
+  occurrenceKey        String
   lifecycleStatus      String                    @default("active")
   workflowStatus       String                    @default("pending")
   notes                String                    @default("")
@@ -369,6 +389,11 @@ model RecurringCommitment {
   updatedAt            DateTime                  @updatedAt
   files                RecurringCommitmentFile[]
   notifications        Notification[]
+
+  @@unique([seriesId, occurrenceKey])
+  @@index([seriesId])
+  @@index([occurredOn])
+  @@index([category])
 }
 
 model Expediente {
@@ -384,6 +409,284 @@ model Expediente {
   updatedAt       DateTime @updatedAt
   purchaseOrders           PurchaseOrder[]
   invoiceFirstCommitments  InvoiceFirstCommitment[]
+}
+
+// Viáticos: dinero entregado a un empleado en una obra, con un comprobante por gasto.
+model Employee {
+  id        String    @id @default(cuid())
+  firstName String
+  lastName  String
+  active    Boolean   @default(true)
+  createdAt DateTime  @default(now())
+  viaticos  Viatico[]
+  companyCardMovements CompanyCardMovement[]
+
+  @@index([active])
+}
+
+model Viatico {
+  id               String           @id @default(cuid())
+  employeeId       String
+  employee         Employee         @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  obraId           String
+  obra             Obra             @relation(fields: [obraId], references: [id], onDelete: Restrict)
+  deliveredAmount  Float
+  createdByUserId  String
+  createdBy        User             @relation("ViaticosCreated", fields: [createdByUserId], references: [id])
+  createdAt        DateTime         @default(now())
+  updatedAt        DateTime         @updatedAt
+  expenses         ViaticoExpense[]
+
+  @@index([employeeId])
+  @@index([obraId])
+  @@index([createdAt])
+}
+
+model ViaticoExpense {
+  id                   String               @id @default(cuid())
+  viaticoId            String
+  viatico              Viatico              @relation(fields: [viaticoId], references: [id], onDelete: Cascade)
+  concept              String
+  amount               Float
+  receiptKind          String
+  missingReceiptReason String               @default("")
+  createdByUserId      String
+  createdBy            User                 @relation("ViaticoExpensesCreated", fields: [createdByUserId], references: [id])
+  createdAt            DateTime             @default(now())
+  files                ViaticoExpenseFile[]
+
+  @@index([viaticoId])
+}
+
+model ViaticoExpenseFile {
+  id               String         @id @default(cuid())
+  expenseId        String
+  expense          ViaticoExpense @relation(fields: [expenseId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String         @default("")
+  fileData         Bytes?
+  mimeType         String         @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User           @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime       @default(now())
+
+  @@index([expenseId])
+}
+
+// Tarjetas empresariales: mismos gastos para débito y crédito. La carga de saldo solo aplica a débito.
+model CompanyCard {
+  id        String                @id
+  bank      String
+  kind      String
+  label     String
+  slot      Int
+  lastFour  String                @default("")
+  createdAt DateTime              @default(now())
+  updatedAt DateTime              @updatedAt
+  movements CompanyCardMovement[]
+  fuelLoads FuelLoad[]
+
+  @@unique([bank, kind, slot])
+}
+
+model CompanyCardMovement {
+  id                    String                     @id @default(cuid())
+  cardId                String
+  card                  CompanyCard                @relation(fields: [cardId], references: [id], onDelete: Restrict)
+  kind                  String
+  occurredOn            DateTime
+  amount                Float
+  supplierName          String                     @default("")
+  concept               String
+  category              String                     @default("")
+  destinationKind       String                     @default("")
+  obraId                String?
+  obra                  Obra?                      @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  costCenter            String                     @default("")
+  responsibleUserId     String?
+  responsibleUser       User?                      @relation("CompanyCardMovementResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  responsibleEmployeeId String?
+  responsibleEmployee   Employee?                  @relation(fields: [responsibleEmployeeId], references: [id], onDelete: SetNull)
+  receiptKind           String                     @default("")
+  missingReceiptReason  String                     @default("")
+  status                String                     @default("")
+  createdByUserId       String
+  createdBy             User                       @relation("CompanyCardMovementsCreated", fields: [createdByUserId], references: [id])
+  createdAt             DateTime                   @default(now())
+  updatedAt             DateTime                   @updatedAt
+  files                 CompanyCardMovementFile[]
+
+  @@index([cardId])
+  @@index([occurredOn])
+  @@index([kind])
+}
+
+model CompanyCardMovementFile {
+  id               String              @id @default(cuid())
+  movementId       String
+  movement         CompanyCardMovement @relation(fields: [movementId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String              @default("")
+  fileData         Bytes?
+  mimeType         String              @default("application/pdf")
+  sizeBytes        Int
+  uploadedByUserId String
+  uploadedBy       User                @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime            @default(now())
+
+  @@index([movementId])
+}
+
+// Flotilla y combustible. El comprobante de la carga se borra a los 3 meses; el gasto permanece.
+model Vehicle {
+  id                 String               @id @default(cuid())
+  code               String               @default("")
+  name               String
+  year               Int?
+  plates             String               @default("")
+  vehicleType        String               @default("")
+  color              String               @default("")
+  vin                String               @default("")
+  ownerName          String               @default("Consorcio Constructor Profesional")
+  status             String               @default("activo")
+  currentKm          Float                @default(0)
+  responsibleUserId  String?
+  responsibleUser    User?                @relation("VehicleResponsible", fields: [responsibleUserId], references: [id], onDelete: SetNull)
+  obraId             String?
+  obra               Obra?                @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  notes              String               @default("")
+  imageData          Bytes?
+  imageMime          String               @default("")
+  createdByUserId    String
+  createdBy          User                 @relation("VehiclesCreated", fields: [createdByUserId], references: [id])
+  createdAt          DateTime             @default(now())
+  updatedAt          DateTime             @updatedAt
+  documents          VehicleDocument[]
+  maintenances       VehicleMaintenance[]
+  financing          VehicleFinancing?
+  expenses           VehicleExpense[]
+  fuelLoads          FuelLoad[]
+
+  @@index([status])
+}
+
+model VehicleDocument {
+  id        String    @id @default(cuid())
+  vehicleId String
+  vehicle   Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  kind      String
+  name      String
+  expiresOn DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([vehicleId])
+  @@index([expiresOn])
+}
+
+model VehicleMaintenance {
+  id          String    @id @default(cuid())
+  vehicleId   String
+  vehicle     Vehicle   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  title       String
+  dueOn       DateTime?
+  dueKm       Float?
+  completedOn DateTime?
+  notes       String    @default("")
+  createdAt   DateTime  @default(now())
+
+  @@index([vehicleId])
+}
+
+model VehicleFinancing {
+  id             String                    @id @default(cuid())
+  vehicleId      String                    @unique
+  vehicle        Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  kind           String
+  institution    String
+  termMonths     Int
+  monthlyPayment Float
+  balance        Float
+  nextPaymentOn  DateTime?
+  notes          String                    @default("")
+  payments       VehicleFinancingPayment[]
+}
+
+model VehicleFinancingPayment {
+  id          String           @id @default(cuid())
+  financingId String
+  financing   VehicleFinancing @relation(fields: [financingId], references: [id], onDelete: Cascade)
+  paidOn      DateTime
+  amount      Float
+  notes       String           @default("")
+  createdAt   DateTime         @default(now())
+
+  @@index([financingId])
+}
+
+model VehicleExpense {
+  id          String   @id @default(cuid())
+  vehicleId   String
+  vehicle     Vehicle  @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
+  occurredOn  DateTime
+  concept     String
+  amount      Float
+  notes       String   @default("")
+  createdAt   DateTime @default(now())
+
+  @@index([vehicleId])
+}
+
+model FuelLoad {
+  id              String         @id @default(cuid())
+  vehicleId       String
+  vehicle         Vehicle        @relation(fields: [vehicleId], references: [id], onDelete: Restrict)
+  occurredOn      DateTime
+  odometerKm      Float
+  liters          Float
+  amount          Float
+  pricePerLiter   Float
+  kmPerLiter      Float?
+  stationName     String
+  companyCardId   String
+  companyCard     CompanyCard    @relation(fields: [companyCardId], references: [id], onDelete: Restrict)
+  destinationKind String
+  obraId          String?
+  obra            Obra?          @relation(fields: [obraId], references: [id], onDelete: SetNull)
+  costCenter      String         @default("")
+  receiptKind     String
+  notes           String         @default("")
+  createdByUserId String
+  createdBy       User           @relation(fields: [createdByUserId], references: [id])
+  createdAt       DateTime       @default(now())
+  updatedAt       DateTime       @updatedAt
+  files           FuelLoadFile[]
+
+  @@index([vehicleId, occurredOn])
+  @@index([companyCardId])
+  @@index([occurredOn])
+}
+
+model FuelLoadFile {
+  id               String    @id @default(cuid())
+  fuelLoadId       String
+  fuelLoad         FuelLoad  @relation(fields: [fuelLoadId], references: [id], onDelete: Cascade)
+  kind             String
+  originalFileName String
+  storagePath      String    @default("")
+  fileData         Bytes?
+  mimeType         String    @default("application/pdf")
+  sizeBytes        Int
+  expiresAt        DateTime
+  purgedAt         DateTime?
+  uploadedByUserId String
+  uploadedBy       User      @relation(fields: [uploadedByUserId], references: [id])
+  createdAt        DateTime  @default(now())
+
+  @@index([fuelLoadId])
+  @@index([expiresAt])
 }
 
 model RecurringCommitmentFile {

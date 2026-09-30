@@ -5,7 +5,17 @@ export const recurringCommitmentInclude = {
   supplier: true,
   obra: true,
   createdBy: true,
-  files: { orderBy: { createdAt: "desc" as const } },
+  files: {
+    orderBy: { createdAt: "desc" as const },
+    select: {
+      id: true,
+      kind: true,
+      originalFileName: true,
+      mimeType: true,
+      sizeBytes: true,
+      createdAt: true,
+    },
+  },
 } satisfies Prisma.RecurringCommitmentInclude;
 
 export type RecurringCommitmentRow = Prisma.RecurringCommitmentGetPayload<{
@@ -33,6 +43,11 @@ export function mapRecurringCommitment(row: RecurringCommitmentRow): RecurringCo
     expectedReceptionDay: row.expectedReceptionDay,
     nextReceptionDate: row.nextReceptionDate.toISOString(),
     dueDate: row.dueDate.toISOString(),
+    occurredOn: row.occurredOn.toISOString(),
+    category: row.category,
+    paymentMethod: row.paymentMethod,
+    seriesId: row.seriesId,
+    amount: row.amount || row.estimatedAmount || 0,
     obraId: row.obraId,
     obraName: row.obra?.name ?? null,
     costCenter: row.costCenter,

@@ -1,10 +1,11 @@
-export type CommitmentFrequency = "mensual" | "bimestral" | "trimestral" | "anual";
+export type CommitmentFrequency = "unico" | "mensual" | "bimestral" | "trimestral" | "anual";
 
 export type CommitmentWorkflowStatus = "pending" | "awaiting_invoice" | "paid";
 
 export type CommitmentLifecycleStatus = "active" | "paused";
 
 export const COMMITMENT_FREQUENCIES: { value: CommitmentFrequency; label: string }[] = [
+  { value: "unico", label: "Único" },
   { value: "mensual", label: "Mensual" },
   { value: "bimestral", label: "Bimestral" },
   { value: "trimestral", label: "Trimestral" },
@@ -12,6 +13,7 @@ export const COMMITMENT_FREQUENCIES: { value: CommitmentFrequency; label: string
 ];
 
 export const COMMITMENT_FREQUENCY_LABEL: Record<CommitmentFrequency, string> = {
+  unico: "Único",
   mensual: "Mensual",
   bimestral: "Bimestral",
   trimestral: "Trimestral",

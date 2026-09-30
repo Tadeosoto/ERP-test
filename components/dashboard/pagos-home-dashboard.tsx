@@ -111,7 +111,7 @@ export function PagosHomeDashboard({
 
   const pulse = useMemo(() => {
     if (counts.pagosPorRealizar === 0 && authorizeQueue.length === 0 && activeOrders.length === 0) {
-      return "Nada urgente. Autoriza OC, registra pagos o revisa compromisos.";
+      return "Nada urgente. Autoriza OC, registra pagos o revisa gastos administrativos.";
     }
     const bits: string[] = [];
     if (authorizeQueue.length > 0) {
@@ -130,7 +130,7 @@ export function PagosHomeDashboard({
       { id: "activas", label: "Órdenes activas", count: activeOrders.length },
       { id: "autorizar", label: "Autorizar", count: authorizeQueue.length },
       { id: "parciales", label: "Parciales", count: partials.length },
-      { id: "compromisos", label: "Compromisos" },
+      { id: "compromisos", label: "Gastos admin." },
       { id: "mapa", label: "Mapa" },
     ],
     [activeOrders.length, authorizeQueue.length, partials.length]
@@ -331,7 +331,7 @@ export function PagosHomeDashboard({
 
       <div className="flex flex-wrap gap-2">
         <HomeLauncherLink href="/pagos" label="Centro de pagos" primary />
-        <HomeLauncherLink href="/compromisos" label="Compromisos" />
+        <HomeLauncherLink href="/compromisos" label="Gastos administrativos" />
         <HomeLauncherLink href="/obras" label="Obras" />
         <HomeLauncherLink href="/ordenes" label="Órdenes" />
       </div>
@@ -340,13 +340,13 @@ export function PagosHomeDashboard({
         <ProcessAHomeMap role="pagos" compact={false} />
       ) : tab === "compromisos" ? (
         <section className="dash-panel p-5">
-          <h2 className="dash-section-title">Compromisos recurrentes</h2>
+          <h2 className="dash-section-title">Gastos administrativos</h2>
           <p className="dash-body mt-2 max-w-2xl text-zinc-600">
-            Proceso aparte de Carolina: registro de servicios y compromisos que se pagan de forma
-            recurrente. No forma parte del Proceso A de OC.
+            Gastos generales de la empresa: renta, servicios, IMSS y otros que no van a una obra.
+            El aviso de pago sigue llegando desde 3 días antes del vencimiento.
           </p>
           <div className="mt-4">
-            <HomeLauncherLink href="/compromisos" label="Abrir compromisos" primary />
+            <HomeLauncherLink href="/compromisos" label="Abrir gastos administrativos" primary />
           </div>
         </section>
       ) : (

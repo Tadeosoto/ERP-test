@@ -1,5 +1,11 @@
 import { NextResponse } from "next/server";
 import { prisma } from "@/lib/db";
+import {
+  isAdminCategory,
+  isAdminFrequency,
+  isAdminPaymentMethod,
+  occurrenceKeyFromDate,
+} from "@/lib/domain/admin-expenses";
 import { parseIsoDateInput } from "@/lib/domain/recurring-commitments";
 import {
   canManageRecurringCommitments,
@@ -7,6 +13,7 @@ import {
 } from "@/lib/domain/transitions";
 import { requireSessionUser } from "@/lib/auth/session-server";
 import { asRole } from "@/lib/services/mappers";
+import { ensureAdminExpenseOccurrences } from "@/lib/services/admin-expense-roll-forward";
 import {
   mapRecurringCommitment,
   recurringCommitmentInclude,
@@ -19,13 +26,14 @@ export async function GET() {
     const role = asRole(user.role);
     if (!canViewRecurringCommitments(role)) {
       return NextResponse.json(
-        { error: "No tienes permiso para ver compromisos recurrentes." },
+        { error: "No tienes permiso para ver los gastos administrativos." },
         { status: 403 }
       );
     }
+    await ensureAdminExpenseOccurrences();
     const rows = await prisma.recurringCommitment.findMany({
       where: { active: true },
-      orderBy: [{ dueDate: "asc" }, { supplierName: "asc" }],
+      orderBy: [{ occurredOn: "desc" }, { dueDate: "asc" }],
       include: recurringCommitmentInclude,
     });
     return NextResponse.json({ commitments: rows.map(mapRecurringCommitment) });
@@ -39,68 +47,87 @@ export async function POST(request: Request) {
     const user = await requireSessionUser();
     const role = asRole(user.role);
     if (!canManageRecurringCommitments(role)) {
-      return NextResponse.json({ error: "No tienes permiso para crear compromisos." }, { status: 403 });
+      return NextResponse.json({ error: "No tienes permiso para registrar gastos." }, { status: 403 });
     }
 
     const body = (await request.json()) as {
       supplierId?: string | null;
-      supplierName?: string;
       concept?: string;
       frequency?: string;
       dueDate?: string | null;
-      currency?: string;
-      estimatedAmount?: number | null;
-      workflowStatus?: string;
+      occurredOn?: string | null;
+      category?: string;
+      paymentMethod?: string;
+      amount?: number | null;
       notes?: string;
     };
 
     if (!body.concept?.trim()) {
       return NextResponse.json({ error: "El concepto es requerido." }, { status: 400 });
     }
-    if (!body.frequency?.trim()) {
-      return NextResponse.json({ error: "La frecuencia es requerida." }, { status: 400 });
+    if (!body.frequency || !isAdminFrequency(body.frequency)) {
+      return NextResponse.json({ error: "Selecciona la periodicidad." }, { status: 400 });
+    }
+    if (!body.category || !isAdminCategory(body.category)) {
+      return NextResponse.json({ error: "Selecciona la categoría." }, { status: 400 });
+    }
+    if (!body.paymentMethod || !isAdminPaymentMethod(body.paymentMethod)) {
+      return NextResponse.json({ error: "Selecciona la forma de pago." }, { status: 400 });
+    }
+    const amount = Number(body.amount);
+    if (!Number.isFinite(amount) || amount <= 0) {
+      return NextResponse.json({ error: "El importe es obligatorio." }, { status: 400 });
     }
     const due = parseIsoDateInput(body.dueDate ?? "");
+    const occurred = parseIsoDateInput(body.occurredOn ?? "");
+    if (!occurred) {
+      return NextResponse.json({ error: "Indica la fecha del gasto." }, { status: 400 });
+    }
     if (!due) {
-      return NextResponse.json({ error: "Indica la fecha límite de pago." }, { status: 400 });
+      return NextResponse.json({ error: "Indica la fecha de vencimiento." }, { status: 400 });
     }
 
-    let supplierName = body.supplierName?.trim() ?? "";
     let supplierId: string | null = body.supplierId ?? null;
-    if (supplierId) {
-      const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
-      if (!supplier) {
-        return NextResponse.json({ error: "Proveedor no encontrado." }, { status: 404 });
-      }
-      supplierName = supplier.commercialName || supplier.legalName;
-    }
-    if (!supplierName) {
+    let supplierName = "";
+    if (!supplierId) {
       return NextResponse.json({ error: "Selecciona un proveedor." }, { status: 400 });
     }
+    const supplier = await prisma.supplier.findUnique({ where: { id: supplierId } });
+    if (!supplier) {
+      return NextResponse.json({ error: "Proveedor no encontrado." }, { status: 404 });
+    }
+    supplierName = supplier.commercialName || supplier.legalName;
 
-    const day = due.getDate();
-
-    const row = await prisma.recurringCommitment.create({
+    const occurrenceKey = occurrenceKeyFromDate(occurred);
+    const created = await prisma.recurringCommitment.create({
       data: {
         supplierId,
         supplierName,
         concept: body.concept.trim(),
         frequency: body.frequency,
-        expectedReceptionDay: day,
+        expectedReceptionDay: due.getDate(),
         nextReceptionDate: due,
         dueDate: due,
+        occurredOn: occurred,
+        category: body.category,
+        paymentMethod: body.paymentMethod,
+        seriesId: `tmp_${occurrenceKey}`,
+        occurrenceKey: `tmp_${Date.now()}`,
         obraId: null,
         costCenter: "",
-        currency: body.currency?.trim() || "MXN",
-        estimatedAmount:
-          body.estimatedAmount != null && Number.isFinite(body.estimatedAmount)
-            ? body.estimatedAmount
-            : null,
+        currency: "MXN",
+        estimatedAmount: amount,
+        amount,
         lifecycleStatus: "active",
         workflowStatus: "pending",
-        notes: (body.notes ?? "").slice(0, 200),
+        notes: (body.notes ?? "").slice(0, 400),
         createdByUserId: user.id,
       },
+    });
+
+    const row = await prisma.recurringCommitment.update({
+      where: { id: created.id },
+      data: { seriesId: created.id, occurrenceKey },
       include: recurringCommitmentInclude,
     });
 

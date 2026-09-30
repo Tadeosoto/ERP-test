@@ -751,9 +751,9 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
       {canViewCommitments && (
         <section id="compromisos" className="scroll-mt-24 space-y-2">
           <div>
-            <h2 className="dash-section-title">Compromisos recurrentes</h2>
+            <h2 className="dash-section-title">Gastos administrativos</h2>
             <p className="dash-caption mt-0.5">
-              Servicios y gastos que se repiten. El módulo completo está en Compromisos.
+              Gastos generales de la empresa. El módulo completo está en Gastos administrativos.
             </p>
           </div>
           <PagosRecurringCommitmentsPanel

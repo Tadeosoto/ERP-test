@@ -1,50 +1,90 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { PagosRecurringCommitmentsPanel } from "@/components/dashboard/pagos-recurring-commitments-panel";
 import { CompromisoRecurrenteModal } from "@/components/pagos/compromiso-recurrente-modal";
 import { useSession } from "@/components/session-provider";
+import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
+import { useFeedback } from "@/components/ui/feedback-provider";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import {
+  ADMIN_EXPENSE_CATEGORIES,
+  ADMIN_EXPENSE_STATUS_DOT,
+  ADMIN_EXPENSE_STATUS_LABEL,
+  ADMIN_EXPENSE_STATUS_TONE,
+  adminExpenseStatus,
+  categoryLabel,
+  mexicoMonthKey,
+  type AdminExpenseDisplayStatus,
+} from "@/lib/domain/admin-expenses";
+import {
+  COMMITMENT_FREQUENCIES,
+  COMMITMENT_FREQUENCY_LABEL,
   daysUntil,
-  type CommitmentWorkflowStatus,
+  type CommitmentFrequency,
 } from "@/lib/domain/recurring-commitments";
 import { canManageRecurringCommitments } from "@/lib/domain/transitions";
 import type { RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
-import { formatMoney } from "@/lib/format";
+import { formatDateShort, formatMoney } from "@/lib/format";
 
-type FilterKey = "todos" | "pending" | "awaiting_invoice" | "paid" | "due_soon";
+const PAGE_SIZE = 10;
 
-function FilterChip({
-  active,
-  label,
-  count,
-  onClick,
-}: {
-  active: boolean;
-  label: string;
-  count: number;
-  onClick: () => void;
-}) {
+function StatusPill({ status }: { status: AdminExpenseDisplayStatus }) {
   return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center gap-2 rounded-xl border px-3 py-2 text-sm transition ${
-        active
-          ? "border-orange-300 bg-orange-50 font-semibold text-orange-950"
-          : "border-zinc-200 bg-white font-medium text-zinc-600 hover:bg-zinc-50"
-      }`}
-    >
-      {label}
-      <span
-        className={`rounded-md px-1.5 py-0.5 text-xs tabular-nums ${
-          active ? "bg-orange-100 text-orange-900" : "bg-zinc-100 text-zinc-600"
-        }`}
-      >
-        {count}
-      </span>
-    </button>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold ${ADMIN_EXPENSE_STATUS_TONE[status]}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${ADMIN_EXPENSE_STATUS_DOT[status]}`} />
+      {ADMIN_EXPENSE_STATUS_LABEL[status]}
+    </span>
+  );
+}
+
+function daysLabel(dueDate: string): string {
+  const days = daysUntil(dueDate);
+  if (days < 0) return days === -1 ? "Hace 1 día" : `Hace ${Math.abs(days)} días`;
+  if (days === 0) return "Hoy";
+  return days === 1 ? "1 día" : `${days} días`;
+}
+
+function Donut({
+  slices,
+  total,
+}: {
+  slices: { color: string; value: number }[];
+  total: number;
+}) {
+  const sum = slices.reduce((acc, slice) => acc + slice.value, 0);
+  const r = 40;
+  const c = 2 * Math.PI * r;
+  let offset = 0;
+  return (
+    <div className="relative h-36 w-36 shrink-0">
+      <svg viewBox="0 0 120 120" className="h-full w-full">
+        <circle cx="60" cy="60" r={r} fill="none" stroke="#f4f4f5" strokeWidth="16" />
+        {sum > 0 &&
+          slices.map((slice, index) => {
+            const len = (slice.value / sum) * c;
+            const node = (
+              <circle
+                key={index}
+                cx="60"
+                cy="60"
+                r={r}
+                fill="none"
+                stroke={slice.color}
+                strokeWidth="16"
+                strokeDasharray={`${len} ${c - len}`}
+                strokeDashoffset={-offset}
+                transform="rotate(-90 60 60)"
+              />
+            );
+            offset += len;
+            return node;
+          })}
+      </svg>
+      <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
+        <p className="text-[11px] font-semibold leading-tight text-zinc-900">{formatMoney(total, "MXN")}</p>
+        <p className="text-[10px] text-zinc-500">Total</p>
+      </div>
+    </div>
   );
 }
 
@@ -54,12 +94,22 @@ export function CompromisosRecurrentesView({
   onRegisterRefresh?: (fn: () => void) => void;
 }) {
   const { user } = useSession();
+  const { confirmDelete } = useConfirmDelete();
+  const { showSuccess, showError } = useFeedback();
   const [commitments, setCommitments] = useState<RecurringCommitmentDto[]>([]);
   const [suppliers, setSuppliers] = useState<SupplierDto[]>([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState<FilterKey>("todos");
+  const [query, setQuery] = useState("");
+  const [month, setMonth] = useState("");
+  const [category, setCategory] = useState("");
+  const [supplier, setSupplier] = useState("");
+  const [frequency, setFrequency] = useState("");
+  const [status, setStatus] = useState("");
+  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
+  const [recurring, setRecurring] = useState(false);
   const [editing, setEditing] = useState<RecurringCommitmentDto | null>(null);
+  const [menuId, setMenuId] = useState<string | null>(null);
 
   const canManage = Boolean(user && canManageRecurringCommitments(user.role));
 
@@ -69,12 +119,12 @@ export function CompromisosRecurrentesView({
       fetch("/api/suppliers", { credentials: "include" }),
     ]);
     if (comRes.ok) {
-      const d = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
-      setCommitments(d.commitments);
+      const data = (await comRes.json()) as { commitments: RecurringCommitmentDto[] };
+      setCommitments(data.commitments);
     }
     if (supRes.ok) {
-      const d = (await supRes.json()) as { suppliers: SupplierDto[] };
-      setSuppliers(d.suppliers);
+      const data = (await supRes.json()) as { suppliers: SupplierDto[] };
+      setSuppliers(data.suppliers);
     }
     setLoading(false);
   }, []);
@@ -84,146 +134,409 @@ export function CompromisosRecurrentesView({
     onRegisterRefresh?.(() => void load());
   }, [load, onRegisterRefresh]);
 
-  const counts = useMemo(() => {
-    let pending = 0;
-    let awaiting = 0;
-    let paid = 0;
-    let dueSoon = 0;
-    let estimated = 0;
-    for (const c of commitments) {
-      const wf = c.workflowStatus as CommitmentWorkflowStatus;
-      if (wf === "pending") pending += 1;
-      else if (wf === "awaiting_invoice") awaiting += 1;
-      else if (wf === "paid") paid += 1;
-      const days = daysUntil(c.dueDate);
-      if (wf !== "paid" && days <= 7) dueSoon += 1;
-      if (c.estimatedAmount != null) estimated += c.estimatedAmount;
+  const thisMonth = mexicoMonthKey(new Date());
+  const prevMonth = mexicoMonthKey(new Date(new Date().getFullYear(), new Date().getMonth() - 1, 15));
+
+  const kpis = useMemo(() => {
+    let monthTotal = 0;
+    let prevTotal = 0;
+    let payable = 0;
+    let payableCount = 0;
+    let soon = 0;
+    let soonCount = 0;
+    let overdue = 0;
+    let overdueCount = 0;
+    for (const row of commitments) {
+      const rowMonth = mexicoMonthKey(new Date(row.occurredOn));
+      if (rowMonth === thisMonth) monthTotal += row.amount;
+      if (rowMonth === prevMonth) prevTotal += row.amount;
+      const display = adminExpenseStatus(row.workflowStatus, row.dueDate);
+      if (display === "pagado") continue;
+      payable += row.amount;
+      payableCount += 1;
+      const days = daysUntil(row.dueDate);
+      if (days < 0) {
+        overdue += row.amount;
+        overdueCount += 1;
+      } else if (days <= 7) {
+        soon += row.amount;
+        soonCount += 1;
+      }
     }
-    return {
-      total: commitments.length,
-      pending,
-      awaiting,
-      paid,
-      dueSoon,
-      estimated,
-      currency: commitments[0]?.currency ?? "MXN",
-    };
+    const delta = prevTotal > 0 ? Math.round(((monthTotal - prevTotal) / prevTotal) * 100) : null;
+    return { monthTotal, payable, payableCount, soon, soonCount, overdue, overdueCount, delta };
+  }, [commitments, thisMonth, prevMonth]);
+
+  const upcoming = useMemo(
+    () =>
+      commitments
+        .filter((row) => adminExpenseStatus(row.workflowStatus, row.dueDate) !== "pagado")
+        .sort((a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
+        .slice(0, 6),
+    [commitments]
+  );
+
+  const chart = useMemo(() => {
+    const totals = new Map<string, number>();
+    for (const row of commitments) {
+      if (mexicoMonthKey(new Date(row.occurredOn)) !== thisMonth) continue;
+      totals.set(row.category || "otro", (totals.get(row.category || "otro") ?? 0) + row.amount);
+    }
+    const slices = [...totals.entries()]
+      .map(([value, amount]) => ({
+        value,
+        amount,
+        label: categoryLabel(value),
+        color: ADMIN_EXPENSE_CATEGORIES.find((item) => item.value === value)?.color ?? "#94a3b8",
+      }))
+      .sort((a, b) => b.amount - a.amount);
+    const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
+    return { slices, total };
+  }, [commitments, thisMonth]);
+
+  const months = useMemo(() => {
+    const keys = new Set(commitments.map((row) => mexicoMonthKey(new Date(row.occurredOn))));
+    return [...keys].sort().reverse();
   }, [commitments]);
 
+  const supplierNames = useMemo(
+    () => [...new Set(commitments.map((row) => row.supplierName))].sort((a, b) => a.localeCompare(b, "es")),
+    [commitments]
+  );
+
   const filtered = useMemo(() => {
-    if (filter === "todos") return commitments;
-    if (filter === "due_soon") {
-      return commitments.filter((c) => {
-        if (c.workflowStatus === "paid") return false;
-        return daysUntil(c.dueDate) <= 7;
-      });
+    const q = query.trim().toLowerCase();
+    const rows = commitments.filter((row) => {
+      const display = adminExpenseStatus(row.workflowStatus, row.dueDate);
+      if (q && !`${row.concept} ${row.supplierName}`.toLowerCase().includes(q)) return false;
+      if (month && mexicoMonthKey(new Date(row.occurredOn)) !== month) return false;
+      if (category && row.category !== category) return false;
+      if (supplier && row.supplierName !== supplier) return false;
+      if (frequency && row.frequency !== frequency) return false;
+      if (status === "sin_pagar" && display === "pagado") return false;
+      if (status && status !== "sin_pagar" && display !== status) return false;
+      return true;
+    });
+    rows.sort((a, b) => {
+      if (status === "sin_pagar") return new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime();
+      return new Date(b.occurredOn).getTime() - new Date(a.occurredOn).getTime();
+    });
+    return rows;
+  }, [commitments, query, month, category, supplier, frequency, status]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+  const safePage = Math.min(page, totalPages);
+  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+
+  function showUnpaid() {
+    setStatus("sin_pagar");
+    setPage(1);
+    document.getElementById("gastos-tabla")?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function clearFilters() {
+    setQuery("");
+    setMonth("");
+    setCategory("");
+    setSupplier("");
+    setFrequency("");
+    setStatus("");
+    setPage(1);
+  }
+
+  async function markPaid(row: RecurringCommitmentDto) {
+    const res = await fetch(`/api/recurring-commitments/${row.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      credentials: "include",
+      body: JSON.stringify({ workflowStatus: "paid" }),
+    });
+    if (!res.ok) {
+      const data = (await res.json().catch(() => null)) as { error?: string } | null;
+      showError(data?.error ?? "No se pudo marcar como pagado.");
+      return;
     }
-    return commitments.filter((c) => c.workflowStatus === filter);
-  }, [commitments, filter]);
-
-  function openNew() {
-    setEditing(null);
-    setModalOpen(true);
+    showSuccess("Gasto marcado como pagado.");
+    setMenuId(null);
+    void load();
   }
 
-  function openEdit(c: RecurringCommitmentDto) {
-    setEditing(c);
-    setModalOpen(true);
+  async function remove(row: RecurringCommitmentDto) {
+    const ok = await confirmDelete({
+      title: "Eliminar gasto",
+      message: `Se eliminará ${row.concept} de ${row.supplierName}. El historial de los demás periodos se conserva.`,
+    });
+    if (!ok) return;
+    const res = await fetch(`/api/recurring-commitments/${row.id}`, { method: "DELETE", credentials: "include" });
+    if (!res.ok) {
+      showError("No se pudo eliminar.");
+      return;
+    }
+    showSuccess("Gasto eliminado.");
+    setMenuId(null);
+    void load();
   }
 
-  if (loading) return <LoadingScreen message="Cargando compromisos" />;
+  if (loading) return <LoadingScreen message="Cargando gastos administrativos" />;
 
   return (
-    <div className="flex min-h-0 flex-col gap-5 lg:gap-6">
+    <div className="flex min-h-0 flex-col gap-5">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
-          <h1 className="dash-page-title">Compromisos recurrentes</h1>
-          <p className="dash-body mt-1 text-zinc-600">
-            Servicios y gastos que se repiten (luz, renta, etc.). Alta, seguimiento y vencimientos.
-          </p>
+          <h1 className="dash-page-title">Gastos administrativos</h1>
+          <p className="dash-body mt-1 text-zinc-600">Gastos generales de la empresa que no corresponden a una obra.</p>
         </div>
         {canManage && (
-          <button type="button" className="btn-primary !min-h-10 !px-4 !text-sm" onClick={openNew}>
-            + Nuevo compromiso
-          </button>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-secondary !min-h-10 !px-4 !text-sm"
+              onClick={() => {
+                setEditing(null);
+                setRecurring(true);
+                setModalOpen(true);
+              }}
+            >
+              Gasto recurrente
+            </button>
+            <button
+              type="button"
+              className="btn-primary !min-h-10 !px-4 !text-sm"
+              onClick={() => {
+                setEditing(null);
+                setRecurring(false);
+                setModalOpen(true);
+              }}
+            >
+              + Nuevo gasto
+            </button>
+          </div>
         )}
       </div>
 
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div className="dash-panel border-l-4 border-l-sky-500 px-4 py-3">
-          <p className="dash-label text-zinc-500">Activos</p>
-          <p className="dash-metric mt-1 text-zinc-900">{counts.total}</p>
-          <p className="dash-caption mt-1 text-zinc-500">Compromisos vigentes</p>
-        </div>
-        <div className="dash-panel border-l-4 border-l-amber-500 px-4 py-3">
-          <p className="dash-label text-zinc-500">Pendientes / factura</p>
-          <p className="dash-metric mt-1 text-zinc-900">
-            {counts.pending + counts.awaiting}
-          </p>
-          <p className="dash-caption mt-1 text-zinc-500">
-            {counts.pending} pend. · {counts.awaiting} esperando factura
-          </p>
-        </div>
-        <div className="dash-panel border-l-4 border-l-orange-500 px-4 py-3">
-          <p className="dash-label text-zinc-500">Vencen en 7 días</p>
-          <p className="dash-metric mt-1 text-zinc-900">{counts.dueSoon}</p>
-          <p className="dash-caption mt-1 text-zinc-500">Incluye vencidos sin pagar</p>
-        </div>
-        <div className="dash-panel border-l-4 border-l-violet-500 px-4 py-3">
-          <p className="dash-label text-zinc-500">Monto estimado</p>
-          <p className="dash-metric mt-1 text-zinc-900">
-            {formatMoney(counts.estimated, counts.currency)}
-          </p>
-          <p className="dash-caption mt-1 text-zinc-500">Suma de montos capturados</p>
-        </div>
+      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <Kpi label="Gastos del mes" value={formatMoney(kpis.monthTotal, "MXN")} sub={kpis.delta == null ? "Sin mes anterior para comparar" : `${kpis.delta >= 0 ? "↑" : "↓"} ${Math.abs(kpis.delta)}% vs. mes anterior`} />
+        <Kpi label="Por pagar" value={formatMoney(kpis.payable, "MXN")} sub={`${kpis.payableCount} gasto${kpis.payableCount === 1 ? "" : "s"}`} />
+        <Kpi label="Vencen en 7 días" value={formatMoney(kpis.soon, "MXN")} sub={`${kpis.soonCount} gasto${kpis.soonCount === 1 ? "" : "s"}`} />
+        <Kpi label="Vencidos" value={formatMoney(kpis.overdue, "MXN")} sub={`${kpis.overdueCount} gasto${kpis.overdueCount === 1 ? "" : "s"}`} tone="text-red-700" />
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        <FilterChip
-          active={filter === "todos"}
-          label="Todos"
-          count={counts.total}
-          onClick={() => setFilter("todos")}
-        />
-        <FilterChip
-          active={filter === "pending"}
-          label="Pendientes"
-          count={counts.pending}
-          onClick={() => setFilter("pending")}
-        />
-        <FilterChip
-          active={filter === "awaiting_invoice"}
-          label="Esperando factura"
-          count={counts.awaiting}
-          onClick={() => setFilter("awaiting_invoice")}
-        />
-        <FilterChip
-          active={filter === "due_soon"}
-          label="Vencen pronto"
-          count={counts.dueSoon}
-          onClick={() => setFilter("due_soon")}
-        />
-        <FilterChip
-          active={filter === "paid"}
-          label="Pagados"
-          count={counts.paid}
-          onClick={() => setFilter("paid")}
-        />
+      <div className="grid gap-4 lg:grid-cols-2">
+        <section className="dash-panel overflow-hidden">
+          <div className="flex items-center justify-between border-b border-red-100 bg-red-50/70 px-4 py-3">
+            <h2 className="text-sm font-bold text-red-800">Próximos vencimientos</h2>
+            <button type="button" onClick={showUnpaid} className="text-sm font-semibold text-orange-700">
+              Ver todos →
+            </button>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-left text-sm">
+              <thead>
+                <tr className="border-b border-zinc-100 text-xs text-zinc-500">
+                  <th className="px-3 py-2 font-medium">Fecha de vencimiento</th>
+                  <th className="px-3 py-2 font-medium">Concepto</th>
+                  <th className="px-3 py-2 font-medium">Proveedor</th>
+                  <th className="px-3 py-2 font-medium">Importe</th>
+                  <th className="px-3 py-2 font-medium">Días restantes</th>
+                  <th className="px-3 py-2 font-medium">Estatus</th>
+                </tr>
+              </thead>
+              <tbody>
+                {upcoming.length === 0 ? (
+                  <tr>
+                    <td colSpan={6} className="px-3 py-8 text-center text-zinc-500">No hay gastos por pagar.</td>
+                  </tr>
+                ) : (
+                  upcoming.map((row) => (
+                    <tr key={row.id} className="border-b border-zinc-50">
+                      <td className="px-3 py-2 tabular-nums">{formatDateShort(row.dueDate)}</td>
+                      <td className="px-3 py-2">{row.concept}</td>
+                      <td className="px-3 py-2">{row.supplierName}</td>
+                      <td className="px-3 py-2 tabular-nums">{formatMoney(row.amount, row.currency || "MXN")}</td>
+                      <td className="px-3 py-2">{daysLabel(row.dueDate)}</td>
+                      <td className="px-3 py-2">
+                        <StatusPill status={adminExpenseStatus(row.workflowStatus, row.dueDate)} />
+                      </td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </section>
+
+        <section className="dash-panel p-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm font-bold text-zinc-900">Gasto del mes por categoría</h2>
+            <span className="rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-500">Este mes</span>
+          </div>
+          {chart.slices.length === 0 ? (
+            <p className="py-10 text-center text-sm text-zinc-500">Aún no hay gastos este mes.</p>
+          ) : (
+            <div className="mt-4 flex flex-wrap items-center gap-4">
+              <Donut slices={chart.slices.map((slice) => ({ color: slice.color, value: slice.amount }))} total={chart.total} />
+              <ul className="min-w-0 flex-1 space-y-1.5 text-sm">
+                {chart.slices.map((slice) => (
+                  <li key={slice.value} className="flex items-center gap-2">
+                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: slice.color }} />
+                    <span className="min-w-0 flex-1 truncate text-zinc-700">{slice.label}</span>
+                    <span className="tabular-nums text-zinc-900">{formatMoney(slice.amount, "MXN")}</span>
+                    <span className="w-10 text-right text-xs text-zinc-500">{chart.total > 0 ? Math.round((slice.amount / chart.total) * 100) : 0}%</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+        </section>
       </div>
 
-      <PagosRecurringCommitmentsPanel
-        commitments={filtered}
-        onNew={openNew}
-        onEdit={openEdit}
-        onMutated={() => void load()}
-        variant="page"
-        canManage={canManage}
-        hideChrome
-      />
+      <div id="gastos-tabla" className="dash-panel overflow-hidden">
+        <div className="flex flex-wrap items-center gap-2 border-b border-zinc-100 p-3">
+          <input
+            value={query}
+            onChange={(e) => {
+              setQuery(e.target.value);
+              setPage(1);
+            }}
+            placeholder="Buscar concepto, proveedor…"
+            className="min-w-48 flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm"
+          />
+          <FilterSelect
+            label="Fecha"
+            value={month}
+            onChange={(value) => {
+              setMonth(value);
+              setPage(1);
+            }}
+            options={[{ value: "", label: "Todas" }, ...months.map((key) => ({ value: key, label: key }))]}
+          />
+          <FilterSelect
+            label="Categoría"
+            value={category}
+            onChange={(value) => {
+              setCategory(value);
+              setPage(1);
+            }}
+            options={[{ value: "", label: "Todas" }, ...ADMIN_EXPENSE_CATEGORIES.map((item) => ({ value: item.value, label: item.label }))]}
+          />
+          <FilterSelect
+            label="Proveedor"
+            value={supplier}
+            onChange={(value) => {
+              setSupplier(value);
+              setPage(1);
+            }}
+            options={[{ value: "", label: "Todos" }, ...supplierNames.map((name) => ({ value: name, label: name }))]}
+          />
+          <FilterSelect
+            label="Periodicidad"
+            value={frequency}
+            onChange={(value) => {
+              setFrequency(value);
+              setPage(1);
+            }}
+            options={[{ value: "", label: "Todas" }, ...COMMITMENT_FREQUENCIES.map((item) => ({ value: item.value, label: item.label }))]}
+          />
+          <FilterSelect
+            label="Estatus"
+            value={status}
+            onChange={(value) => {
+              setStatus(value);
+              setPage(1);
+            }}
+            options={[
+              { value: "", label: "Todos" },
+              { value: "sin_pagar", label: "Sin pagar" },
+              { value: "proximo", label: "Próximo" },
+              { value: "vence_pronto", label: "Vence pronto" },
+              { value: "vencido", label: "Vencido" },
+              { value: "pagado", label: "Pagado" },
+            ]}
+          />
+          <button type="button" onClick={clearFilters} className="text-sm font-semibold text-orange-700">
+            Limpiar filtros
+          </button>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full min-w-[960px] text-left text-sm">
+            <thead className="bg-zinc-50 text-xs text-zinc-500">
+              <tr>
+                {["Fecha", "Concepto", "Proveedor", "Categoría", "Importe", "Periodicidad", "Vencimiento", "Comprobante", "Estatus", "Acciones"].map((heading) => (
+                  <th key={heading} className="px-3 py-2 font-medium">{heading}</th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {pageItems.length === 0 ? (
+                <tr>
+                  <td colSpan={10} className="px-3 py-10 text-center text-zinc-500">No hay gastos con estos filtros.</td>
+                </tr>
+              ) : (
+                pageItems.map((row) => {
+                  const display = adminExpenseStatus(row.workflowStatus, row.dueDate);
+                  const file = row.files[0];
+                  return (
+                    <tr key={row.id} className="border-t border-zinc-100">
+                      <td className="px-3 py-2.5 tabular-nums">{formatDateShort(row.occurredOn)}</td>
+                      <td className="px-3 py-2.5 font-medium text-zinc-900">{row.concept}</td>
+                      <td className="px-3 py-2.5">{row.supplierName}</td>
+                      <td className="px-3 py-2.5">{categoryLabel(row.category)}</td>
+                      <td className="px-3 py-2.5 tabular-nums">{formatMoney(row.amount, row.currency || "MXN")}</td>
+                      <td className="px-3 py-2.5">{COMMITMENT_FREQUENCY_LABEL[row.frequency as CommitmentFrequency] ?? row.frequency}</td>
+                      <td className="px-3 py-2.5 tabular-nums">{formatDateShort(row.dueDate)}</td>
+                      <td className="px-3 py-2.5">
+                        {file ? (
+                          <a className="font-semibold text-orange-700" href={`/api/recurring-commitment-files/${file.id}`} target="_blank" rel="noreferrer">
+                            Ver
+                          </a>
+                        ) : (
+                          <span className="text-zinc-300">—</span>
+                        )}
+                      </td>
+                      <td className="px-3 py-2.5"><StatusPill status={display} /></td>
+                      <td className="relative px-3 py-2.5">
+                        {canManage ? (
+                          <>
+                            <button type="button" className="rounded-lg px-2 py-1 text-zinc-500 hover:bg-zinc-100" onClick={() => setMenuId(menuId === row.id ? null : row.id)} aria-label="Acciones">
+                              ···
+                            </button>
+                            {menuId === row.id && (
+                              <div className="absolute right-3 z-20 mt-1 w-40 rounded-xl border border-zinc-200 bg-white py-1 text-sm shadow-lg">
+                                <button type="button" className="block w-full px-3 py-2 text-left hover:bg-zinc-50" onClick={() => { setEditing(row); setRecurring(row.frequency !== "unico"); setModalOpen(true); setMenuId(null); }}>Editar</button>
+                                {display !== "pagado" && (
+                                  <button type="button" className="block w-full px-3 py-2 text-left hover:bg-zinc-50" onClick={() => void markPaid(row)}>Marcar pagado</button>
+                                )}
+                                <button type="button" className="block w-full px-3 py-2 text-left text-red-700 hover:bg-zinc-50" onClick={() => void remove(row)}>Eliminar</button>
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <span className="text-zinc-300">—</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+        <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500">
+          <p>
+            {filtered.length === 0 ? "0 registros" : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} de ${filtered.length}`}
+          </p>
+          <div className="flex items-center gap-1">
+            <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="h-8 min-w-8 rounded-lg border px-2 disabled:opacity-40">‹</button>
+            <span className="px-2 tabular-nums">{safePage}/{totalPages}</span>
+            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="h-8 min-w-8 rounded-lg border px-2 disabled:opacity-40">›</button>
+          </div>
+        </div>
+      </div>
 
       {canManage && (
         <CompromisoRecurrenteModal
           open={modalOpen}
+          recurring={recurring && !editing}
           onClose={() => {
             setModalOpen(false);
             setEditing(null);
@@ -234,5 +547,37 @@ export function CompromisosRecurrentesView({
         />
       )}
     </div>
+  );
+}
+
+function Kpi({ label, value, sub, tone = "text-zinc-900" }: { label: string; value: string; sub: string; tone?: string }) {
+  return (
+    <div className="dash-panel px-4 py-3">
+      <p className="text-xs font-medium text-zinc-500">{label}</p>
+      <p className={`mt-1 text-2xl font-bold tabular-nums ${tone}`}>{value}</p>
+      <p className="mt-1 text-xs text-zinc-500">{sub}</p>
+    </div>
+  );
+}
+
+function FilterSelect({
+  label,
+  value,
+  options,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <select aria-label={label} value={value} onChange={(e) => onChange(e.target.value)} className="rounded-xl border border-zinc-200 bg-white px-3 py-2 text-sm">
+      {options.map((option) => (
+        <option key={option.value || label} value={option.value}>
+          {option.value ? option.label : label}
+        </option>
+      ))}
+    </select>
   );
 }

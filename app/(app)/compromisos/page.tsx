@@ -21,7 +21,7 @@ function CompromisosPageInner() {
   }, [user, router]);
 
   if (!user || !allowed) {
-    return <LoadingScreen message="Cargando compromisos" />;
+    return <LoadingScreen message="Cargando gastos administrativos" />;
   }
 
   return <CompromisosRecurrentesView onRegisterRefresh={register} />;
@@ -29,7 +29,7 @@ function CompromisosPageInner() {
 
 export default function CompromisosPage() {
   return (
-    <Suspense fallback={<LoadingScreen message="Cargando compromisos" />}>
+    <Suspense fallback={<LoadingScreen message="Cargando gastos administrativos" />}>
       <CompromisosPageInner />
     </Suspense>
   );

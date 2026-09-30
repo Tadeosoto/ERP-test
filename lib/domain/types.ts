@@ -291,6 +291,11 @@ export interface RecurringCommitmentDto {
   expectedReceptionDay: number;
   nextReceptionDate: string;
   dueDate: string;
+  occurredOn: string;
+  category: string;
+  paymentMethod: string;
+  seriesId: string;
+  amount: number;
   obraId: string | null;
   obraName: string | null;
   costCenter: string;
@@ -368,4 +373,119 @@ export interface ExpedienteListItemDto {
 export interface ExpedienteDetailDto extends ExpedienteListItemDto {
   purchaseOrders: PurchaseOrderDto[];
   invoiceFirstCommitments: InvoiceFirstCommitmentDto[];
+}
+
+export type ViaticoReceiptKind = "factura" | "ticket" | "sin_comprobante";
+
+export interface EmployeeDto {
+  id: string;
+  firstName: string;
+  lastName: string;
+  fullName: string;
+  active: boolean;
+  createdAt: string;
+}
+
+export interface ViaticoExpenseFileDto {
+  id: string;
+  kind: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface ViaticoExpenseDto {
+  id: string;
+  concept: string;
+  amount: number;
+  receiptKind: ViaticoReceiptKind;
+  missingReceiptReason: string;
+  createdAt: string;
+  files: ViaticoExpenseFileDto[];
+}
+
+export interface ViaticoSummaryDto {
+  delivered: number;
+  spent: number;
+  invoiced: number;
+  tickets: number;
+  withoutReceipt: number;
+  toReturn: number;
+}
+
+export interface ViaticoListItemDto {
+  id: string;
+  employeeId: string;
+  employeeName: string;
+  obraId: string;
+  obraName: string;
+  deliveredAmount: number;
+  createdAt: string;
+  summary: ViaticoSummaryDto;
+}
+
+export interface ViaticoDetailDto extends ViaticoListItemDto {
+  expenses: ViaticoExpenseDto[];
+}
+
+export type CompanyCardBank = "banbajio" | "banregio";
+export type CompanyCardKind = "debito" | "credito";
+export type CompanyCardMovementKind = "gasto" | "carga";
+export type CompanyCardDestination = "obra" | "oficinas" | "otro";
+export type CompanyCardReceiptKind = "factura" | "ticket" | "sin_comprobante";
+export type CompanyCardExpenseStatus = "por_comprobar" | "comprobado";
+
+export interface CompanyCardSummaryDto {
+  loads: number;
+  spent: number;
+  proven: number;
+  pending: number;
+  available: number;
+}
+
+export interface CompanyCardDto {
+  id: string;
+  bank: CompanyCardBank;
+  kind: CompanyCardKind;
+  label: string;
+  slot: number;
+  lastFour: string;
+  summary: CompanyCardSummaryDto;
+}
+
+export interface CompanyCardMovementFileDto {
+  id: string;
+  kind: string;
+  originalFileName: string;
+  mimeType: string;
+  sizeBytes: number;
+  createdAt: string;
+}
+
+export interface CompanyCardMovementDto {
+  id: string;
+  cardId: string;
+  cardLabel: string;
+  cardKind: CompanyCardKind;
+  cardLastFour: string;
+  kind: CompanyCardMovementKind;
+  occurredOn: string;
+  amount: number;
+  supplierName: string;
+  concept: string;
+  category: string;
+  destinationKind: CompanyCardDestination | "";
+  destinationLabel: string;
+  obraId: string | null;
+  costCenter: string;
+  responsibleUserId: string | null;
+  responsibleEmployeeId: string | null;
+  responsibleName: string;
+  receiptKind: CompanyCardReceiptKind | "";
+  receiptLabel: string;
+  missingReceiptReason: string;
+  status: CompanyCardExpenseStatus | "carga" | "";
+  statusLabel: string;
+  files: CompanyCardMovementFileDto[];
 }

@@ -4,12 +4,11 @@ import { useEffect, useMemo, useState } from "react";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { FilePickButton } from "@/components/file-pick-button";
 import { useFeedback } from "@/components/ui/feedback-provider";
+import { ADMIN_EXPENSE_CATEGORIES, ADMIN_PAYMENT_METHODS } from "@/lib/domain/admin-expenses";
 import {
   COMMITMENT_FREQUENCIES,
-  COMMITMENT_WORKFLOW_LABEL,
   toDateInputValue,
   type CommitmentFrequency,
-  type CommitmentWorkflowStatus,
 } from "@/lib/domain/recurring-commitments";
 import { FILE_KIND_LABEL } from "@/lib/domain/labels";
 import type { RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
@@ -22,15 +21,13 @@ function Field({
   label,
   required,
   children,
-  className = "",
 }: {
   label: string;
   required?: boolean;
   children: React.ReactNode;
-  className?: string;
 }) {
   return (
-    <label className={`block min-w-0 ${className}`}>
+    <label className="block min-w-0">
       <span className="text-xs font-medium text-zinc-700">
         {label}
         {required && <span className="text-red-500"> *</span>}
@@ -43,34 +40,42 @@ function Field({
 type FormState = {
   supplierId: string;
   concept: string;
+  category: string;
   frequency: CommitmentFrequency | "";
+  occurredOn: string;
   dueDate: string;
-  currency: string;
-  estimatedAmount: string;
-  workflowStatus: CommitmentWorkflowStatus;
+  amount: string;
+  paymentMethod: string;
+  paid: boolean;
   notes: string;
 };
 
-const EMPTY: FormState = {
-  supplierId: "",
-  concept: "",
-  frequency: "",
-  dueDate: "",
-  currency: "MXN",
-  estimatedAmount: "",
-  workflowStatus: "pending",
-  notes: "",
-};
+function emptyForm(recurring: boolean): FormState {
+  return {
+    supplierId: "",
+    concept: "",
+    category: "",
+    frequency: recurring ? "mensual" : "unico",
+    occurredOn: toDateInputValue(new Date()),
+    dueDate: "",
+    amount: "",
+    paymentMethod: "",
+    paid: false,
+    notes: "",
+  };
+}
 
 function commitmentToForm(c: RecurringCommitmentDto): FormState {
   return {
     supplierId: c.supplierId ?? "",
     concept: c.concept,
+    category: c.category || "otro",
     frequency: c.frequency as CommitmentFrequency,
+    occurredOn: toDateInputValue(new Date(c.occurredOn)),
     dueDate: toDateInputValue(new Date(c.dueDate)),
-    currency: c.currency,
-    estimatedAmount: c.estimatedAmount != null ? formatAmountInput(c.estimatedAmount) : "",
-    workflowStatus: c.workflowStatus as CommitmentWorkflowStatus,
+    amount: c.amount > 0 ? formatAmountInput(c.amount) : "",
+    paymentMethod: c.paymentMethod,
+    paid: c.workflowStatus === "paid",
     notes: c.notes,
   };
 }
@@ -81,87 +86,78 @@ export function CompromisoRecurrenteModal({
   onSaved,
   suppliers,
   editing,
+  recurring = false,
 }: {
   open: boolean;
   onClose: () => void;
   onSaved: () => void;
   suppliers: SupplierDto[];
   editing?: RecurringCommitmentDto | null;
+  recurring?: boolean;
 }) {
   const { showSuccess, showError } = useFeedback();
-  const [form, setForm] = useState<FormState>(EMPTY);
+  const [form, setForm] = useState<FormState>(emptyForm(recurring));
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
   const [files, setFiles] = useState(editing?.files ?? []);
+  const [receipt, setReceipt] = useState<File | null>(null);
 
   const isEdit = Boolean(editing);
+  const frequencies = COMMITMENT_FREQUENCIES.filter((item) => (recurring && !isEdit ? item.value !== "unico" : true));
 
   useEffect(() => {
     if (!open) return;
-    setForm(editing ? commitmentToForm(editing) : EMPTY);
+    setForm(editing ? commitmentToForm(editing) : emptyForm(recurring));
     setFiles(editing?.files ?? []);
+    setReceipt(null);
     setError("");
-  }, [open, editing]);
+  }, [open, editing, recurring]);
 
   const selectedSupplier = useMemo(
     () => suppliers.find((s) => s.id === form.supplierId) ?? null,
     [suppliers, form.supplierId]
   );
 
-  async function uploadDoc(kind: "factura" | "comprobante_pago", file: File) {
-    if (!editing) return;
-    setBusy(true);
-    try {
-      const fd = new FormData();
-      fd.set("commitmentId", editing.id);
-      fd.set("kind", kind);
-      fd.set("file", file);
-      const res = await fetch("/api/recurring-commitment-files/upload", {
-        method: "POST",
-        credentials: "include",
-        body: fd,
-      });
-      const data = (await res.json()) as { commitment?: RecurringCommitmentDto; error?: string };
-      if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo subir.");
-      setFiles(data.commitment.files);
-      showSuccess(kind === "factura" ? "Factura subida." : "Comprobante de pago subido.");
-      onSaved();
-    } catch (e) {
-      showError(e instanceof Error ? e.message : "No se pudo subir.");
-    } finally {
-      setBusy(false);
-    }
+  async function uploadDoc(commitmentId: string, file: File) {
+    const fd = new FormData();
+    fd.set("commitmentId", commitmentId);
+    fd.set("kind", "factura");
+    fd.set("file", file);
+    const res = await fetch("/api/recurring-commitment-files/upload", {
+      method: "POST",
+      credentials: "include",
+      body: fd,
+    });
+    const data = (await res.json()) as { commitment?: RecurringCommitmentDto; error?: string };
+    if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo subir el comprobante.");
+    setFiles(data.commitment.files);
   }
 
   async function submit() {
     setError("");
-    if (!form.supplierId) {
-      setError("Selecciona un proveedor.");
-      return;
-    }
-    if (!form.concept.trim()) {
-      setError("Indica el concepto.");
-      return;
-    }
-    if (!form.frequency) {
-      setError("Selecciona la frecuencia.");
-      return;
-    }
-    if (!form.dueDate) {
-      setError("Indica la fecha límite de pago.");
-      return;
-    }
+    if (!form.supplierId) return setError("Selecciona un proveedor.");
+    if (!form.concept.trim()) return setError("Indica el concepto.");
+    if (!form.category) return setError("Selecciona la categoría.");
+    if (!form.frequency) return setError("Selecciona la periodicidad.");
+    if (recurring && !isEdit && form.frequency === "unico") return setError("Un gasto recurrente no puede ser único.");
+    if (!form.occurredOn) return setError("Indica la fecha del gasto.");
+    if (!form.dueDate) return setError("Indica la fecha de vencimiento.");
+    if (!form.paymentMethod) return setError("Selecciona la forma de pago.");
+    const amount = parseAmountInput(form.amount);
+    if (!Number.isFinite(amount) || amount <= 0) return setError("El importe es obligatorio.");
 
     const payload = {
       supplierId: form.supplierId,
       supplierName: selectedSupplier?.displayName ?? "",
       concept: form.concept.trim(),
+      category: form.category,
       frequency: form.frequency,
+      occurredOn: form.occurredOn,
       dueDate: form.dueDate,
-      currency: form.currency,
-      estimatedAmount: form.estimatedAmount ? parseAmountInput(form.estimatedAmount) : null,
-      workflowStatus: form.workflowStatus,
-      notes: form.notes.slice(0, 200),
+      amount,
+      paymentMethod: form.paymentMethod,
+      notes: form.notes.slice(0, 400),
+      ...(isEdit ? { workflowStatus: form.paid ? "paid" : "pending" } : {}),
     };
 
     setBusy(true);
@@ -173,9 +169,10 @@ export function CompromisoRecurrenteModal({
         credentials: "include",
         body: JSON.stringify(payload),
       });
-      const data = (await res.json()) as { error?: string };
-      if (!res.ok) throw new Error(data.error ?? "No se pudo guardar.");
-      showSuccess(isEdit ? "Compromiso actualizado." : "Compromiso registrado.");
+      const data = (await res.json()) as { error?: string; commitment?: RecurringCommitmentDto };
+      if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo guardar.");
+      if (receipt) await uploadDoc(data.commitment.id, receipt);
+      showSuccess(isEdit ? "Gasto actualizado." : "Gasto registrado.");
       onSaved();
       onClose();
     } catch (e) {
@@ -189,36 +186,25 @@ export function CompromisoRecurrenteModal({
 
   if (!open) return null;
 
+  const title = isEdit ? "Editar gasto" : recurring ? "Gasto recurrente" : "Nuevo gasto";
+
   return (
     <div className="fixed inset-0 z-[100] flex items-end justify-center sm:items-center sm:p-4">
-      <button
-        type="button"
-        className="absolute inset-0 bg-black/45"
-        aria-label="Cerrar"
-        onClick={onClose}
-      />
+      <button type="button" className="absolute inset-0 bg-black/45" aria-label="Cerrar" onClick={onClose} />
       <div
         role="dialog"
         aria-modal="true"
-        aria-labelledby="compromiso-modal-title"
+        aria-labelledby="gasto-admin-title"
         className="relative flex max-h-[92dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-3xl bg-white shadow-2xl sm:rounded-3xl"
       >
         <div className="flex shrink-0 items-start justify-between gap-3 border-b border-zinc-100 px-5 py-4 sm:px-6">
           <div>
-            <h2 id="compromiso-modal-title" className="text-lg font-bold text-zinc-900 sm:text-xl">
-              {isEdit ? "Editar compromiso recurrente" : "Nuevo compromiso recurrente"}
-            </h2>
+            <h2 id="gasto-admin-title" className="text-lg font-bold text-zinc-900 sm:text-xl">{title}</h2>
             <p className="mt-0.5 text-sm text-zinc-500">
-              Programa servicios o gastos recurrentes. Administración recibirá avisos desde 3 días
-              antes de la fecha límite.
+              Gasto general de la empresa, sin obra. El aviso de pago sigue llegando desde 3 días antes del vencimiento.
             </p>
           </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100 hover:text-zinc-700"
-            aria-label="Cerrar modal"
-          >
+          <button type="button" onClick={onClose} className="rounded-xl p-2 text-zinc-400 hover:bg-zinc-100" aria-label="Cerrar modal">
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
             </svg>
@@ -226,7 +212,16 @@ export function CompromisoRecurrenteModal({
         </div>
 
         <div className="min-h-0 flex-1 overflow-y-auto px-5 py-4 sm:px-6">
-          <div className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="Fecha" required>
+              <input type="date" value={form.occurredOn} onChange={(e) => setForm((f) => ({ ...f, occurredOn: e.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Fecha de vencimiento" required>
+              <input type="date" value={form.dueDate} onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))} className={inputCls} />
+            </Field>
+            <Field label="Concepto" required>
+              <input value={form.concept} onChange={(e) => setForm((f) => ({ ...f, concept: e.target.value }))} placeholder="CFE oficina, renta, IMSS…" className={inputCls} />
+            </Field>
             <Field label="Proveedor" required>
               <SupplierCombobox
                 suppliers={suppliers}
@@ -236,185 +231,103 @@ export function CompromisoRecurrenteModal({
                 className={inputCls}
               />
             </Field>
-
-            <Field label="Concepto" required>
-              <input
-                value={form.concept}
-                onChange={(e) => setForm((f) => ({ ...f, concept: e.target.value }))}
-                placeholder="Ej. Planes celulares, Internet, Renta…"
-                className={inputCls}
-              />
+            <Field label="Categoría" required>
+              <select value={form.category} onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))} className={inputCls}>
+                <option value="">Seleccionar…</option>
+                {ADMIN_EXPENSE_CATEGORIES.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
             </Field>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Frecuencia" required>
-                <select
-                  value={form.frequency}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, frequency: e.target.value as CommitmentFrequency | "" }))
+            <Field label="Importe" required>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">$</span>
+                <input
+                  value={form.amount}
+                  onChange={(e) => setForm((f) => ({ ...f, amount: sanitizeAmountInput(e.target.value) }))}
+                  onBlur={() =>
+                    setForm((f) => ({
+                      ...f,
+                      amount: f.amount && parseAmountInput(f.amount) > 0 ? formatAmountInput(parseAmountInput(f.amount)) : f.amount.trim(),
+                    }))
                   }
+                  inputMode="decimal"
+                  placeholder="0.00"
+                  className={`${inputCls} pl-7 tabular-nums`}
+                />
+              </div>
+            </Field>
+            <Field label="Periodicidad" required>
+              <select
+                value={form.frequency}
+                onChange={(e) => setForm((f) => ({ ...f, frequency: e.target.value as CommitmentFrequency | "" }))}
+                className={inputCls}
+              >
+                {frequencies.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </Field>
+            <Field label="Forma de pago" required>
+              <select value={form.paymentMethod} onChange={(e) => setForm((f) => ({ ...f, paymentMethod: e.target.value }))} className={inputCls}>
+                <option value="">Seleccionar…</option>
+                {ADMIN_PAYMENT_METHODS.map((item) => (
+                  <option key={item.value} value={item.value}>{item.label}</option>
+                ))}
+              </select>
+            </Field>
+            {isEdit && (
+              <Field label="Estatus">
+                <select
+                  value={form.paid ? "paid" : "pending"}
+                  onChange={(e) => setForm((f) => ({ ...f, paid: e.target.value === "paid" }))}
                   className={inputCls}
                 >
-                  <option value="">Seleccionar…</option>
-                  {COMMITMENT_FREQUENCIES.map((o) => (
-                    <option key={o.value} value={o.value}>
-                      {o.label}
-                    </option>
-                  ))}
+                  <option value="pending">Sin pagar</option>
+                  <option value="paid">Pagado</option>
                 </select>
               </Field>
-              <Field label="Fecha límite de pago" required>
-                <input
-                  type="date"
-                  value={form.dueDate}
-                  onChange={(e) => setForm((f) => ({ ...f, dueDate: e.target.value }))}
-                  className={inputCls}
+            )}
+            <div className="sm:col-span-2">
+              <Field label="Observaciones">
+                <textarea
+                  value={form.notes}
+                  onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value.slice(0, 400) }))}
+                  rows={3}
+                  className={`${inputCls} min-h-[5rem] resize-y py-2.5`}
                 />
               </Field>
             </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Moneda">
-                <select
-                  value={form.currency}
-                  onChange={(e) => setForm((f) => ({ ...f, currency: e.target.value }))}
-                  className={inputCls}
-                >
-                  <option value="MXN">MXN — Peso mexicano</option>
-                  <option value="USD">USD — Dólar</option>
-                </select>
-              </Field>
-              <Field label="Monto estimado">
-                <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-400">
-                    $
-                  </span>
-                  <input
-                    value={form.estimatedAmount}
-                    onChange={(e) =>
-                      setForm((f) => ({ ...f, estimatedAmount: sanitizeAmountInput(e.target.value) }))
-                    }
-                    onBlur={() =>
-                      setForm((f) => ({
-                        ...f,
-                        estimatedAmount:
-                          f.estimatedAmount && parseAmountInput(f.estimatedAmount) > 0
-                            ? formatAmountInput(parseAmountInput(f.estimatedAmount))
-                            : f.estimatedAmount.trim(),
-                      }))
-                    }
-                    placeholder="Opcional"
-                    inputMode="decimal"
-                    className={`${inputCls} pl-7 tabular-nums`}
-                  />
-                </div>
-              </Field>
-            </div>
-
-            {isEdit && (
-              <Field label="Estatus del ciclo">
-                <select
-                  value={form.workflowStatus}
-                  onChange={(e) =>
-                    setForm((f) => ({
-                      ...f,
-                      workflowStatus: e.target.value as CommitmentWorkflowStatus,
-                    }))
-                  }
-                  className={inputCls}
-                >
-                  {(Object.keys(COMMITMENT_WORKFLOW_LABEL) as CommitmentWorkflowStatus[]).map((k) => (
-                    <option key={k} value={k}>
-                      {COMMITMENT_WORKFLOW_LABEL[k]}
-                    </option>
+            <div className="sm:col-span-2">
+              <p className="text-xs font-medium text-zinc-700">Comprobante (PDF)</p>
+              <div className="mt-1.5">
+                <FilePickButton accept="application/pdf,.pdf" label="Adjuntar comprobante" hint="PDF" onPick={setReceipt} />
+              </div>
+              {isEdit && files.length > 0 && (
+                <ul className="mt-2 space-y-1 text-sm">
+                  {files.map((file) => (
+                    <li key={file.id} className="flex items-center justify-between gap-2">
+                      <span className="truncate text-zinc-600">
+                        {FILE_KIND_LABEL[file.kind] ?? "Comprobante"} · {file.originalFileName}
+                        <span className="text-zinc-400"> · {formatDateShort(file.createdAt)}</span>
+                      </span>
+                      <a href={`/api/recurring-commitment-files/${file.id}`} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-orange-700">
+                        Ver
+                      </a>
+                    </li>
                   ))}
-                </select>
-              </Field>
-            )}
-
-            <Field label="Notas (opcional)">
-              <textarea
-                value={form.notes}
-                onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value.slice(0, 200) }))}
-                rows={3}
-                placeholder="Agrega alguna nota o referencia…"
-                className={`${inputCls} min-h-[5rem] resize-y py-2.5`}
-              />
-              <p className="mt-1 text-right text-[11px] text-zinc-400">{form.notes.length}/200</p>
-            </Field>
-
-            {isEdit && (
-              <section className="rounded-2xl border border-zinc-200 p-4">
-                <h3 className="text-sm font-bold text-zinc-900">Documentos (factura y pago)</h3>
-                <p className="mt-1 text-xs text-zinc-500">
-                  Contabilidad, Recepción y Administración pueden consultarlos y descargarlos.
-                </p>
-                <ul className="mt-3 space-y-2">
-                  {files.length === 0 ? (
-                    <li className="text-xs text-zinc-400">Sin documentos aún.</li>
-                  ) : (
-                    files.map((f) => (
-                      <li
-                        key={f.id}
-                        className="flex flex-wrap items-center justify-between gap-2 rounded-xl border border-zinc-100 px-3 py-2 text-sm"
-                      >
-                        <span className="min-w-0">
-                          <span className="font-semibold text-zinc-800">
-                            {FILE_KIND_LABEL[f.kind] ?? f.kind}
-                          </span>
-                          <span className="mt-0.5 block truncate text-xs text-zinc-500">
-                            {f.originalFileName} · {formatDateShort(f.createdAt)}
-                          </span>
-                        </span>
-                        <span className="flex gap-2">
-                          <a
-                            href={`/api/recurring-commitment-files/${f.id}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-xs font-semibold text-orange-700 hover:underline"
-                          >
-                            Ver
-                          </a>
-                          <a
-                            href={`/api/recurring-commitment-files/${f.id}?download=1`}
-                            className="text-xs font-semibold text-teal-700 hover:underline"
-                          >
-                            Descargar
-                          </a>
-                        </span>
-                      </li>
-                    ))
-                  )}
                 </ul>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <FilePickButton
-                    label="Subir factura"
-                    hint="PDF del proveedor"
-                    accept="application/pdf,.pdf"
-                    disabled={busy}
-                    onPick={(file) => void uploadDoc("factura", file)}
-                  />
-                  <FilePickButton
-                    label="Subir comprobante de pago"
-                    hint="PDF del banco"
-                    accept="application/pdf,.pdf"
-                    disabled={busy}
-                    onPick={(file) => void uploadDoc("comprobante_pago", file)}
-                  />
-                </div>
-              </section>
-            )}
-
-            {error && <p className="text-sm font-medium text-red-700">{error}</p>}
+              )}
+              {!isEdit && <p className="mt-1 text-xs text-zinc-500">El archivo queda ligado a este gasto.</p>}
+            </div>
           </div>
+          {error && <p className="mt-3 text-sm font-medium text-red-700">{error}</p>}
         </div>
 
         <div className="flex shrink-0 flex-col-reverse gap-2 border-t border-zinc-100 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
-          <button type="button" onClick={onClose} disabled={busy} className="btn-secondary min-h-11">
-            Cancelar
-          </button>
+          <button type="button" onClick={onClose} disabled={busy} className="btn-secondary min-h-11">Cancelar</button>
           <button type="button" disabled={busy} onClick={() => void submit()} className="btn-primary min-h-11">
-            {busy ? "Guardando…" : isEdit ? "Guardar cambios" : "Guardar compromiso"}
+            {busy ? "Guardando…" : isEdit ? "Guardar cambios" : "Registrar gasto"}
           </button>
         </div>
       </div>

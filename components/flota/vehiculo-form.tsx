@@ -1,0 +1,125 @@
+"use client";
+
+import { useState } from "react";
+import { FilePickButton } from "@/components/file-pick-button";
+import type { ObraDto, Role } from "@/lib/domain/types";
+import { VEHICLE_TYPES, DOCUMENT_KINDS } from "@/lib/flota/dates";
+
+type DocDraft = { kind: string; name: string; expiresOn: string };
+
+export function VehiculoForm({
+  users,
+  obras,
+  onDone,
+}: {
+  users: { id: string; name: string; role: Role }[];
+  obras: ObraDto[];
+  onDone: (id: string) => void;
+}) {
+  const [code, setCode] = useState("");
+  const [name, setName] = useState("");
+  const [year, setYear] = useState("");
+  const [plates, setPlates] = useState("");
+  const [vehicleType, setVehicleType] = useState("Pick-up");
+  const [color, setColor] = useState("");
+  const [vin, setVin] = useState("");
+  const [ownerName, setOwnerName] = useState("Consorcio Constructor Profesional");
+  const [currentKm, setCurrentKm] = useState("");
+  const [responsibleUserId, setResponsibleUserId] = useState("");
+  const [obraId, setObraId] = useState("");
+  const [image, setImage] = useState<File | null>(null);
+  const [docs, setDocs] = useState<DocDraft[]>([]);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
+
+  function addDoc() {
+    setDocs((current) => [...current, { kind: "seguro", name: "Seguro", expiresOn: "" }]);
+  }
+
+  async function submit(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    const form = new FormData();
+    form.set("code", code);
+    form.set("name", name);
+    form.set("year", year);
+    form.set("plates", plates);
+    form.set("vehicleType", vehicleType);
+    form.set("color", color);
+    form.set("vin", vin);
+    form.set("ownerName", ownerName);
+    form.set("currentKm", currentKm);
+    form.set("responsibleUserId", responsibleUserId);
+    form.set("obraId", obraId);
+    form.set("documents", JSON.stringify(docs));
+    if (image) form.set("image", image);
+    setSaving(true);
+    const res = await fetch("/api/vehicles", { method: "POST", credentials: "include", body: form });
+    const data = (await res.json().catch(() => null)) as { error?: string; vehicle?: { id: string } } | null;
+    setSaving(false);
+    if (!res.ok || !data?.vehicle) {
+      setError(data?.error ?? "No se pudo registrar el vehículo.");
+      return;
+    }
+    onDone(data.vehicle.id);
+  }
+
+  return (
+    <form onSubmit={(e) => void submit(e)} className="space-y-4">
+      <div className="grid gap-3 sm:grid-cols-2">
+        <label className="text-sm">Código<input value={code} onChange={(e) => setCode(e.target.value)} placeholder="C-04" className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Vehículo<input required value={name} onChange={(e) => setName(e.target.value)} placeholder="Toyota Hilux" className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Año<input type="number" value={year} onChange={(e) => setYear(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Placas<input value={plates} onChange={(e) => setPlates(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Tipo
+          <select value={vehicleType} onChange={(e) => setVehicleType(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
+            {VEHICLE_TYPES.map((type) => <option key={type}>{type}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">Color<input value={color} onChange={(e) => setColor(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Responsable
+          <select value={responsibleUserId} onChange={(e) => setResponsibleUserId(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
+            <option value="">Sin responsable</option>
+            {users.map((user) => <option key={user.id} value={user.id}>{user.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">Obra
+          <select value={obraId} onChange={(e) => setObraId(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
+            <option value="">Sin obra</option>
+            {obras.filter((obra) => obra.active).map((obra) => <option key={obra.id} value={obra.id}>{obra.name}</option>)}
+          </select>
+        </label>
+        <label className="text-sm">Propietario<input value={ownerName} onChange={(e) => setOwnerName(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">VIN<input value={vin} onChange={(e) => setVin(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <label className="text-sm">Kilometraje actual<input type="number" min="0" value={currentKm} onChange={(e) => setCurrentKm(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+        <div className="text-sm">
+          <p className="mb-1">Foto del vehículo</p>
+          <FilePickButton accept="image/*" label="Subir foto" hint="elegir imagen" onPick={setImage} />
+        </div>
+      </div>
+      <div className="space-y-2">
+        <div className="flex items-center justify-between">
+          <p className="text-sm font-semibold text-zinc-800">Documentos y vencimiento</p>
+          <button type="button" onClick={addDoc} className="text-sm font-semibold text-orange-700">Agregar documento</button>
+        </div>
+        {docs.map((doc, index) => (
+          <div key={index} className="grid gap-2 sm:grid-cols-3">
+            <select value={doc.kind} onChange={(e) => {
+              const kind = e.target.value;
+              const label = DOCUMENT_KINDS.find((item) => item.kind === kind)?.label ?? "";
+              setDocs((current) => current.map((item, i) => i === index ? { ...item, kind, name: kind === "otro" ? item.name : label } : item));
+            }} className="rounded-xl border px-3 py-2 text-sm">
+              {DOCUMENT_KINDS.map((item) => <option key={item.kind} value={item.kind}>{item.label}</option>)}
+            </select>
+            <input value={doc.name} onChange={(e) => setDocs((current) => current.map((item, i) => i === index ? { ...item, name: e.target.value } : item))} placeholder="Nombre" className="rounded-xl border px-3 py-2 text-sm" />
+            <input type="date" value={doc.expiresOn} onChange={(e) => setDocs((current) => current.map((item, i) => i === index ? { ...item, expiresOn: e.target.value } : item))} className="rounded-xl border px-3 py-2 text-sm" />
+          </div>
+        ))}
+      </div>
+      {error && <p className="text-sm text-red-700">{error}</p>}
+      <button type="submit" disabled={saving} className="rounded-xl bg-orange-600 px-4 py-2.5 text-sm font-semibold text-white disabled:opacity-60">
+        {saving ? "Guardando…" : "Registrar vehículo"}
+      </button>
+    </form>
+  );
+}

@@ -8,6 +8,8 @@ import { CcpLogoIcon } from "@/components/ccp-logo";
 import { useSession } from "@/components/session-provider";
 import { ROLE_LABEL } from "@/lib/domain/labels";
 import type { Role } from "@/lib/domain/types";
+import { canAccessCompanyCards } from "@/lib/tarjetas/access";
+import { canAccessFleet } from "@/lib/flota/access";
 import { IconLogOut, IconRefresh } from "@/components/ui/action-icons";
 import { usePendingMaterialRequestsCount } from "@/lib/hooks/use-pending-material-requests-count";
 
@@ -29,7 +31,7 @@ type NavSection = {
   items: NavItem[];
 };
 
-function navSectionsForRole(role: Role): NavSection[] {
+function navSectionsForRole(role: Role, email = ""): NavSection[] {
   const inicio: NavItem = { href: "/inicio", label: "Inicio", icon: "home" };
   const obras: NavItem = { href: "/obras", label: "Obras", icon: "grid" };
   const pagos: NavItem = { href: "/pagos", label: "Pagos", icon: "pay" };
@@ -66,6 +68,17 @@ function navSectionsForRole(role: Role): NavSection[] {
     icon: "solicitudes",
     shortLabel: "Sol. Ing.",
   };
+  const viaticos: NavItem = { href: "/viaticos", label: "Viáticos", icon: "viaticos", shortLabel: "Viáticos" };
+  const empleados: NavItem = { href: "/empleados", label: "Empleados", icon: "employees" };
+  const tarjetas: NavItem = {
+    href: "/tarjetas",
+    label: "Tarjetas empresariales",
+    icon: "cards",
+    shortLabel: "Tarjetas",
+  };
+  const combustible: NavItem = { href: "/combustible", label: "Combustible", icon: "fuel", shortLabel: "Combust." };
+  const vehiculos: NavItem = { href: "/vehiculos", label: "Vehículos", icon: "vehicles", shortLabel: "Vehículos" };
+  const fleet = canAccessFleet({ role, email }) ? [combustible, vehiculos] : [];
 
   if (role === "pagos") {
     return [
@@ -75,13 +88,16 @@ function navSectionsForRole(role: Role): NavSection[] {
         items: [
           inicio,
           pagos,
-          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+          viaticos,
+          tarjetas,
+          ...fleet,
+          { href: "/compromisos", label: "Gastos administrativos", icon: "calendar", shortLabel: "Gastos" },
           ordenes,
           solicitudesIngenieria,
           facturas,
         ],
       },
-      { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
+      { id: "catalogos", label: "Catálogos", items: [obras, proveedores, empleados] },
       { id: "consulta", label: "Consulta", items: [flujo, movimientos] },
     ];
   }
@@ -94,19 +110,32 @@ function navSectionsForRole(role: Role): NavSection[] {
         items: [
           inicio,
           pagos,
+          viaticos,
+          tarjetas,
+          ...fleet,
           ordenes,
-          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+          { href: "/compromisos", label: "Gastos administrativos", icon: "calendar", shortLabel: "Gastos" },
         ],
       },
-      { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
+      { id: "catalogos", label: "Catálogos", items: [obras, proveedores, empleados] },
       { id: "consulta", label: "Consulta", items: [reportes, agregarFactura, flujo, movimientos] },
     ];
   }
 
   if (role === "ingeniero") {
     return [
-      { id: "trabajo", label: "Trabajo", items: [inicio, solicitudes, ordenes] },
-      { id: "catalogos", label: "Catálogos", items: [obras] },
+      {
+        id: "trabajo",
+        label: "Trabajo",
+        items: [
+          inicio,
+          ...(canAccessCompanyCards({ role, email }) ? [viaticos, tarjetas] : [viaticos]),
+          ...fleet,
+          solicitudes,
+          ordenes,
+        ],
+      },
+      { id: "catalogos", label: "Catálogos", items: [obras, empleados] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
   }
@@ -119,7 +148,8 @@ function navSectionsForRole(role: Role): NavSection[] {
         items: [
           inicio,
           ordenes,
-          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+          ...fleet,
+          { href: "/compromisos", label: "Gastos administrativos", icon: "calendar", shortLabel: "Gastos" },
         ],
       },
       { id: "catalogos", label: "Catálogos", items: [obras] },
@@ -142,11 +172,14 @@ function navSectionsForRole(role: Role): NavSection[] {
         label: "Trabajo",
         items: [
           inicio,
+          viaticos,
+          tarjetas,
+          ...fleet,
           ordenes,
-          { href: "/compromisos", label: "Compromisos", icon: "calendar", shortLabel: "Comprom." },
+          { href: "/compromisos", label: "Gastos administrativos", icon: "calendar", shortLabel: "Gastos" },
         ],
       },
-      { id: "catalogos", label: "Catálogos", items: [obras, proveedores] },
+      { id: "catalogos", label: "Catálogos", items: [obras, proveedores, empleados] },
       { id: "consulta", label: "Consulta", items: [pagos, flujo, movimientos] },
     ];
   }
@@ -288,6 +321,51 @@ function NavIcon({ name }: { name: string }) {
         />
       </svg>
     );
+  if (name === "viaticos")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M3 10h18M7 15h2m4 0h4M6 6h12a2 2 0 012 2v10a2 2 0 01-2 2H6a2 2 0 01-2-2V8a2 2 0 012-2z"
+        />
+      </svg>
+    );
+  if (name === "fuel")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M4 20V6a2 2 0 012-2h7a2 2 0 012 2v14M4 20h11M9 8h2m6-2h2v6l2 2v6h-4" />
+      </svg>
+    );
+  if (name === "vehicles")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.75} d="M3 13l2-5h11l3 5M5 16h.01M17 16h.01M4 16h14a1 1 0 001-1v-2H3v2a1 1 0 001 1z" />
+      </svg>
+    );
+  if (name === "cards")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M3 10h18M5 6h14a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2V8a2 2 0 012-2zm1 8h4"
+        />
+      </svg>
+    );
+  if (name === "employees")
+    return (
+      <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
+        <path
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          strokeWidth={1.75}
+          d="M17 20h5v-2a4 4 0 00-4-4h-1M9 20H2v-2a4 4 0 014-4h3m0-4a4 4 0 108 0 4 4 0 00-8 0zm6 4a4 4 0 014 4"
+        />
+      </svg>
+    );
   if (name === "calendar")
     return (
       <svg className={cls} fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
@@ -337,6 +415,11 @@ function navActive(
   }
   if (href === "/obras") return pathname.startsWith("/obras") && !estado;
   if (href === "/proveedores") return pathname.startsWith("/proveedores");
+  if (href === "/empleados") return pathname.startsWith("/empleados");
+  if (href === "/viaticos") return pathname === "/viaticos" || pathname.startsWith("/viaticos/");
+  if (href === "/tarjetas") return pathname === "/tarjetas" || pathname.startsWith("/tarjetas/");
+  if (href === "/combustible") return pathname.startsWith("/combustible");
+  if (href === "/vehiculos") return pathname === "/vehiculos" || pathname.startsWith("/vehiculos/");
   if (href === "/reportes") return pathname.startsWith("/reportes");
   if (href === "/solicitudes-ingenieria") return pathname.startsWith("/solicitudes-ingenieria");
   if (href === "/solicitudes/nueva") return pathname.startsWith("/solicitudes") && !pathname.startsWith("/solicitudes-ingenieria");
@@ -500,6 +583,11 @@ export function DashboardShell({
   const isWideLayout =
     isHome ||
     pathname === "/obras" ||
+    pathname === "/viaticos" ||
+    pathname === "/empleados" ||
+    pathname === "/tarjetas" ||
+    pathname === "/combustible" ||
+    pathname === "/vehiculos" ||
     pathname === "/ordenes" ||
     pathname === "/proveedores" ||
     pathname === "/reportes" ||
@@ -510,6 +598,9 @@ export function DashboardShell({
     pathname === "/movimientos" ||
     pathname === "/solicitudes-ingenieria" ||
     (pathname?.startsWith("/obras/") ?? false) ||
+    (pathname?.startsWith("/viaticos/") ?? false) ||
+    (pathname?.startsWith("/tarjetas/") ?? false) ||
+    (pathname?.startsWith("/vehiculos/") ?? false) ||
     (pathname?.startsWith("/ordenes/") ?? false) ||
     (pathname?.startsWith("/expedientes/") ?? false);
   const contentWidth = isWideLayout ? "max-w-none" : "max-w-7xl";
@@ -518,7 +609,7 @@ export function DashboardShell({
     : "px-4 py-5 sm:px-6 sm:py-6";
 
   const sections = useMemo(
-    () => (user ? navSectionsForRole(user.role) : []),
+    () => (user ? navSectionsForRole(user.role, user.email) : []),
     [user]
   );
   const allItems = useMemo(() => sections.flatMap((s) => s.items), [sections]);
