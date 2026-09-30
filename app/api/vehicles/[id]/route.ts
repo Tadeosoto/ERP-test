@@ -84,6 +84,24 @@ export async function POST(request: Request, ctx: Ctx) {
       await prisma.vehicleDocument.create({
         data: { vehicleId: id, kind, name, expiresOn: parseDay(body.expiresOn) },
       });
+    } else if (action === "update-document") {
+      const documentId = String(body.documentId ?? "");
+      const kind = String(body.kind ?? "").trim();
+      const name = String(body.name ?? "").trim();
+      if (!documentId || !kind || !name) {
+        return NextResponse.json({ error: "Tipo y nombre del documento son obligatorios." }, { status: 400 });
+      }
+      const doc = await prisma.vehicleDocument.findFirst({ where: { id: documentId, vehicleId: id } });
+      if (!doc) return NextResponse.json({ error: "Documento no encontrado." }, { status: 404 });
+      await prisma.vehicleDocument.update({
+        where: { id: documentId },
+        data: { kind, name, expiresOn: parseDay(body.expiresOn) },
+      });
+    } else if (action === "delete-document") {
+      const documentId = String(body.documentId ?? "");
+      const doc = await prisma.vehicleDocument.findFirst({ where: { id: documentId, vehicleId: id } });
+      if (!doc) return NextResponse.json({ error: "Documento no encontrado." }, { status: 404 });
+      await prisma.vehicleDocument.delete({ where: { id: documentId } });
     } else if (action === "maintenance") {
       const title = String(body.title ?? "").trim();
       if (!title) return NextResponse.json({ error: "El servicio es obligatorio." }, { status: 400 });

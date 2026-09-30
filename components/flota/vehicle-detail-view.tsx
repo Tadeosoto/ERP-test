@@ -37,6 +37,7 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
   const [loading, setLoading] = useState(true);
   const [fuelOpen, setFuelOpen] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [editingDocId, setEditingDocId] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     const [vRes, allRes, cRes, oRes] = await Promise.all([
@@ -55,7 +56,7 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function send(body: Record<string, unknown>) {
+  async function send(body: Record<string, unknown>, success = "Guardado.") {
     const res = await fetch(`/api/vehicles/${vehicleId}`, {
       method: "POST",
       credentials: "include",
@@ -68,7 +69,7 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
       return;
     }
     setVehicle(data.vehicle);
-    showSuccess("Guardado.");
+    showSuccess(success);
   }
 
   if (loading) return <LoadingScreen message="Cargando vehículo" />;
@@ -211,9 +212,35 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
           />
           <ul className="space-y-2">
             {vehicle.documents.map((doc) => (
-              <li key={doc.id} className="flex items-center justify-between rounded-2xl border border-zinc-200 bg-white p-3 text-sm">
-                <span>{doc.name}{doc.expiresOn ? ` · ${formatDate(doc.expiresOn)}` : ""}</span>
-                <span>{doc.tone === "vencido" ? "Vencido" : doc.tone === "proximo" ? "Próximo" : doc.tone === "vigente" ? "Vigente" : "Sin fecha"}</span>
+              <li key={doc.id} className="rounded-2xl border border-zinc-200 bg-white p-3 text-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <span>{doc.name}{doc.expiresOn ? ` · ${formatDate(doc.expiresOn)}` : ""}</span>
+                  <span className="shrink-0">{doc.tone === "vencido" ? "Vencido" : doc.tone === "proximo" ? "Próximo" : doc.tone === "vigente" ? "Vigente" : "Sin fecha"}</span>
+                </div>
+                {editingDocId === doc.id ? (
+                  <DocumentEditor
+                    doc={doc}
+                    onCancel={() => setEditingDocId(null)}
+                    onSave={(values) => {
+                      setEditingDocId(null);
+                      void send({ action: "update-document", documentId: doc.id, ...values }, "Documento actualizado.");
+                    }}
+                  />
+                ) : (
+                  <div className="mt-2 flex gap-3">
+                    <button type="button" className="font-semibold text-orange-700" onClick={() => setEditingDocId(doc.id)}>Editar</button>
+                    <button
+                      type="button"
+                      className="font-semibold text-red-700"
+                      onClick={() => {
+                        if (!window.confirm(`¿Borrar “${doc.name}”?`)) return;
+                        void send({ action: "delete-document", documentId: doc.id }, "Documento eliminado.");
+                      }}
+                    >
+                      Borrar
+                    </button>
+                  </div>
+                )}
               </li>
             ))}
           </ul>
@@ -332,6 +359,55 @@ function LoadTable({ loads }: { loads: VehicleDto["fuelLoads"] }) {
         </tbody>
       </table>
     </div>
+  );
+}
+
+function toDayInput(iso: string | null) {
+  if (!iso) return "";
+  return new Intl.DateTimeFormat("en-CA", { timeZone: "America/Mexico_City" }).format(new Date(iso));
+}
+
+function DocumentEditor({
+  doc,
+  onCancel,
+  onSave,
+}: {
+  doc: VehicleDto["documents"][number];
+  onCancel: () => void;
+  onSave: (values: { kind: string; name: string; expiresOn: string }) => void;
+}) {
+  const [kind, setKind] = useState(doc.kind || "seguro");
+  const [name, setName] = useState(doc.name);
+  const [expiresOn, setExpiresOn] = useState(toDayInput(doc.expiresOn));
+  return (
+    <form
+      className="mt-3 grid gap-2"
+      onSubmit={(event) => {
+        event.preventDefault();
+        onSave({ kind, name, expiresOn });
+      }}
+    >
+      <label className="block text-sm">
+        Tipo
+        <select value={kind} onChange={(event) => setKind(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
+          {DOCUMENT_KINDS.map((item) => (
+            <option key={item.kind} value={item.kind}>{item.label}</option>
+          ))}
+        </select>
+      </label>
+      <label className="block text-sm">
+        Nombre
+        <input value={name} onChange={(event) => setName(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+      </label>
+      <label className="block text-sm">
+        Vence
+        <input type="date" value={expiresOn} onChange={(event) => setExpiresOn(event.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" />
+      </label>
+      <div className="flex gap-2">
+        <button type="submit" className="rounded-xl bg-zinc-900 px-3 py-2 text-sm font-semibold text-white">Guardar</button>
+        <button type="button" onClick={onCancel} className="rounded-xl border px-3 py-2 text-sm font-semibold text-zinc-700">Cancelar</button>
+      </div>
+    </form>
   );
 }
 
