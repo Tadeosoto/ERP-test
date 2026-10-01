@@ -6,9 +6,11 @@ import { createPortal } from "react-dom";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import {
+  ADMIN_DOC_GAP_LABEL,
   ADMIN_EXPENSE_STATUS_DOT,
   ADMIN_EXPENSE_STATUS_LABEL,
   ADMIN_EXPENSE_STATUS_TONE,
+  adminExpenseDocGaps,
   adminExpenseStatus,
 } from "@/lib/domain/admin-expenses";
 import {
@@ -18,7 +20,7 @@ import {
   type CommitmentFrequency,
 } from "@/lib/domain/recurring-commitments";
 import type { RecurringCommitmentDto } from "@/lib/domain/types";
-import { formatDateShort } from "@/lib/format";
+import { formatDateShort, formatMoney } from "@/lib/format";
 
 const EMBEDDED_PAGE_SIZES = [5, 10, 15] as const;
 const PAGE_PAGE_SIZES = [10, 15, 25, 50] as const;
@@ -257,12 +259,20 @@ export function PagosRecurringCommitmentsPanel({
                     <td className="px-2 py-2.5 text-xs">
                       <p className="font-medium tabular-nums text-zinc-800">{formatDateShort(c.dueDate)}</p>
                       <p className="text-[11px] text-zinc-500">{relativeDayLabel(c.dueDate)}</p>
+                      <p className="mt-0.5 font-semibold tabular-nums text-zinc-900">{formatMoney(c.amount, c.currency || "MXN")}</p>
                     </td>
                     <td className="px-2 py-2.5">
-                      <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${ADMIN_EXPENSE_STATUS_TONE[display]}`}>
-                        <span className={`h-1.5 w-1.5 rounded-full ${ADMIN_EXPENSE_STATUS_DOT[display]}`} />
-                        {ADMIN_EXPENSE_STATUS_LABEL[display]}
-                      </span>
+                      <div className="flex flex-col items-start gap-1">
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${ADMIN_EXPENSE_STATUS_TONE[display]}`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${ADMIN_EXPENSE_STATUS_DOT[display]}`} />
+                          {ADMIN_EXPENSE_STATUS_LABEL[display]}
+                        </span>
+                        {adminExpenseDocGaps(c.files).map((gap) => (
+                          <span key={gap} className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-900">
+                            {ADMIN_DOC_GAP_LABEL[gap]}
+                          </span>
+                        ))}
+                      </div>
                     </td>
                     <td className="px-2 py-2.5 text-right">
                       {canManage ? (
@@ -292,12 +302,19 @@ export function PagosRecurringCommitmentsPanel({
                 <p className="font-semibold text-zinc-900">{c.supplierName}</p>
                 <p className="text-xs text-zinc-500">{c.concept}</p>
                 <p className="mt-1 text-xs text-zinc-600">
-                  Vence {formatDateShort(c.dueDate)} · {relativeDayLabel(c.dueDate)}
+                  Límite {formatDateShort(c.dueDate)} · {relativeDayLabel(c.dueDate)} · {formatMoney(c.amount, c.currency || "MXN")}
                 </p>
-                <span className={`mt-1 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${ADMIN_EXPENSE_STATUS_TONE[display]}`}>
-                  <span className={`h-1.5 w-1.5 rounded-full ${ADMIN_EXPENSE_STATUS_DOT[display]}`} />
-                  {ADMIN_EXPENSE_STATUS_LABEL[display]}
-                </span>
+                <div className="mt-1 flex flex-wrap gap-1">
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${ADMIN_EXPENSE_STATUS_TONE[display]}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${ADMIN_EXPENSE_STATUS_DOT[display]}`} />
+                    {ADMIN_EXPENSE_STATUS_LABEL[display]}
+                  </span>
+                  {adminExpenseDocGaps(c.files).map((gap) => (
+                    <span key={gap} className="inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-900">
+                      {ADMIN_DOC_GAP_LABEL[gap]}
+                    </span>
+                  ))}
+                </div>
               </div>
               {canManage ? (
                 <CommitmentActionMenu commitment={c} onEdit={() => onEdit(c)} onDeleted={onMutated} />

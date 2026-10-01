@@ -124,7 +124,14 @@ export function VehiculosListView({ onRegisterRefresh }: { onRegisterRefresh?: (
                   <td className="px-3 py-3"><Tone tone={item.docTones.seguro} /></td>
                   <td className="px-3 py-3"><Tone tone={item.docTones.verificacion} /></td>
                   <td className="px-3 py-3"><Tone tone={item.docTones.refrendo} /></td>
-                  <td className="px-3 py-3">{item.financing ? (item.financing.kind === "arrendamiento" ? "Arrendamiento" : "Crédito") : "—"}</td>
+                  <td className="px-3 py-3">
+                    {item.financing ? (
+                      <span>
+                        <span className="block font-medium">{item.financing.paid}/{item.financing.termMonths}</span>
+                        <span className="block text-xs text-zinc-500">Por pagar {money(item.financing.remainingAmount)}</span>
+                      </span>
+                    ) : "—"}
+                  </td>
                   <td className="px-3 py-3">{item.status === "activo" ? "Activo" : "Baja"}</td>
                 </tr>
               ))}

@@ -607,9 +607,10 @@ model VehicleFinancing {
   vehicle        Vehicle                   @relation(fields: [vehicleId], references: [id], onDelete: Cascade)
   kind           String
   institution    String
-  termMonths     Int
-  monthlyPayment Float
-  balance        Float
+  termMonths       Int
+  monthlyPayment   Float
+  paidInstallments Int                       @default(0)
+  balance          Float
   nextPaymentOn  DateTime?
   notes          String                    @default("")
   payments       VehicleFinancingPayment[]

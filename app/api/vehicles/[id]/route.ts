@@ -5,6 +5,7 @@ import { apiErrorResponse } from "@/lib/api/handle-route-error";
 import { asRole } from "@/lib/services/mappers";
 import { canAccessFleet, canEditVehicleProfile } from "@/lib/flota/access";
 import { parseDay } from "@/lib/flota/dates";
+import { financingProgress } from "@/lib/flota/financing";
 import { mapVehicle, vehicleDetailSelect } from "@/app/api/vehicles/route";
 
 type Ctx = { params: Promise<{ id: string }> };
@@ -123,17 +124,22 @@ export async function POST(request: Request, ctx: Ctx) {
     } else if (action === "financing") {
       const institution = String(body.institution ?? "").trim();
       const monthlyPayment = Number(body.monthlyPayment);
-      const balance = Number(body.balance);
       const termMonths = Number(body.termMonths);
+      const paidInstallments = Number(body.paidInstallments ?? 0);
       if (!institution || !(monthlyPayment > 0) || !(termMonths > 0)) {
         return NextResponse.json({ error: "Institución, plazo y pago mensual son obligatorios." }, { status: 400 });
       }
+      if (!Number.isFinite(paidInstallments) || paidInstallments < 0 || paidInstallments > termMonths) {
+        return NextResponse.json({ error: "Los pagos realizados no pueden pasar el plazo." }, { status: 400 });
+      }
+      const progress = financingProgress(termMonths, monthlyPayment, paidInstallments);
       const data = {
         kind: body.kind === "arrendamiento" ? "arrendamiento" : "credito",
         institution,
         termMonths,
         monthlyPayment,
-        balance: Number.isFinite(balance) ? balance : 0,
+        paidInstallments: progress.paid,
+        balance: progress.remainingAmount,
         nextPaymentOn: parseDay(body.nextPaymentOn),
         notes: String(body.notes ?? "").trim(),
       };
@@ -147,12 +153,17 @@ export async function POST(request: Request, ctx: Ctx) {
       const amount = Number(body.amount);
       const paidOn = parseDay(body.paidOn);
       if (!paidOn || !(amount > 0)) return NextResponse.json({ error: "Fecha y monto del pago son obligatorios." }, { status: 400 });
+      if (vehicle.financing.paidInstallments >= vehicle.financing.termMonths) {
+        return NextResponse.json({ error: "Este financiamiento ya no tiene pagos pendientes." }, { status: 400 });
+      }
+      const paidInstallments = vehicle.financing.paidInstallments + 1;
+      const progress = financingProgress(vehicle.financing.termMonths, vehicle.financing.monthlyPayment, paidInstallments);
       await prisma.vehicleFinancingPayment.create({
         data: { financingId: vehicle.financing.id, paidOn, amount, notes: String(body.notes ?? "").trim() },
       });
       await prisma.vehicleFinancing.update({
         where: { id: vehicle.financing.id },
-        data: { balance: Math.max(0, Math.round((vehicle.financing.balance - amount) * 100) / 100) },
+        data: { paidInstallments, balance: progress.remainingAmount },
       });
     } else if (action === "expense") {
       const concept = String(body.concept ?? "").trim();

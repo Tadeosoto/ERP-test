@@ -6,6 +6,7 @@ import { prepareVehicleImage } from "@/lib/flota/vehicle-image";
 import { asRole } from "@/lib/services/mappers";
 import { canAccessFleet } from "@/lib/flota/access";
 import { documentTone, mexicoDay, parseDay, pricePerLiter, sameMonth, sameYear } from "@/lib/flota/dates";
+import { financingProgress } from "@/lib/flota/financing";
 import { purgeExpiredFuelReceipts } from "@/lib/services/fuel-files";
 
 function allow(user: { role: string; email: string }) {
@@ -79,6 +80,7 @@ export function mapVehicle(row: {
     institution: string;
     termMonths: number;
     monthlyPayment: number;
+    paidInstallments: number;
     balance: number;
     nextPaymentOn: Date | null;
     notes: string;
@@ -165,6 +167,8 @@ export function mapVehicle(row: {
           institution: row.financing.institution,
           termMonths: row.financing.termMonths,
           monthlyPayment: row.financing.monthlyPayment,
+          paidInstallments: row.financing.paidInstallments,
+          ...financingProgress(row.financing.termMonths, row.financing.monthlyPayment, row.financing.paidInstallments),
           balance: row.financing.balance,
           nextPaymentOn: row.financing.nextPaymentOn?.toISOString() ?? null,
           notes: row.financing.notes,
@@ -281,6 +285,21 @@ export async function POST(request: Request) {
       imageData = prepared.data;
       imageMime = prepared.mime;
     }
+    const financeInstitution = String(form.get("financeInstitution") ?? "").trim();
+    const financeMonthly = Number(form.get("financeMonthly") ?? "");
+    const financeTerm = Number(form.get("financeTerm") ?? "") || 36;
+    const financePaid = Number(form.get("financePaid") ?? 0) || 0;
+    const wantsFinance = Boolean(financeInstitution || String(form.get("financeMonthly") ?? "").trim());
+    if (wantsFinance) {
+      if (!financeInstitution || !(financeMonthly > 0) || !(financeTerm > 0)) {
+        return NextResponse.json({ error: "Para el financiamiento indica institución, plazo y pago mensual." }, { status: 400 });
+      }
+      if (financePaid < 0 || financePaid > financeTerm) {
+        return NextResponse.json({ error: "Los pagos realizados no pueden pasar el plazo." }, { status: 400 });
+      }
+    }
+    const progress = wantsFinance ? financingProgress(financeTerm, financeMonthly, financePaid) : null;
+
     const created = await prisma.vehicle.create({
       data: {
         code: String(form.get("code") ?? "").trim(),
@@ -306,6 +325,21 @@ export async function POST(request: Request) {
               expiresOn: parseDay(doc.expiresOn),
             })),
         },
+        ...(progress
+          ? {
+              financing: {
+                create: {
+                  kind: String(form.get("financeKind") ?? "") === "arrendamiento" ? "arrendamiento" : "credito",
+                  institution: financeInstitution,
+                  termMonths: financeTerm,
+                  monthlyPayment: financeMonthly,
+                  paidInstallments: progress.paid,
+                  balance: progress.remainingAmount,
+                  nextPaymentOn: parseDay(form.get("financeNext")),
+                },
+              },
+            }
+          : {}),
       },
       select: vehicleDetailSelect,
     });

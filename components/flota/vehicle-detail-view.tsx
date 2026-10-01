@@ -273,13 +273,22 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
       {tab === "financiamiento" && (
         <div className="grid gap-4 lg:grid-cols-2">
           <MiniForm
+            key={`${vehicle.financing?.id ?? "nuevo"}-${vehicle.financing?.paidInstallments ?? 0}-${vehicle.financing?.monthlyPayment ?? 0}`}
             title={vehicle.financing ? "Actualizar crédito" : "Registrar crédito o arrendamiento"}
+            defaults={vehicle.financing ? {
+              kind: vehicle.financing.kind,
+              institution: vehicle.financing.institution,
+              termMonths: String(vehicle.financing.termMonths),
+              monthlyPayment: String(vehicle.financing.monthlyPayment),
+              paidInstallments: String(vehicle.financing.paidInstallments),
+              nextPaymentOn: toDayInput(vehicle.financing.nextPaymentOn),
+            } : { kind: "credito", termMonths: "36", paidInstallments: "0" }}
             fields={[
               { name: "kind", label: "Tipo", options: [{ value: "credito", label: "Crédito" }, { value: "arrendamiento", label: "Arrendamiento" }] },
               { name: "institution", label: "Institución" },
-              { name: "termMonths", label: "Plazo (meses)", type: "number" },
+              { name: "termMonths", label: "Plazo (pagos)", type: "number" },
               { name: "monthlyPayment", label: "Pago mensual", type: "number" },
-              { name: "balance", label: "Saldo", type: "number" },
+              { name: "paidInstallments", label: "Pagos realizados", type: "number" },
               { name: "nextPaymentOn", label: "Próximo pago", type: "date" },
             ]}
             onSubmit={(values) => void send({ action: "financing", ...values })}
@@ -289,9 +298,10 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
               <>
                 <div className="rounded-2xl border border-zinc-200 bg-white p-4 text-sm">
                   <p className="font-semibold">{vehicle.financing.institution}</p>
-                  <p>{vehicle.financing.kind === "arrendamiento" ? "Arrendamiento" : "Crédito"} · {vehicle.financing.termMonths} meses</p>
+                  <p>{vehicle.financing.kind === "arrendamiento" ? "Arrendamiento" : "Crédito"} · {vehicle.financing.paid} / {vehicle.financing.termMonths} pagos</p>
                   <p>Pago mensual {money(vehicle.financing.monthlyPayment)}</p>
-                  <p>Saldo {money(vehicle.financing.balance)}</p>
+                  <p>Saldo pagado {money(vehicle.financing.paidAmount)}</p>
+                  <p>Saldo por pagar {money(vehicle.financing.remainingAmount)} · faltan {vehicle.financing.remainingCount} pagos</p>
                   <p>Próximo pago {vehicle.financing.nextPaymentOn ? formatDate(vehicle.financing.nextPaymentOn) : "—"}</p>
                 </div>
                 <MiniForm title="Registrar pago" fields={[{ name: "paidOn", label: "Fecha", type: "date" }, { name: "amount", label: "Monto", type: "number" }, { name: "notes", label: "Notas" }]} onSubmit={(values) => void send({ action: "payment", ...values })} />
@@ -414,15 +424,17 @@ function DocumentEditor({
 function MiniForm({
   title,
   fields,
+  defaults,
   onSubmit,
 }: {
   title: string;
   fields: { name: string; label: string; type?: string; options?: { value: string; label: string }[] }[];
+  defaults?: Record<string, string>;
   onSubmit: (values: Record<string, string>) => void;
 }) {
-  const [values, setValues] = useState<Record<string, string>>({});
+  const [values, setValues] = useState<Record<string, string>>(defaults ?? {});
   return (
-    <form className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4" onSubmit={(e) => { e.preventDefault(); onSubmit(values); setValues({}); }}>
+    <form className="space-y-2 rounded-2xl border border-zinc-200 bg-white p-4" onSubmit={(e) => { e.preventDefault(); onSubmit({ ...defaults, ...values }); if (!defaults) setValues({}); }}>
       <h2 className="font-bold">{title}</h2>
       {fields.map((field) => (
         <label key={field.name} className="block text-sm">

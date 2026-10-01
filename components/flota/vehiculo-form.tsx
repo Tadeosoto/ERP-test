@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
 import { VEHICLE_TYPES, DOCUMENT_KINDS } from "@/lib/flota/dates";
+import { financingProgress } from "@/lib/flota/financing";
+import { formatMoney } from "@/lib/format";
 
 type DocDraft = { kind: string; name: string; expiresOn: string };
 
@@ -40,6 +42,12 @@ export function VehiculoForm({
   const [ownerName, setOwnerName] = useState(vehicle?.ownerName || "Consorcio Constructor Profesional");
   const [currentKm, setCurrentKm] = useState(vehicle ? String(vehicle.currentKm) : "");
   const [image, setImage] = useState<File | null>(null);
+  const [financeKind, setFinanceKind] = useState("credito");
+  const [financeInstitution, setFinanceInstitution] = useState("");
+  const [financeTerm, setFinanceTerm] = useState("36");
+  const [financeMonthly, setFinanceMonthly] = useState("");
+  const [financePaid, setFinancePaid] = useState("");
+  const [financeNext, setFinanceNext] = useState("");
   const [docs, setDocs] = useState<DocDraft[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -63,6 +71,12 @@ export function VehiculoForm({
     form.set("ownerName", ownerName);
     form.set("currentKm", currentKm);
     form.set("documents", JSON.stringify(docs));
+    form.set("financeKind", financeKind);
+    form.set("financeInstitution", financeInstitution);
+    form.set("financeTerm", financeTerm);
+    form.set("financeMonthly", financeMonthly);
+    form.set("financePaid", financePaid);
+    form.set("financeNext", financeNext);
     if (image) form.set("image", image);
     setSaving(true);
     if (editing && vehicle) {
@@ -141,6 +155,25 @@ export function VehiculoForm({
           <FilePickButton accept="image/*" label="Subir foto" hint="elegir imagen" onPick={setImage} />
         </div>
       </div>
+      {!editing && (
+        <div className="space-y-3 rounded-2xl border border-zinc-200 p-4">
+          <p className="text-sm font-semibold text-zinc-800">Financiamiento (opcional)</p>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <label className="text-sm">Tipo
+              <select value={financeKind} onChange={(e) => setFinanceKind(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2">
+                <option value="credito">Crédito</option>
+                <option value="arrendamiento">Arrendamiento</option>
+              </select>
+            </label>
+            <label className="text-sm">Institución<input value={financeInstitution} onChange={(e) => setFinanceInstitution(e.target.value)} placeholder="NR Finance" className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+            <label className="text-sm">Plazo (pagos)<input type="number" min="1" value={financeTerm} onChange={(e) => setFinanceTerm(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+            <label className="text-sm">Pago mensual<input type="number" min="0" step="0.01" value={financeMonthly} onChange={(e) => setFinanceMonthly(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+            <label className="text-sm">Pagos que ya llevan<input type="number" min="0" value={financePaid} onChange={(e) => setFinancePaid(e.target.value)} placeholder="10" className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+            <label className="text-sm">Próximo pago<input type="date" value={financeNext} onChange={(e) => setFinanceNext(e.target.value)} className="mt-1 w-full rounded-xl border px-3 py-2" /></label>
+          </div>
+          {Number(financeMonthly) > 0 && Number(financeTerm) > 0 && <FinancePreview term={Number(financeTerm)} monthly={Number(financeMonthly)} paid={Number(financePaid) || 0} />}
+        </div>
+      )}
       {!editing && <div className="space-y-2">
         <div className="flex items-center justify-between">
           <p className="text-sm font-semibold text-zinc-800">Documentos y vencimiento</p>
@@ -165,5 +198,14 @@ export function VehiculoForm({
         {saving ? "Guardando…" : editing ? "Guardar cambios" : "Registrar vehículo"}
       </button>
     </form>
+  );
+}
+
+function FinancePreview({ term, monthly, paid }: { term: number; monthly: number; paid: number }) {
+  const progress = financingProgress(term, monthly, paid);
+  return (
+    <p className="text-sm text-zinc-600">
+      {progress.paid} / {term} pagos · Saldo pagado {formatMoney(progress.paidAmount, "MXN")} · Saldo por pagar {formatMoney(progress.remainingAmount, "MXN")} ({progress.remainingCount} pagos)
+    </p>
   );
 }

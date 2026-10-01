@@ -66,6 +66,11 @@ export type VehicleDto = {
     institution: string;
     termMonths: number;
     monthlyPayment: number;
+    paidInstallments: number;
+    paid: number;
+    remainingCount: number;
+    paidAmount: number;
+    remainingAmount: number;
     balance: number;
     nextPaymentOn: string | null;
     notes: string;

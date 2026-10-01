@@ -635,7 +635,9 @@ export function DashboardShell({
       ? "flex min-h-0 flex-1 flex-col overflow-y-auto lg:overflow-hidden"
       : "flex min-h-0 flex-1 flex-col overflow-y-auto"
     : isWideLayout
-      ? "min-h-0 overflow-x-hidden"
+      ? pathname === "/compromisos"
+        ? "overflow-visible"
+        : "min-h-0 overflow-x-hidden"
       : "";
 
   async function handleRefresh() {

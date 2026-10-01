@@ -51,6 +51,22 @@ export const ADMIN_EXPENSE_STATUS_DOT: Record<AdminExpenseDisplayStatus, string>
   pagado: "bg-emerald-500",
 };
 
+export type AdminExpenseDocGap = "pendiente_pago" | "pendiente_factura";
+
+export const ADMIN_DOC_GAP_LABEL: Record<AdminExpenseDocGap, string> = {
+  pendiente_pago: "Pendiente pago",
+  pendiente_factura: "Pendiente factura",
+};
+
+/** Falta el PDF de pago, el de factura, o los dos. Cada uno se marca por separado. */
+export function adminExpenseDocGaps(files: { kind: string }[]): AdminExpenseDocGap[] {
+  const kinds = new Set(files.map((file) => file.kind));
+  const gaps: AdminExpenseDocGap[] = [];
+  if (!kinds.has("comprobante_pago")) gaps.push("pendiente_pago");
+  if (!kinds.has("factura")) gaps.push("pendiente_factura");
+  return gaps;
+}
+
 const CATEGORY_VALUES = new Set(ADMIN_EXPENSE_CATEGORIES.map((item) => item.value));
 const PAYMENT_VALUES = new Set(ADMIN_PAYMENT_METHODS.map((item) => item.value));
 const FREQUENCY_VALUES = new Set<CommitmentFrequency>(["unico", "mensual", "bimestral", "trimestral", "anual"]);

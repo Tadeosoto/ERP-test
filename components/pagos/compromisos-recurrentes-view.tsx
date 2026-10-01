@@ -7,10 +7,12 @@ import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { LoadingScreen } from "@/components/ui/loading-screen";
 import {
+  ADMIN_DOC_GAP_LABEL,
   ADMIN_EXPENSE_CATEGORIES,
   ADMIN_EXPENSE_STATUS_DOT,
   ADMIN_EXPENSE_STATUS_LABEL,
   ADMIN_EXPENSE_STATUS_TONE,
+  adminExpenseDocGaps,
   adminExpenseStatus,
   categoryLabel,
   mexicoMonthKey,
@@ -26,7 +28,30 @@ import { canManageRecurringCommitments } from "@/lib/domain/transitions";
 import type { RecurringCommitmentDto, SupplierDto } from "@/lib/domain/types";
 import { formatDateShort, formatMoney } from "@/lib/format";
 
-const PAGE_SIZE = 10;
+const DOC_GAP_CLASS = "inline-flex rounded-full bg-orange-100 px-2 py-0.5 text-[10px] font-semibold text-orange-900";
+
+function DocMarks({ files }: { files: { kind: string; id?: string }[] }) {
+  const pago = files.find((file) => file.kind === "comprobante_pago" && file.id);
+  const factura = files.find((file) => file.kind === "factura" && file.id);
+  const gaps = adminExpenseDocGaps(files);
+  return (
+    <div className="flex flex-col items-start gap-1">
+      {pago?.id ? (
+        <a className="text-xs font-semibold text-orange-700" href={`/api/recurring-commitment-files/${pago.id}`} target="_blank" rel="noreferrer">
+          Ver pago
+        </a>
+      ) : null}
+      {factura?.id ? (
+        <a className="text-xs font-semibold text-orange-700" href={`/api/recurring-commitment-files/${factura.id}`} target="_blank" rel="noreferrer">
+          Ver factura
+        </a>
+      ) : null}
+      {gaps.map((gap) => (
+        <span key={gap} className={DOC_GAP_CLASS}>{ADMIN_DOC_GAP_LABEL[gap]}</span>
+      ))}
+    </div>
+  );
+}
 
 function StatusPill({ status }: { status: AdminExpenseDisplayStatus }) {
   return (
@@ -105,7 +130,6 @@ export function CompromisosRecurrentesView({
   const [supplier, setSupplier] = useState("");
   const [frequency, setFrequency] = useState("");
   const [status, setStatus] = useState("");
-  const [page, setPage] = useState(1);
   const [modalOpen, setModalOpen] = useState(false);
   const [recurring, setRecurring] = useState(false);
   const [editing, setEditing] = useState<RecurringCommitmentDto | null>(null);
@@ -214,7 +238,9 @@ export function CompromisosRecurrentesView({
       if (supplier && row.supplierName !== supplier) return false;
       if (frequency && row.frequency !== frequency) return false;
       if (status === "sin_pagar" && display === "pagado") return false;
-      if (status && status !== "sin_pagar" && display !== status) return false;
+      if (status === "pendiente_pago" && adminExpenseDocGaps(row.files).includes("pendiente_pago") === false) return false;
+      if (status === "pendiente_factura" && adminExpenseDocGaps(row.files).includes("pendiente_factura") === false) return false;
+      if (status && status !== "sin_pagar" && status !== "pendiente_pago" && status !== "pendiente_factura" && display !== status) return false;
       return true;
     });
     rows.sort((a, b) => {
@@ -224,13 +250,8 @@ export function CompromisosRecurrentesView({
     return rows;
   }, [commitments, query, month, category, supplier, frequency, status]);
 
-  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
-  const safePage = Math.min(page, totalPages);
-  const pageItems = filtered.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
-
   function showUnpaid() {
     setStatus("sin_pagar");
-    setPage(1);
     document.getElementById("gastos-tabla")?.scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
@@ -241,7 +262,6 @@ export function CompromisosRecurrentesView({
     setSupplier("");
     setFrequency("");
     setStatus("");
-    setPage(1);
   }
 
   async function markPaid(row: RecurringCommitmentDto) {
@@ -280,7 +300,7 @@ export function CompromisosRecurrentesView({
   if (loading) return <LoadingScreen message="Cargando gastos administrativos" />;
 
   return (
-    <div className="flex min-h-0 flex-col gap-5">
+    <div className="space-y-5 pb-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="dash-page-title">Gastos administrativos</h1>
@@ -333,10 +353,10 @@ export function CompromisosRecurrentesView({
             <table className="w-full text-left text-sm">
               <thead>
                 <tr className="border-b border-zinc-100 text-xs text-zinc-500">
-                  <th className="px-3 py-2 font-medium">Fecha de vencimiento</th>
+                  <th className="px-3 py-2 font-medium">Fecha límite</th>
                   <th className="px-3 py-2 font-medium">Concepto</th>
                   <th className="px-3 py-2 font-medium">Proveedor</th>
-                  <th className="px-3 py-2 font-medium">Importe</th>
+                  <th className="px-3 py-2 font-medium">Costo</th>
                   <th className="px-3 py-2 font-medium">Días restantes</th>
                   <th className="px-3 py-2 font-medium">Estatus</th>
                 </tr>
@@ -355,7 +375,10 @@ export function CompromisosRecurrentesView({
                       <td className="px-3 py-2 tabular-nums">{formatMoney(row.amount, row.currency || "MXN")}</td>
                       <td className="px-3 py-2">{daysLabel(row.dueDate)}</td>
                       <td className="px-3 py-2">
-                        <StatusPill status={adminExpenseStatus(row.workflowStatus, row.dueDate)} />
+                        <div className="flex flex-col items-start gap-1">
+                          <StatusPill status={adminExpenseStatus(row.workflowStatus, row.dueDate)} />
+                          <DocMarks files={row.files} />
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -390,60 +413,42 @@ export function CompromisosRecurrentesView({
         </section>
       </div>
 
-      <div id="gastos-tabla" className="dash-panel overflow-hidden">
+      <div id="gastos-tabla" className="dash-panel !overflow-visible">
         <div className="flex flex-wrap items-center gap-2 border-b border-zinc-100 p-3">
           <input
             value={query}
-            onChange={(e) => {
-              setQuery(e.target.value);
-              setPage(1);
-            }}
+            onChange={(e) => setQuery(e.target.value)}
             placeholder="Buscar concepto, proveedor…"
             className="min-w-48 flex-1 rounded-xl border border-zinc-200 px-3 py-2 text-sm"
           />
           <FilterSelect
             label="Fecha"
             value={month}
-            onChange={(value) => {
-              setMonth(value);
-              setPage(1);
-            }}
+            onChange={setMonth}
             options={[{ value: "", label: "Todas" }, ...months.map((key) => ({ value: key, label: key }))]}
           />
           <FilterSelect
             label="Categoría"
             value={category}
-            onChange={(value) => {
-              setCategory(value);
-              setPage(1);
-            }}
+            onChange={setCategory}
             options={[{ value: "", label: "Todas" }, ...ADMIN_EXPENSE_CATEGORIES.map((item) => ({ value: item.value, label: item.label }))]}
           />
           <FilterSelect
             label="Proveedor"
             value={supplier}
-            onChange={(value) => {
-              setSupplier(value);
-              setPage(1);
-            }}
+            onChange={setSupplier}
             options={[{ value: "", label: "Todos" }, ...supplierNames.map((name) => ({ value: name, label: name }))]}
           />
           <FilterSelect
             label="Periodicidad"
             value={frequency}
-            onChange={(value) => {
-              setFrequency(value);
-              setPage(1);
-            }}
+            onChange={setFrequency}
             options={[{ value: "", label: "Todas" }, ...COMMITMENT_FREQUENCIES.map((item) => ({ value: item.value, label: item.label }))]}
           />
           <FilterSelect
             label="Estatus"
             value={status}
-            onChange={(value) => {
-              setStatus(value);
-              setPage(1);
-            }}
+            onChange={setStatus}
             options={[
               { value: "", label: "Todos" },
               { value: "sin_pagar", label: "Sin pagar" },
@@ -451,6 +456,8 @@ export function CompromisosRecurrentesView({
               { value: "vence_pronto", label: "Vence pronto" },
               { value: "vencido", label: "Vencido" },
               { value: "pagado", label: "Pagado" },
+              { value: "pendiente_pago", label: "Pendiente pago" },
+              { value: "pendiente_factura", label: "Pendiente factura" },
             ]}
           />
           <button type="button" onClick={clearFilters} className="text-sm font-semibold text-orange-700">
@@ -461,20 +468,19 @@ export function CompromisosRecurrentesView({
           <table className="w-full min-w-[960px] text-left text-sm">
             <thead className="bg-zinc-50 text-xs text-zinc-500">
               <tr>
-                {["Fecha", "Concepto", "Proveedor", "Categoría", "Importe", "Periodicidad", "Vencimiento", "Comprobante", "Estatus", "Acciones"].map((heading) => (
+                {["Fecha", "Concepto", "Proveedor", "Categoría", "Costo", "Periodicidad", "Fecha límite", "Documentos", "Estatus", "Acciones"].map((heading) => (
                   <th key={heading} className="px-3 py-2 font-medium">{heading}</th>
                 ))}
               </tr>
             </thead>
             <tbody>
-              {pageItems.length === 0 ? (
+              {filtered.length === 0 ? (
                 <tr>
                   <td colSpan={10} className="px-3 py-10 text-center text-zinc-500">No hay gastos con estos filtros.</td>
                 </tr>
               ) : (
-                pageItems.map((row) => {
+                filtered.map((row) => {
                   const display = adminExpenseStatus(row.workflowStatus, row.dueDate);
-                  const file = row.files[0];
                   return (
                     <tr key={row.id} className="border-t border-zinc-100">
                       <td className="px-3 py-2.5 tabular-nums">{formatDateShort(row.occurredOn)}</td>
@@ -485,13 +491,7 @@ export function CompromisosRecurrentesView({
                       <td className="px-3 py-2.5">{COMMITMENT_FREQUENCY_LABEL[row.frequency as CommitmentFrequency] ?? row.frequency}</td>
                       <td className="px-3 py-2.5 tabular-nums">{formatDateShort(row.dueDate)}</td>
                       <td className="px-3 py-2.5">
-                        {file ? (
-                          <a className="font-semibold text-orange-700" href={`/api/recurring-commitment-files/${file.id}`} target="_blank" rel="noreferrer">
-                            Ver
-                          </a>
-                        ) : (
-                          <span className="text-zinc-300">—</span>
-                        )}
+                        <DocMarks files={row.files} />
                       </td>
                       <td className="px-3 py-2.5"><StatusPill status={display} /></td>
                       <td className="relative px-3 py-2.5">
@@ -521,16 +521,9 @@ export function CompromisosRecurrentesView({
             </tbody>
           </table>
         </div>
-        <div className="flex items-center justify-between border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500">
-          <p>
-            {filtered.length === 0 ? "0 registros" : `${(safePage - 1) * PAGE_SIZE + 1}–${Math.min(safePage * PAGE_SIZE, filtered.length)} de ${filtered.length}`}
-          </p>
-          <div className="flex items-center gap-1">
-            <button type="button" disabled={safePage <= 1} onClick={() => setPage(safePage - 1)} className="h-8 min-w-8 rounded-lg border px-2 disabled:opacity-40">‹</button>
-            <span className="px-2 tabular-nums">{safePage}/{totalPages}</span>
-            <button type="button" disabled={safePage >= totalPages} onClick={() => setPage(safePage + 1)} className="h-8 min-w-8 rounded-lg border px-2 disabled:opacity-40">›</button>
-          </div>
-        </div>
+        <p className="border-t border-zinc-100 px-3 py-2 text-xs text-zinc-500">
+          {filtered.length === 1 ? "1 registro" : `${filtered.length} registros`}
+        </p>
       </div>
 
       {canManage && (

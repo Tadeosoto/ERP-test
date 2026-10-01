@@ -101,6 +101,7 @@ export function CompromisoRecurrenteModal({
   const [error, setError] = useState("");
   const [files, setFiles] = useState(editing?.files ?? []);
   const [receipt, setReceipt] = useState<File | null>(null);
+  const [invoice, setInvoice] = useState<File | null>(null);
 
   const isEdit = Boolean(editing);
   const frequencies = COMMITMENT_FREQUENCIES.filter((item) => (recurring && !isEdit ? item.value !== "unico" : true));
@@ -110,6 +111,7 @@ export function CompromisoRecurrenteModal({
     setForm(editing ? commitmentToForm(editing) : emptyForm(recurring));
     setFiles(editing?.files ?? []);
     setReceipt(null);
+    setInvoice(null);
     setError("");
   }, [open, editing, recurring]);
 
@@ -118,10 +120,10 @@ export function CompromisoRecurrenteModal({
     [suppliers, form.supplierId]
   );
 
-  async function uploadDoc(commitmentId: string, file: File) {
+  async function uploadDoc(commitmentId: string, file: File, kind: "comprobante_pago" | "factura") {
     const fd = new FormData();
     fd.set("commitmentId", commitmentId);
-    fd.set("kind", "factura");
+    fd.set("kind", kind);
     fd.set("file", file);
     const res = await fetch("/api/recurring-commitment-files/upload", {
       method: "POST",
@@ -129,7 +131,7 @@ export function CompromisoRecurrenteModal({
       body: fd,
     });
     const data = (await res.json()) as { commitment?: RecurringCommitmentDto; error?: string };
-    if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo subir el comprobante.");
+    if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo subir el documento.");
     setFiles(data.commitment.files);
   }
 
@@ -171,7 +173,8 @@ export function CompromisoRecurrenteModal({
       });
       const data = (await res.json()) as { error?: string; commitment?: RecurringCommitmentDto };
       if (!res.ok || !data.commitment) throw new Error(data.error ?? "No se pudo guardar.");
-      if (receipt) await uploadDoc(data.commitment.id, receipt);
+      if (receipt) await uploadDoc(data.commitment.id, receipt, "comprobante_pago");
+      if (invoice) await uploadDoc(data.commitment.id, invoice, "factura");
       showSuccess(isEdit ? "Gasto actualizado." : "Gasto registrado.");
       onSaved();
       onClose();
@@ -298,28 +301,37 @@ export function CompromisoRecurrenteModal({
                 />
               </Field>
             </div>
-            <div className="sm:col-span-2">
-              <p className="text-xs font-medium text-zinc-700">Comprobante (PDF)</p>
-              <div className="mt-1.5">
-                <FilePickButton accept="application/pdf,.pdf" label="Adjuntar comprobante" hint="PDF" onPick={setReceipt} />
+            <div className="sm:col-span-2 grid gap-4 sm:grid-cols-2">
+              <div>
+                <p className="text-xs font-medium text-zinc-700">Comprobante de pago (PDF)</p>
+                <p className="mt-0.5 text-xs text-zinc-500">Opcional. Si no va ahora, el gasto queda en pendiente de pago.</p>
+                <div className="mt-1.5">
+                  <FilePickButton accept="application/pdf,.pdf" label="Subir comprobante de pago" hint="PDF" onPick={setReceipt} />
+                </div>
               </div>
-              {isEdit && files.length > 0 && (
-                <ul className="mt-2 space-y-1 text-sm">
-                  {files.map((file) => (
-                    <li key={file.id} className="flex items-center justify-between gap-2">
-                      <span className="truncate text-zinc-600">
-                        {FILE_KIND_LABEL[file.kind] ?? "Comprobante"} · {file.originalFileName}
-                        <span className="text-zinc-400"> · {formatDateShort(file.createdAt)}</span>
-                      </span>
-                      <a href={`/api/recurring-commitment-files/${file.id}`} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-orange-700">
-                        Ver
-                      </a>
-                    </li>
-                  ))}
-                </ul>
-              )}
-              {!isEdit && <p className="mt-1 text-xs text-zinc-500">El archivo queda ligado a este gasto.</p>}
+              <div>
+                <p className="text-xs font-medium text-zinc-700">Factura (PDF)</p>
+                <p className="mt-0.5 text-xs text-zinc-500">Opcional. Se puede agregar después; si falta, queda pendiente de factura.</p>
+                <div className="mt-1.5">
+                  <FilePickButton accept="application/pdf,.pdf" label="Subir factura" hint="PDF" onPick={setInvoice} />
+                </div>
+              </div>
             </div>
+            {files.length > 0 && (
+              <ul className="sm:col-span-2 space-y-1 text-sm">
+                {files.map((file) => (
+                  <li key={file.id} className="flex items-center justify-between gap-2">
+                    <span className="truncate text-zinc-600">
+                      {FILE_KIND_LABEL[file.kind] ?? "Documento"} · {file.originalFileName}
+                      <span className="text-zinc-400"> · {formatDateShort(file.createdAt)}</span>
+                    </span>
+                    <a href={`/api/recurring-commitment-files/${file.id}`} target="_blank" rel="noreferrer" className="shrink-0 font-semibold text-orange-700">
+                      Ver
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            )}
           </div>
           {error && <p className="mt-3 text-sm font-medium text-red-700">{error}</p>}
         </div>
