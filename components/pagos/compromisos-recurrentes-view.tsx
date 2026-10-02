@@ -62,6 +62,16 @@ function StatusPill({ status }: { status: AdminExpenseDisplayStatus }) {
   );
 }
 
+function shiftMonth(key: string, delta: number): string {
+  const [year, month] = key.split("-").map(Number);
+  return mexicoMonthKey(new Date(year, month - 1 + delta, 15));
+}
+
+function monthLabel(key: string): string {
+  const [year, month] = key.split("-").map(Number);
+  return new Intl.DateTimeFormat("es-MX", { month: "short", year: "numeric" }).format(new Date(year, month - 1, 15));
+}
+
 function daysLabel(dueDate: string): string {
   const days = daysUntil(dueDate);
   if (days < 0) return days === -1 ? "Hace 1 día" : `Hace ${Math.abs(days)} días`;
@@ -130,6 +140,7 @@ export function CompromisosRecurrentesView({
   const [supplier, setSupplier] = useState("");
   const [frequency, setFrequency] = useState("");
   const [status, setStatus] = useState("");
+  const [chartMonth, setChartMonth] = useState(() => mexicoMonthKey(new Date()));
   const [modalOpen, setModalOpen] = useState(false);
   const [recurring, setRecurring] = useState(false);
   const [editing, setEditing] = useState<RecurringCommitmentDto | null>(null);
@@ -201,22 +212,27 @@ export function CompromisosRecurrentesView({
   );
 
   const chart = useMemo(() => {
-    const totals = new Map<string, number>();
+    const totals = new Map<string, { amount: number; concepts: string[] }>();
     for (const row of commitments) {
-      if (mexicoMonthKey(new Date(row.occurredOn)) !== thisMonth) continue;
-      totals.set(row.category || "otro", (totals.get(row.category || "otro") ?? 0) + row.amount);
+      if (mexicoMonthKey(new Date(row.occurredOn)) !== chartMonth) continue;
+      const key = row.category || "otro";
+      const bucket = totals.get(key) ?? { amount: 0, concepts: [] };
+      bucket.amount += row.amount;
+      bucket.concepts.push(row.concept);
+      totals.set(key, bucket);
     }
     const slices = [...totals.entries()]
-      .map(([value, amount]) => ({
+      .map(([value, bucket]) => ({
         value,
-        amount,
+        amount: bucket.amount,
+        concepts: bucket.concepts,
         label: categoryLabel(value),
         color: ADMIN_EXPENSE_CATEGORIES.find((item) => item.value === value)?.color ?? "#94a3b8",
       }))
       .sort((a, b) => b.amount - a.amount);
     const total = slices.reduce((sum, slice) => sum + slice.amount, 0);
     return { slices, total };
-  }, [commitments, thisMonth]);
+  }, [commitments, chartMonth]);
 
   const months = useMemo(() => {
     const keys = new Set(commitments.map((row) => mexicoMonthKey(new Date(row.occurredOn))));
@@ -389,20 +405,44 @@ export function CompromisosRecurrentesView({
         </section>
 
         <section className="dash-panel p-4">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h2 className="text-sm font-bold text-zinc-900">Gasto del mes por categoría</h2>
-            <span className="rounded-lg border border-zinc-200 px-2 py-1 text-xs text-zinc-500">Este mes</span>
+            <div className="flex items-center gap-1">
+              <button
+                type="button"
+                aria-label="Mes anterior"
+                onClick={() => setChartMonth((current) => shiftMonth(current, -1))}
+                className="h-7 w-7 rounded-lg border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50"
+              >
+                ‹
+              </button>
+              <span className="min-w-24 text-center text-xs font-medium capitalize text-zinc-600">
+                {chartMonth === thisMonth ? "Este mes" : monthLabel(chartMonth)}
+              </span>
+              <button
+                type="button"
+                aria-label="Mes siguiente"
+                disabled={chartMonth >= thisMonth}
+                onClick={() => setChartMonth((current) => shiftMonth(current, 1))}
+                className="h-7 w-7 rounded-lg border border-zinc-200 text-sm text-zinc-600 hover:bg-zinc-50 disabled:opacity-40"
+              >
+                ›
+              </button>
+            </div>
           </div>
           {chart.slices.length === 0 ? (
-            <p className="py-10 text-center text-sm text-zinc-500">Aún no hay gastos este mes.</p>
+            <p className="py-10 text-center text-sm text-zinc-500">No hay gastos registrados en {monthLabel(chartMonth)}.</p>
           ) : (
             <div className="mt-4 flex flex-wrap items-center gap-4">
               <Donut slices={chart.slices.map((slice) => ({ color: slice.color, value: slice.amount }))} total={chart.total} />
-              <ul className="min-w-0 flex-1 space-y-1.5 text-sm">
+              <ul className="min-w-0 flex-1 space-y-2 text-sm">
                 {chart.slices.map((slice) => (
-                  <li key={slice.value} className="flex items-center gap-2">
-                    <span className="h-2.5 w-2.5 rounded-full" style={{ background: slice.color }} />
-                    <span className="min-w-0 flex-1 truncate text-zinc-700">{slice.label}</span>
+                  <li key={slice.value} className="flex items-start gap-2">
+                    <span className="mt-1.5 h-2.5 w-2.5 shrink-0 rounded-full" style={{ background: slice.color }} />
+                    <span className="min-w-0 flex-1">
+                      <span className="block truncate text-zinc-700">{slice.label}</span>
+                      <span className="block truncate text-xs text-zinc-500">{slice.concepts.join(", ")}</span>
+                    </span>
                     <span className="tabular-nums text-zinc-900">{formatMoney(slice.amount, "MXN")}</span>
                     <span className="w-10 text-right text-xs text-zinc-500">{chart.total > 0 ? Math.round((slice.amount / chart.total) * 100) : 0}%</span>
                   </li>
