@@ -201,6 +201,7 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
     const ok = await confirmDelete({
       title: "Eliminar factura (Proceso C)",
       message: `Se eliminará la factura ${commitment.invoiceFolio} (${commitment.supplierName}). Esta acción no se puede deshacer.`,
+      itemName: `${commitment.invoiceFolio} (${commitment.supplierName})`,
     });
     if (!ok) return;
     setBusy(true);

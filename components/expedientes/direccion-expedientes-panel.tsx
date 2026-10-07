@@ -100,6 +100,7 @@ function ExpedienteAdminActions({
                 title: "¿Eliminar gasto directo?",
                 message: `Se eliminará el expediente «${order.title}» (Proceso B). Esta acción no se puede deshacer.`,
                 confirmLabel: "Eliminar",
+                itemName: order.title,
               });
               if (!ok) return;
               setBusy(true);
@@ -150,6 +151,7 @@ function ExpedienteAdminActions({
                 title: "¿Eliminar factura (Proceso C)?",
                 message: `Se eliminará el compromiso «${expedienteFolioLabel(order)}». Si tiene una OC sin pagos, también se eliminará.`,
                 confirmLabel: "Eliminar",
+                itemName: expedienteFolioLabel(order),
               });
               if (!ok) return;
               setBusy(true);
@@ -196,6 +198,7 @@ function ExpedienteAdminActions({
                 title: "¿Eliminar expediente?",
                 message: `Se eliminará la orden «${expedienteFolioLabel(order)}» y su expediente asociado.`,
                 confirmLabel: "Eliminar",
+                itemName: expedienteFolioLabel(order),
               });
               if (!ok) return;
               setBusy(true);

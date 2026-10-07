@@ -141,6 +141,7 @@ export function ObrasListView({ onRegisterRefresh }: { onRegisterRefresh?: (fn: 
     const ok = await confirmDelete({
       title: "Eliminar obra",
       message,
+      itemName: obra.name,
     });
     if (!ok) return;
     setBusy(true);

@@ -266,6 +266,7 @@ export function OrderActionMenu({
     const ok = await confirmDelete({
       title: "Eliminar orden de compra",
       message: "Se eliminará esta orden de compra y sus documentos asociados.",
+      itemName: order.title,
     });
     if (!ok) return;
     setBusy(true);

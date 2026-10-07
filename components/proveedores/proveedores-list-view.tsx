@@ -217,6 +217,7 @@ export function ProveedoresListView({ onRegisterRefresh }: { onRegisterRefresh?:
     const ok = await confirmDelete({
       title: "Eliminar proveedor",
       message,
+      itemName: supplier.displayName,
     });
     if (!ok) return;
     try {

@@ -160,6 +160,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
     const ok = await confirmDelete({
       title: "Eliminar obra",
       message,
+      itemName: obra.name,
     });
     if (!ok) return;
     setBusy(true);

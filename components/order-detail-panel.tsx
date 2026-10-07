@@ -172,6 +172,7 @@ export function OrderDetailPanel({
     const ok = await confirmDelete({
       title: "Eliminar orden de compra",
       message: "Se eliminará esta orden de compra y sus documentos asociados.",
+      itemName: order.title,
     });
     if (!ok) return;
     setBusy(true);
@@ -197,6 +198,7 @@ export function OrderDetailPanel({
       title: "Eliminar pago",
       message: "Se eliminará este registro de pago y se recalculará el saldo de la OC.",
       confirmLabel: "Eliminar pago",
+      itemName: `pago de «${order.title}»`,
     });
     if (!ok) return;
     setBusy(true);
@@ -224,6 +226,7 @@ export function OrderDetailPanel({
       title: "Eliminar archivo",
       message: `Se eliminará el archivo «${fileName}» de la orden.`,
       confirmLabel: "Eliminar archivo",
+      itemName: fileName,
     });
     if (!ok) return;
     setBusy(true);

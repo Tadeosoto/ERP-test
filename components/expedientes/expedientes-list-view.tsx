@@ -63,6 +63,7 @@ export function ExpedientesListView() {
     const ok = await confirmDelete({
       title: "Eliminar expediente",
       message: `Se eliminará ${e.folio} — ${e.name}. Solo si no tiene elementos vinculados.`,
+      itemName: `${e.folio} — ${e.name}`,
     });
     if (!ok) return;
     try {

@@ -301,6 +301,7 @@ export function CompromisosRecurrentesView({
     const ok = await confirmDelete({
       title: "Eliminar gasto",
       message: `Se eliminará ${row.concept} de ${row.supplierName}. El historial de los demás periodos se conserva.`,
+      itemName: `${row.concept} (${row.supplierName})`,
     });
     if (!ok) return;
     const res = await fetch(`/api/recurring-commitments/${row.id}`, { method: "DELETE", credentials: "include" });

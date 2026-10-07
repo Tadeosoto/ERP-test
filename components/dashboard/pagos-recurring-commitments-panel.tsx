@@ -62,6 +62,7 @@ function CommitmentActionMenu({
     const ok = await confirmDelete({
       title: "Eliminar gasto",
       message: `Se eliminará el gasto con ${commitment.supplierName} — ${commitment.concept}.`,
+      itemName: `${commitment.concept} (${commitment.supplierName})`,
     });
     if (!ok) return;
     try {

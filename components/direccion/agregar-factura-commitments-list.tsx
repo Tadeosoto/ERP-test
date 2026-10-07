@@ -66,6 +66,7 @@ function RowActions({
               title: "¿Eliminar factura?",
               message: `Se eliminará «${commitment.invoiceFolio}» (${commitment.supplierName}). Si tiene OC sin pagos, también se eliminará.`,
               confirmLabel: "Eliminar",
+              itemName: `${commitment.invoiceFolio} (${commitment.supplierName})`,
             });
             if (!ok) return;
             setBusy(true);
