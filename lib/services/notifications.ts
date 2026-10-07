@@ -125,8 +125,8 @@ export const NotificationEvents = {
   }),
   orderAuthorized: (orderTitle: string, byName: string) => ({
     type: "order_authorized",
-    message: `${byName} autorizó «${orderTitle}». Administración: queda lista para pagar.`,
-    roles: ["pagos"] as Role[],
+    message: `${byName} autorizó «${orderTitle}». Queda lista para pagar; Ingeniería y Compras pueden dar seguimiento.`,
+    roles: ["pagos", "ingeniero", "compras"] as Role[],
   }),
   sentProcesoC: (orderTitle: string) => ({
     type: "order_sent_proceso_c",

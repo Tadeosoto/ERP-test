@@ -1,10 +1,11 @@
 "use client";
 
-import Link from "next/link";
 import { useParams } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { OrderDetailPanel } from "@/components/order-detail-panel";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
+import { orderDisplayCode } from "@/lib/dashboard/compras-dashboard";
 import type { PurchaseOrderDto } from "@/lib/domain/types";
 
 export default function OrderDetailPage() {
@@ -40,20 +41,30 @@ export default function OrderDetailPage() {
 
   if (notFound || !order) {
     return (
-      <div className="card p-8 text-center text-base text-zinc-600">
-        Orden no encontrada.
-        <Link href="/obras" className="mt-4 block font-medium text-orange-700 underline">
-          Volver a obras
-        </Link>
+      <div className="card space-y-4 p-8 text-center text-base text-zinc-600">
+        <p>Orden no encontrada.</p>
+        <PageBreadcrumb
+          className="flex justify-center"
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Obras", href: "/obras" },
+            { label: "Órdenes", href: "/ordenes" },
+          ]}
+        />
       </div>
     );
   }
 
   return (
     <div>
-      <Link href="/obras" className="text-sm font-medium text-orange-700 hover:underline">
-        ← Volver a obras
-      </Link>
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Obras", href: "/obras" },
+          { label: order.obraName, href: `/obras/${order.obraId}` },
+          { label: orderDisplayCode(order) },
+        ]}
+      />
       <div className="mt-2">
         <OrderDetailPanel order={order} onUpdated={load} />
       </div>

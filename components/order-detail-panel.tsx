@@ -183,7 +183,7 @@ export function OrderDetailPanel({
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar.");
       showSuccess("Orden eliminada.");
-      router.push("/inicio");
+      router.push(order.obraId ? `/obras/${order.obraId}` : "/ordenes");
       router.refresh();
     } catch (e) {
       showError(e instanceof Error ? e.message : "No se pudo eliminar.");
@@ -293,16 +293,35 @@ export function OrderDetailPanel({
         </div>
       </div>
 
-      {order.paymentDueDate && (
-        <p className="mt-2 text-xs font-medium text-teal-800">
-          Límite de pago:{" "}
-          {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
-            day: "numeric",
-            month: "short",
-            year: "numeric",
-          })}
-        </p>
-      )}
+      <div className="mt-3 flex flex-wrap gap-2">
+        {order.paymentDueDate ? (
+          <div className="rounded-xl border border-teal-200 bg-teal-50 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-teal-700">Límite de pago</p>
+            <p className="text-sm font-bold tabular-nums text-teal-950">
+              {new Date(order.paymentDueDate).toLocaleDateString("es-MX", {
+                day: "numeric",
+                month: "short",
+                year: "numeric",
+              })}
+            </p>
+          </div>
+        ) : null}
+        {order.paymentTerms ? (
+          <div className="rounded-xl border border-zinc-200 bg-zinc-50 px-3 py-2">
+            <p className="text-[10px] font-semibold uppercase tracking-wide text-zinc-500">Condiciones</p>
+            <p className="text-sm font-semibold text-zinc-800">{order.paymentTerms}</p>
+          </div>
+        ) : null}
+      </div>
+
+      {order.description.trim() ? (
+        <div className="mt-3 rounded-xl border border-amber-100 bg-amber-50/60 px-3 py-2.5">
+          <p className="text-[10px] font-semibold uppercase tracking-wide text-amber-800">
+            Comentarios / Observaciones
+          </p>
+          <p className="mt-1 whitespace-pre-wrap text-sm text-amber-950">{order.description.trim()}</p>
+        </div>
+      ) : null}
 
       <div className="mt-3 grid grid-cols-3 gap-2 sm:gap-3">
         <div className="rounded-xl border border-orange-100 bg-orange-50/50 px-2.5 py-2 sm:px-3">
@@ -452,25 +471,36 @@ export function OrderDetailPanel({
   );
 
   const commentsAside = (
-    <div id="comentarios" className="dash-panel scroll-mt-24 p-3">
-      <h2 className="dash-section-title">Comentarios de ingeniería</h2>
-      {order.comments.length === 0 ? (
-        <p className="mt-2 text-xs text-zinc-400">Sin comentarios.</p>
-      ) : (
-        <ul className="mt-2 max-h-[18rem] space-y-2 overflow-y-auto pr-0.5">
-          {order.comments.map((c) => (
-            <li
-              key={c.id}
-              className={`rounded-xl px-2.5 py-2 text-xs leading-snug ${
-                c.kind === "rejection" ? "bg-red-50 text-red-900" : "bg-teal-50 text-teal-900"
-              }`}
-            >
-              <p className="font-semibold">{c.authorName}</p>
-              <p className="mt-0.5">{c.body}</p>
-            </li>
-          ))}
-        </ul>
-      )}
+    <div id="comentarios" className="space-y-3">
+      {order.description.trim() ? (
+        <div className="dash-panel scroll-mt-24 p-3">
+          <h2 className="dash-section-title">Observaciones de la OC</h2>
+          <p className="mt-2 whitespace-pre-wrap text-xs leading-snug text-zinc-700">
+            {order.description.trim()}
+          </p>
+        </div>
+      ) : null}
+      <div className="dash-panel scroll-mt-24 p-3">
+        <h2 className="dash-section-title">Comentarios de ingeniería</h2>
+        <p className="mt-1 text-[11px] text-zinc-500">Aprobaciones, correcciones y notas al autorizar.</p>
+        {order.comments.length === 0 ? (
+          <p className="mt-2 text-xs text-zinc-400">Sin comentarios de aprobación o corrección.</p>
+        ) : (
+          <ul className="mt-2 max-h-[18rem] space-y-2 overflow-y-auto pr-0.5">
+            {order.comments.map((c) => (
+              <li
+                key={c.id}
+                className={`rounded-xl px-2.5 py-2 text-xs leading-snug ${
+                  c.kind === "rejection" ? "bg-red-50 text-red-900" : "bg-teal-50 text-teal-900"
+                }`}
+              >
+                <p className="font-semibold">{c.authorName}</p>
+                <p className="mt-0.5">{c.body}</p>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
     </div>
   );
 
@@ -884,17 +914,35 @@ export function OrderDetailPanel({
           </div>
         )}
 
+        {canAuthorizeOrder(order.status, user.role) ? null : user.role === "ingeniero" && order.status === "awaitingAuthorization" ? (
+          <p className="mt-4 rounded-2xl bg-violet-50 px-4 py-3 text-base text-violet-950">
+            Ya firmaste esta OC. Ahora Administración o Dirección deben <strong>autorizarla</strong> para
+            pasar a pago. Te avisaremos cuando quede autorizada.
+          </p>
+        ) : user.role === "ingeniero" &&
+          (order.status === "awaitingPayment" || order.status === "paid") ? (
+          <p className="mt-4 rounded-2xl bg-emerald-50 px-4 py-3 text-base text-emerald-900">
+            Esta OC ya fue <strong>autorizada</strong>. Administración puede registrar el pago; tú puedes
+            seguir el avance en documentos e historial.
+          </p>
+        ) : null}
+
         {!canAct &&
           order.status !== "completed" &&
           !canUploadOcPdf(order.status, user.role) &&
           !canEngineerAct(order.status, user.role) &&
+          !canAuthorizeOrder(order.status, user.role) &&
           !canRegisterPayment(order.status, user.role) &&
           !canSetPaymentDeadline(order.status, user.role) &&
           !canUploadPaymentReceipt(order.status, user.role) &&
           !canMarkAwaitingInvoice(order.status, user.role) &&
           !canUploadInvoice(order.status, user.role) &&
           !canAccountingValidate(order.status, user.role) &&
-          !canAccountingResolveDifference(order.status, user.role) && (
+          !canAccountingResolveDifference(order.status, user.role) &&
+          !(user.role === "ingeniero" &&
+            (order.status === "awaitingAuthorization" ||
+              order.status === "awaitingPayment" ||
+              order.status === "paid")) && (
             <p className="mt-4 text-base text-zinc-600">
               Por ahora no hay acciones para tu rol. Puedes consultar documentos arriba.
             </p>

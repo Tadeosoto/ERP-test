@@ -6,6 +6,7 @@ import { useCallback, useEffect, useMemo, useState, Suspense } from "react";
 import { ProveedorModal } from "@/components/compras/proveedor-modal";
 import { SupplierCombobox } from "@/components/ui/supplier-combobox";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { ProcessFlowDiagram } from "@/components/process-flow-diagram";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
@@ -97,6 +98,8 @@ function SummaryPanel({
   supplierLabel,
   ocDate,
   paymentTerms,
+  paymentDueDate,
+  description,
   currency,
   totalAmount,
   hasPdf,
@@ -108,6 +111,8 @@ function SummaryPanel({
   supplierLabel: string;
   ocDate: string;
   paymentTerms: string;
+  paymentDueDate: string;
+  description: string;
   currency: string;
   totalAmount: number;
   hasPdf: boolean;
@@ -135,6 +140,18 @@ function SummaryPanel({
           <dt className="text-xs text-zinc-500">Condiciones de pago</dt>
           <dd className="font-medium text-zinc-800">{paymentTerms || "—"}</dd>
         </div>
+        <div>
+          <dt className="text-xs text-zinc-500">Límite de pago</dt>
+          <dd className="font-medium text-zinc-800">
+            {paymentDueDate ? formatDateShort(paymentDueDate) : "—"}
+          </dd>
+        </div>
+        {description.trim() ? (
+          <div>
+            <dt className="text-xs text-zinc-500">Comentarios</dt>
+            <dd className="whitespace-pre-wrap font-medium text-zinc-800">{description.trim()}</dd>
+          </div>
+        ) : null}
         <div>
           <dt className="text-xs text-zinc-500">Moneda</dt>
           <dd className="font-medium text-zinc-800">{currency === "MXN" ? "MXN — Peso mexicano" : currency}</dd>
@@ -478,11 +495,14 @@ function NuevaOcWizard() {
 
   if (user && !canCreateOrder(user.role)) {
     return (
-      <div className="card p-8">
+      <div className="card space-y-4 p-8">
         <p className="text-base">Solo Compras o Administración pueden crear órdenes de compra.</p>
-        <Link href="/inicio" className="mt-4 inline-block text-orange-700 underline">
-          Volver
-        </Link>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Órdenes", href: "/ordenes" },
+          ]}
+        />
       </div>
     );
   }
@@ -749,9 +769,16 @@ function NuevaOcWizard() {
 
       <div className="flex flex-wrap items-start justify-between gap-4">
         <div>
-          <Link href="/inicio" className="text-sm font-medium text-orange-700 hover:underline">
-            ← Inicio
-          </Link>
+          <PageBreadcrumb
+            items={[
+              { label: "Inicio", href: "/inicio" },
+              { label: "Órdenes", href: "/ordenes" },
+              ...(obraId
+                ? [{ label: obras.find((o) => o.id === obraId)?.name ?? "Obra", href: `/obras/${obraId}` }]
+                : []),
+              { label: "Nueva OC" },
+            ]}
+          />
           <h1 className="mt-1 text-2xl font-bold text-zinc-900 sm:text-3xl">Nueva OC</h1>
           <p className="mt-1 text-sm text-zinc-600">
             {step === 3
@@ -760,7 +787,7 @@ function NuevaOcWizard() {
           </p>
         </div>
         <div className="flex flex-wrap gap-2">
-          <Link href="/inicio" className="btn-secondary">
+          <Link href={obraId ? `/obras/${obraId}` : "/ordenes"} className="btn-secondary">
             Cancelar
           </Link>
           {step > 1 && (
@@ -918,6 +945,9 @@ function NuevaOcWizard() {
                 </label>
                 <label className="block sm:col-span-2">
                   <span className="text-sm font-medium text-zinc-800">Comentarios / Observaciones (opcional)</span>
+                  <p className="mt-0.5 text-xs text-zinc-500">
+                    Se verán en el detalle de la OC para Ingeniería, Administración y el resto del equipo.
+                  </p>
                   <textarea
                     value={description}
                     onChange={(e) => setDescription(e.target.value)}
@@ -927,15 +957,6 @@ function NuevaOcWizard() {
                     className={`${inputCls} py-2`}
                   />
                   <p className="mt-1 text-right text-xs text-zinc-400">{description.length}/500</p>
-                </label>
-                <label className="block sm:col-span-2">
-                  <span className="text-sm font-medium text-zinc-800">Referencia interna (opcional)</span>
-                  <input
-                    value={internalReference}
-                    onChange={(e) => setInternalReference(e.target.value)}
-                    placeholder="Ej. Proyecto, partida, concepto, etc."
-                    className={inputCls}
-                  />
                 </label>
               </div>
               <div className="mt-5 rounded-xl border border-orange-200 bg-orange-50/60 px-4 py-3 text-sm text-orange-900">
@@ -1169,12 +1190,18 @@ function NuevaOcWizard() {
                     <dt className="text-zinc-500">Condiciones de pago</dt>
                     <dd className="font-medium">{paymentTerms}</dd>
                   </div>
-                  {description && (
+                  <div>
+                    <dt className="text-zinc-500">Límite de pago</dt>
+                    <dd className="font-medium">
+                      {paymentDueDate ? formatDateShort(paymentDueDate) : "—"}
+                    </dd>
+                  </div>
+                  {description.trim() ? (
                     <div className="sm:col-span-2">
                       <dt className="text-zinc-500">Comentarios / Observaciones</dt>
-                      <dd className="font-medium">{description}</dd>
+                      <dd className="whitespace-pre-wrap font-medium">{description.trim()}</dd>
                     </div>
-                  )}
+                  ) : null}
                 </dl>
               </section>
 
@@ -1361,6 +1388,8 @@ function NuevaOcWizard() {
           supplierLabel={supplierLabel}
           ocDate={ocDate}
           paymentTerms={paymentTerms}
+          paymentDueDate={paymentDueDate}
+          description={description}
           currency={currency}
           totalAmount={parseAmountInput(totalAmount)}
           hasPdf={Boolean(uploadedPdf || pdfFile)}

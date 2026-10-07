@@ -1,10 +1,10 @@
 "use client";
 
-import Link from "next/link";
 import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import {
@@ -280,8 +280,19 @@ function DirectExpenseDetailInner() {
     }
   }
 
+  const listHref = user?.role === "ingeniero" ? "/solicitudes/nueva" : "/pagos#proceso-b";
+  const listLabel = user?.role === "ingeniero" ? "Solicitudes" : "Pagos";
+
   return (
     <div className="mx-auto max-w-2xl space-y-6">
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: listLabel, href: listHref },
+          { label: expense.obraName, href: `/obras/${expense.obraId}` },
+          { label: expense.category || "Gasto directo" },
+        ]}
+      />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase text-teal-600">Proceso B · Gasto directo</p>
@@ -743,20 +754,6 @@ function DirectExpenseDetailInner() {
         </section>
       )}
 
-      <div className="flex flex-wrap gap-3 text-sm">
-        {user?.role === "ingeniero" ? (
-          <Link href="/solicitudes/nueva" className="text-teal-700 underline">
-            Volver a Solicitudes
-          </Link>
-        ) : (
-          <Link href="/pagos#proceso-b" className="text-teal-700 underline">
-            Volver a Pagos (Proceso B)
-          </Link>
-        )}
-        <Link href="/inicio" className="text-zinc-500 underline">
-          Inicio
-        </Link>
-      </div>
     </div>
   );
 }

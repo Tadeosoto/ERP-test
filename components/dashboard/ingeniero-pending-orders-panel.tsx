@@ -57,6 +57,11 @@ function IngenieroOrderMobileCard({
       >
         <SystemStatusBadge status={order.status} size="xs" />
         <span className="text-xs tabular-nums text-zinc-500">{formatDateShort(received)}</span>
+        {order.paymentDueDate ? (
+          <span className="text-[11px] font-medium text-teal-800">
+            Límite {formatDateShort(order.paymentDueDate)}
+          </span>
+        ) : null}
         <span className="text-sm font-semibold tabular-nums text-zinc-900">
           {formatMoney(order.totalAmount, order.currency)}
         </span>

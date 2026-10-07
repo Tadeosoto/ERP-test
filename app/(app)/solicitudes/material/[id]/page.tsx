@@ -5,6 +5,7 @@ import { useParams, useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { MaterialLinesEditor } from "@/components/solicitudes/material-lines-editor";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import type { MaterialRequestDto, ObraDto } from "@/lib/domain/types";
@@ -188,6 +189,14 @@ function MaterialRequestDetailInner() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: canManage ? "Solicitudes Ingeniería" : "Solicitudes", href: backHref },
+          { label: req.obraName, href: `/obras/${req.obraId}` },
+          { label: "Solicitud de material" },
+        ]}
+      />
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-xs font-bold uppercase text-orange-600">Proceso A · Solicitud de material</p>
@@ -366,9 +375,6 @@ function MaterialRequestDetailInner() {
         </section>
       )}
 
-      <Link href={backHref} className="text-sm text-zinc-500 underline">
-        Volver a solicitudes
-      </Link>
     </div>
   );
 }

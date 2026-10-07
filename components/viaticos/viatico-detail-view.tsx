@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import type { ViaticoDetailDto, ViaticoExpenseDto, ViaticoReceiptKind } from "@/lib/domain/types";
 import { VIATICO_RECEIPT_LABEL } from "@/lib/viaticos/summary";
@@ -75,7 +74,6 @@ function ReceiptFiles({ expense }: { expense: ViaticoExpenseDto }) {
 }
 
 export function ViaticoDetailView({ viaticoId }: { viaticoId: string }) {
-  const router = useRouter();
   const { showSuccess, showError } = useFeedback();
   const [viatico, setViatico] = useState<ViaticoDetailDto | null>(null);
   const [loading, setLoading] = useState(true);
@@ -196,9 +194,12 @@ export function ViaticoDetailView({ viaticoId }: { viaticoId: string }) {
     return (
       <div className="space-y-3">
         <p className="text-sm text-zinc-600">Ese viático ya no está.</p>
-        <button type="button" onClick={() => router.push("/viaticos")} className="text-sm font-semibold text-orange-700">
-          Volver
-        </button>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Viáticos", href: "/viaticos" },
+          ]}
+        />
       </div>
     );
   }
@@ -209,9 +210,13 @@ export function ViaticoDetailView({ viaticoId }: { viaticoId: string }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href="/viaticos" className="text-sm font-medium text-orange-700 hover:underline">
-            Viáticos
-          </Link>
+          <PageBreadcrumb
+            items={[
+              { label: "Inicio", href: "/inicio" },
+              { label: "Viáticos", href: "/viaticos" },
+              { label: viatico.employeeName },
+            ]}
+          />
           <h1 className="mt-1 text-2xl font-bold text-zinc-900">{viatico.employeeName}</h1>
           <p className="text-sm text-zinc-500">{viatico.obraName}</p>
         </div>

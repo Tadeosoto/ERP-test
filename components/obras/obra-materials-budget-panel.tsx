@@ -6,8 +6,8 @@ import {
 } from "@/lib/obras/materials-budget";
 import { formatMoney } from "@/lib/format";
 
-const SIZE = 220;
-const STROKE = 28;
+const SIZE = 200;
+const STROKE = 26;
 const R = (SIZE - STROKE) / 2;
 const C = 2 * Math.PI * R;
 
@@ -60,10 +60,31 @@ function SegmentBadge({
         : "border-zinc-200 text-zinc-600";
   return (
     <div
-      className={`inline-flex h-16 w-16 flex-col items-center justify-center rounded-full border bg-white text-center shadow-sm ${ring}`}
+      className={`inline-flex h-14 w-14 flex-col items-center justify-center rounded-full border bg-white text-center shadow-sm ${ring}`}
     >
-      <span className="text-sm font-bold tabular-nums">{pct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}%</span>
+      <span className="text-xs font-bold tabular-nums">
+        {pct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}%
+      </span>
       <span className="text-[9px] font-medium leading-tight">{label}</span>
+    </div>
+  );
+}
+
+function Metric({
+  label,
+  value,
+  valueClass,
+}: {
+  label: string;
+  value: string;
+  valueClass: string;
+}) {
+  return (
+    <div className="min-w-0 rounded-lg border border-zinc-100 bg-zinc-50/80 px-2.5 py-1.5">
+      <dt className="text-[11px] font-medium text-zinc-500">{label}</dt>
+      <dd className={`mt-0.5 break-words text-sm font-bold leading-snug tabular-nums ${valueClass}`}>
+        {value}
+      </dd>
     </div>
   );
 }
@@ -77,62 +98,64 @@ export function ObraMaterialsBudgetPanel({ stats }: { stats: MaterialsBudgetStat
   const overPct = stats.isOver ? displayPct - 100 : 0;
 
   return (
-    <section className="card overflow-hidden p-4 sm:p-6">
-      <div className="flex flex-col gap-6 lg:flex-row lg:items-center lg:justify-between">
+    <section className="@container card flex h-full flex-col overflow-hidden p-4 sm:p-5">
+      <div className="min-h-[4.5rem]">
+        <h2 className="text-lg font-bold text-zinc-900">Límite de materiales</h2>
+        <p className="mt-1 line-clamp-2 text-sm text-zinc-600">
+          Tope acordado con el mandante por materiales. Superarlo genera pérdida; conviene monitorear
+          los pagos y actuar si se acerca o rebasa este monto.
+        </p>
+      </div>
+
+      <div className="mt-3 flex min-h-0 flex-1 flex-col gap-4 @[640px]:flex-row @[640px]:items-start @[640px]:justify-between">
         <div className="min-w-0 flex-1">
-          <h2 className="text-lg font-bold text-zinc-900">Límite de materiales</h2>
-          <p className="mt-1 text-sm text-zinc-600">
-            Tope acordado con el mandante por materiales. Superarlo genera pérdida; conviene monitorear
-            los pagos y actuar si se acerca o rebasa este monto.
-          </p>
-          <dl className="mt-4 grid gap-3 sm:grid-cols-3">
-            <div>
-              <dt className="text-xs font-medium text-zinc-500">Límite acordado</dt>
-              <dd className="text-lg font-bold tabular-nums text-zinc-900">{formatMoney(stats.budget, "MXN")}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500">Pagado</dt>
-              <dd className="text-lg font-bold tabular-nums text-blue-700">{formatMoney(stats.spent, "MXN")}</dd>
-            </div>
-            <div>
-              <dt className="text-xs font-medium text-zinc-500">
-                {stats.isOver ? "Pérdida (excedente)" : "Margen restante"}
-              </dt>
-              <dd
-                className={`text-lg font-bold tabular-nums ${stats.isOver ? "text-red-700" : "text-emerald-700"}`}
-              >
-                {stats.isOver ? formatMoney(stats.overAmount, "MXN") : formatMoney(stats.remaining, "MXN")}
-              </dd>
-            </div>
+          <dl className="grid grid-cols-1 gap-1.5">
+            <Metric
+              label="Límite acordado"
+              value={formatMoney(stats.budget, "MXN")}
+              valueClass="text-zinc-900"
+            />
+            <Metric
+              label="Pagado"
+              value={formatMoney(stats.spent, "MXN")}
+              valueClass="text-blue-700"
+            />
+            <Metric
+              label={stats.isOver ? "Pérdida (excedente)" : "Margen restante"}
+              value={
+                stats.isOver
+                  ? formatMoney(stats.overAmount, "MXN")
+                  : formatMoney(stats.remaining, "MXN")
+              }
+              valueClass={stats.isOver ? "text-red-700" : "text-emerald-700"}
+            />
           </dl>
           {stats.isOver ? (
-            <p className="mt-4 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-semibold text-red-800">
-              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — los pagos superan
-              el tope acordado. El excedente de {formatMoney(stats.overAmount, "MXN")} se considera pérdida; conviene
-              revisar gastos y tomar medidas para reducirlo.
+            <p className="mt-3 rounded-xl border border-red-200 bg-red-50 px-3 py-2 text-xs font-semibold text-red-800">
+              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — los pagos
+              superan el tope. Excedente {formatMoney(stats.overAmount, "MXN")}.
             </p>
           ) : displayPct >= 90 ? (
-            <p className="mt-4 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm font-medium text-amber-900">
-              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — queda poco margen
-              ({formatMoney(stats.remaining, "MXN")}). Evitar superar el tope acordado con el mandante.
+            <p className="mt-3 rounded-xl border border-amber-200 bg-amber-50 px-3 py-2 text-xs font-medium text-amber-900">
+              {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}% del límite — queda poco
+              margen ({formatMoney(stats.remaining, "MXN")}).
             </p>
           ) : null}
         </div>
 
-        <div className="flex flex-col items-center gap-4 sm:flex-row lg:flex-col xl:flex-row">
+        <div className="flex shrink-0 flex-col items-center gap-2 self-center @[640px]:self-start">
           <div className="relative">
             <DonutChart stats={stats} />
             <div className="pointer-events-none absolute inset-0 flex flex-col items-center justify-center">
               <span
-                className={`text-3xl font-bold tabular-nums ${stats.isOver ? "text-red-700" : "text-zinc-900"}`}
+                className={`text-2xl font-bold tabular-nums ${stats.isOver ? "text-red-700" : "text-zinc-900"}`}
               >
                 {displayPct.toLocaleString("es-MX", { maximumFractionDigits: 1 })}%
               </span>
               <span className="text-[11px] font-medium text-zinc-500">del límite</span>
             </div>
           </div>
-
-          <div className="flex flex-wrap items-center justify-center gap-3">
+          <div className="flex flex-wrap items-center justify-center gap-2">
             {stats.spent > 0 && (
               <SegmentBadge
                 pct={stats.isOver ? 100 : paidPct}

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useState } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
@@ -211,7 +212,7 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
       const data = (await res.json()) as { error?: string };
       if (!res.ok) throw new Error(data.error ?? "No se pudo eliminar.");
       showSuccess("Factura eliminada.");
-      router.push(user?.role === "direccion" ? "/agregar-factura" : "/inicio");
+      router.push(user?.role === "direccion" ? "/agregar-factura" : "/facturas");
     } catch (e) {
       showError(e instanceof Error ? e.message : "Error.");
     } finally {
@@ -245,14 +246,20 @@ function CompromisoCDetailInner({ params }: { params: Promise<{ id: string }> })
       )
     : false;
 
+  const facturasHref = user?.role === "direccion" ? "/agregar-factura" : "/facturas";
+
   return (
     <div className="mx-auto max-w-3xl space-y-4 pb-8">
-      <Link
-        href={user?.role === "direccion" ? "/agregar-factura" : "/inicio"}
-        className="text-sm font-medium text-violet-700 hover:underline"
-      >
-        ← Volver
-      </Link>
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Facturas", href: facturasHref },
+          ...(commitment.obraId && commitment.obraName
+            ? [{ label: commitment.obraName, href: `/obras/${commitment.obraId}` }]
+            : []),
+          { label: commitment.invoiceFolio },
+        ]}
+      />
 
       <header className="card p-5">
         <div className="flex flex-wrap items-start justify-between gap-3">

@@ -5,9 +5,11 @@ import { useRouter } from "next/navigation";
 import { useCallback, useEffect, useState } from "react";
 import { ObraOrdersPanel } from "@/components/obras/obra-orders-panel";
 import { ObraMaterialsBudgetPanel } from "@/components/obras/obra-materials-budget-panel";
+import { ObraSupplierSpendPanel } from "@/components/obras/obra-supplier-spend-panel";
 import { ObraEngineerPicker } from "@/components/obras/obra-engineer-picker";
 import { IconPlus, IconSave } from "@/components/ui/action-icons";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useConfirmDelete } from "@/components/ui/confirm-delete-provider";
 import { useSession } from "@/components/session-provider";
@@ -16,6 +18,7 @@ import { canCreateOrder, canConfigureObra } from "@/lib/domain/transitions";
 import {
   computeMaterialsBudgetStats,
   computeMaterialsSpent,
+  computeSupplierSpendByObra,
 } from "@/lib/obras/materials-budget";
 import type { DirectExpenseDto, ObraDto, PurchaseOrderDto } from "@/lib/domain/types";
 import {
@@ -96,11 +99,15 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
 
   if (notFound || !obra) {
     return (
-      <div className="card p-8 text-center">
+      <div className="card space-y-4 p-8 text-center">
         <p className="text-base text-zinc-600">Obra no encontrada.</p>
-        <Link href="/obras" className="mt-4 inline-block text-orange-700 underline">
-          Volver a obras
-        </Link>
+        <PageBreadcrumb
+          className="flex justify-center"
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Obras", href: "/obras" },
+          ]}
+        />
       </div>
     );
   }
@@ -108,6 +115,7 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   const fin = computeObraFinancials(orders, obra.id);
   const materialsSpent = computeMaterialsSpent(orders, expenses, obra.id);
   const budgetStats = computeMaterialsBudgetStats(obra.maxMaterialsBudget, materialsSpent);
+  const supplierSpend = computeSupplierSpendByObra(orders, obra.id);
   const pctPagado = fin.totalComprado > 0 ? Math.round((fin.totalPagado / fin.totalComprado) * 100) : 0;
   const pctPendiente = 100 - pctPagado;
   const canEditObra = user ? canConfigureObra(user.role) : false;
@@ -208,9 +216,13 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/obras" className="text-sm font-medium text-orange-700 hover:underline">
-          ← Todas las obras
-        </Link>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Obras", href: "/obras" },
+            { label: obra.name },
+          ]}
+        />
         <div className="mt-3 flex flex-wrap items-start justify-between gap-4">
           <div className="min-w-0">
             <div className="flex flex-wrap items-center gap-3">
@@ -258,7 +270,10 @@ export function ObraDetailView({ obraId }: { obraId: string }) {
         </div>
       </div>
 
-      <ObraMaterialsBudgetPanel stats={budgetStats} />
+      <div className={`grid items-stretch gap-4 ${budgetStats.hasBudget ? "xl:grid-cols-2" : ""}`}>
+        <ObraMaterialsBudgetPanel stats={budgetStats} />
+        <ObraSupplierSpendPanel slices={supplierSpend.slices} total={supplierSpend.total} />
+      </div>
 
       {editOpen && canEditObra && (
         <section className="card p-5">

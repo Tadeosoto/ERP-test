@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { MovimientoForm } from "@/components/tarjetas/movimiento-form";
 import type { CompanyCardDto, CompanyCardMovementDto, EmployeeDto, ObraDto, Role } from "@/lib/domain/types";
@@ -60,13 +60,18 @@ export function MovimientoDetailView({ movementId }: { movementId: string }) {
       return;
     }
     showSuccess("Movimiento eliminado.");
-    router.push("/tarjetas");
+    router.push(movement?.cardId ? `/tarjetas/${movement.cardId}` : "/tarjetas");
   }
 
   if (loading) return <LoadingScreen message="Cargando movimiento" />;
   if (!movement) {
     return (
-      <Link href="/tarjetas" className="text-sm font-semibold text-orange-700">Volver a tarjetas</Link>
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Tarjetas", href: "/tarjetas" },
+        ]}
+      />
     );
   }
 
@@ -94,7 +99,14 @@ export function MovimientoDetailView({ movementId }: { movementId: string }) {
     <div className="space-y-5">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
-          <Link href={`/tarjetas/${movement.cardId}`} className="text-sm font-medium text-orange-700 hover:underline">{movement.cardLabel}</Link>
+          <PageBreadcrumb
+            items={[
+              { label: "Inicio", href: "/inicio" },
+              { label: "Tarjetas", href: "/tarjetas" },
+              { label: movement.cardLabel, href: `/tarjetas/${movement.cardId}` },
+              { label: movement.kind === "carga" ? "Carga de saldo" : movement.concept },
+            ]}
+          />
           <h1 className="mt-1 text-2xl font-bold text-zinc-900">{movement.kind === "carga" ? "Carga de saldo" : movement.concept}</h1>
         </div>
         <div className="flex gap-2">

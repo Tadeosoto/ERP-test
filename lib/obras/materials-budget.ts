@@ -1,4 +1,5 @@
 import type { DirectExpenseDto, PurchaseOrderDto } from "@/lib/domain/types";
+import { paymentBasisTotal } from "@/lib/domain/order-fx";
 
 export type MaterialsBudgetStats = {
   budget: number;
@@ -9,6 +10,71 @@ export type MaterialsBudgetStats = {
   isOver: boolean;
   hasBudget: boolean;
 };
+
+export type SupplierSpendSlice = {
+  key: string;
+  supplierName: string;
+  amount: number;
+  pct: number;
+  color: string;
+};
+
+const SUPPLIER_COLORS = [
+  "#2563eb",
+  "#f59e0b",
+  "#10b981",
+  "#8b5cf6",
+  "#ef4444",
+  "#06b6d4",
+  "#f97316",
+  "#64748b",
+];
+
+/** Compra de material por proveedor en una obra (OC no borrador, montos en MXN). */
+export function computeSupplierSpendByObra(
+  orders: PurchaseOrderDto[],
+  obraId: string,
+  maxSlices = 6
+): { slices: SupplierSpendSlice[]; total: number } {
+  const totals = new Map<string, number>();
+  for (const order of orders) {
+    if (order.obraId !== obraId || order.status === "draft") continue;
+    const amount = paymentBasisTotal(order);
+    if (amount <= 0) continue;
+    const name = order.supplierName.trim() || "Sin proveedor";
+    totals.set(name, (totals.get(name) ?? 0) + amount);
+  }
+
+  const ranked = [...totals.entries()]
+    .map(([supplierName, amount]) => ({ supplierName, amount }))
+    .sort((a, b) => b.amount - a.amount);
+
+  const total = ranked.reduce((sum, row) => sum + row.amount, 0);
+  if (total <= 0) return { slices: [], total: 0 };
+
+  const head = ranked.slice(0, Math.max(1, maxSlices - 1));
+  const tail = ranked.slice(Math.max(1, maxSlices - 1));
+  const rows =
+    tail.length > 1
+      ? [
+          ...head,
+          {
+            supplierName: "Otros",
+            amount: tail.reduce((sum, row) => sum + row.amount, 0),
+          },
+        ]
+      : ranked.slice(0, maxSlices);
+
+  const slices = rows.map((row, index) => ({
+    key: `${row.supplierName}-${index}`,
+    supplierName: row.supplierName,
+    amount: row.amount,
+    pct: (row.amount / total) * 100,
+    color: SUPPLIER_COLORS[index % SUPPLIER_COLORS.length],
+  }));
+
+  return { slices, total };
+}
 
 export function computeMaterialsSpent(
   orders: PurchaseOrderDto[],

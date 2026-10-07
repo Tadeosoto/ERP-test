@@ -1,9 +1,9 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { VehiclePhoto } from "@/components/flota/vehicle-photo";
 import { FuelLoadForm } from "@/components/flota/fuel-load-form";
@@ -73,14 +73,29 @@ export function VehicleDetailView({ vehicleId }: { vehicleId: string }) {
   }
 
   if (loading) return <LoadingScreen message="Cargando vehículo" />;
-  if (!vehicle) return <Link href="/vehiculos" className="text-sm font-semibold text-orange-700">Volver al listado</Link>;
+  if (!vehicle) {
+    return (
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Vehículos", href: "/vehiculos" },
+        ]}
+      />
+    );
+  }
 
   const upcomingDocs = vehicle.documents.filter((doc) => doc.tone === "proximo" || doc.tone === "vencido");
   const upcomingJobs = vehicle.maintenances.filter((job) => job.upcoming && !job.completedOn);
 
   return (
     <div className="space-y-5">
-      <Link href="/vehiculos" className="text-sm font-medium text-orange-700">Volver al listado</Link>
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Vehículos", href: "/vehiculos" },
+          { label: vehicleTitle(vehicle) },
+        ]}
+      />
       <div className="flex flex-wrap gap-4 rounded-2xl border border-zinc-200 bg-white p-4">
         <div className="h-28 w-40 overflow-hidden rounded-xl bg-zinc-100">
           {vehicle.hasPhoto && <VehiclePhoto id={vehicle.id} alt={vehicle.name} width={320} height={200} sizes="160px" />}

@@ -52,6 +52,7 @@ export async function POST(request: Request) {
       totalAmount?: number;
       currency?: string;
       paymentType?: PaymentType | null;
+      paymentDueDate?: string | null;
       suggestedPaymentType?: PaymentType | null;
       materialRequestId?: string | null;
       invoiceFirstCommitmentId?: string | null;
@@ -150,6 +151,16 @@ export async function POST(request: Request) {
       documentDateIso: body.documentDate ?? body.ocDate ?? null,
     });
 
+    let paymentDueDate: Date | null = null;
+    if (body.paymentDueDate) {
+      const day = String(body.paymentDueDate).slice(0, 10);
+      const due = new Date(`${day}T12:00:00.000Z`);
+      if (Number.isNaN(due.getTime())) {
+        return NextResponse.json({ error: "La fecha límite de pago no es válida." }, { status: 400 });
+      }
+      paymentDueDate = due;
+    }
+
     const order = await prisma.$transaction(async (tx) => {
       const created = await tx.purchaseOrder.create({
         data: {
@@ -163,6 +174,7 @@ export async function POST(request: Request) {
           description,
           internalReference,
           documentDate: body.documentDate ? new Date(body.documentDate) : null,
+          paymentDueDate,
           totalAmount,
           amountPaidSoFar: draft.amountPaidSoFar,
           paymentLabel: draft.paymentLabel,

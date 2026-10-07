@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState } from "react";
 import { FilePickButton } from "@/components/file-pick-button";
 import { MaterialLinesEditor } from "@/components/solicitudes/material-lines-editor";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import type { MaterialRequestDto, ObraDto } from "@/lib/domain/types";
@@ -48,11 +49,14 @@ export default function MaterialRequestNewPage() {
 
   if (user && user.role !== "ingeniero") {
     return (
-      <div className="card p-8">
+      <div className="card space-y-4 p-8">
         <p>Solo Ingeniería puede crear solicitudes de material.</p>
-        <Link href="/inicio" className="mt-4 inline-block text-orange-700 underline">
-          Volver
-        </Link>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Solicitudes Ingeniería", href: "/solicitudes-ingenieria" },
+          ]}
+        />
       </div>
     );
   }
@@ -138,6 +142,13 @@ export default function MaterialRequestNewPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6">
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Solicitudes", href: "/solicitudes/nueva" },
+          { label: "Nueva solicitud de material" },
+        ]}
+      />
       <header>
         <p className="text-xs font-bold uppercase text-orange-600">Proceso A</p>
         <h1 className="text-2xl font-bold text-zinc-900">Solicitud de material</h1>
@@ -202,7 +213,7 @@ export default function MaterialRequestNewPage() {
         <button type="button" disabled={busy} className="btn-primary" onClick={() => void onSend()}>
           Enviar a Compras
         </button>
-        <Link href="/inicio" className="btn-secondary">
+        <Link href="/solicitudes/nueva" className="btn-secondary">
           Cancelar
         </Link>
       </div>

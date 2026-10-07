@@ -1,9 +1,8 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import Link from "next/link";
-import { useRouter } from "next/navigation";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { useSession } from "@/components/session-provider";
 import { MovimientoForm } from "@/components/tarjetas/movimiento-form";
@@ -27,7 +26,6 @@ function Metric({ label, value }: { label: string; value: string }) {
 export function TarjetaDetailView({ cardId }: { cardId: string }) {
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
-  const router = useRouter();
   const [card, setCard] = useState<CompanyCardDto | null>(null);
   const [cards, setCards] = useState<CompanyCardDto[]>([]);
   const [movements, setMovements] = useState<CompanyCardMovementDto[]>([]);
@@ -84,16 +82,25 @@ export function TarjetaDetailView({ cardId }: { cardId: string }) {
   if (loading) return <LoadingScreen message="Cargando tarjeta" />;
   if (!card) {
     return (
-      <button type="button" onClick={() => router.push("/tarjetas")} className="text-sm font-semibold text-orange-700">
-        Volver a tarjetas
-      </button>
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Tarjetas", href: "/tarjetas" },
+        ]}
+      />
     );
   }
 
   return (
     <div className="space-y-5">
       <div>
-        <Link href="/tarjetas" className="text-sm font-medium text-orange-700 hover:underline">Tarjetas empresariales</Link>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Tarjetas", href: "/tarjetas" },
+            { label: card.label },
+          ]}
+        />
         <h1 className="mt-1 text-2xl font-bold text-zinc-900">{card.label}</h1>
         {cardSubtitle(card.label, card.lastFour) && (
           <p className="text-sm text-zinc-500">{cardSubtitle(card.label, card.lastFour)}</p>

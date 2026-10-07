@@ -5,10 +5,12 @@ import { canActAsCompras } from "@/lib/domain/transitions";
 const ACTIONABLE_BY_TYPE: Partial<Record<string, Role[]>> = {
   order_created: ["ingeniero"],
   oc_pdf_updated: ["ingeniero"],
-  engineer_approved: ["pagos"],
+  order_sent_engineer: ["ingeniero"],
+  engineer_approved: ["pagos", "direccion"],
   engineer_approved_programado: ["compras", "pagos"],
   engineer_rejected: ["compras", "pagos"],
-  deadline_set: ["pagos"],
+  deadline_set: ["pagos", "direccion"],
+  order_authorized: ["pagos", "ingeniero", "compras"],
   payment_registered: ["compras", "pagos"],
   order_sent_proceso_b: ["pagos"],
   order_sent_proceso_c: ["pagos"],
@@ -73,9 +75,13 @@ export function notificationActionLabel(n: NotificationDto, role: Role): string 
   switch (n.type) {
     case "order_created":
     case "oc_pdf_updated":
-      return "Revisar orden";
+    case "order_sent_engineer":
+      return "Revisar y aprobar";
     case "engineer_approved":
     case "deadline_set":
+      return "Autorizar OC";
+    case "order_authorized":
+      return role === "pagos" ? "Registrar pago" : "Ver orden autorizada";
     case "order_sent_proceso_b":
     case "order_sent_proceso_c":
       return "Registrar pago";

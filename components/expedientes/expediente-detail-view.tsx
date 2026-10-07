@@ -1,9 +1,10 @@
 "use client";
 
 import Link from "next/link";
-import { useParams, useRouter } from "next/navigation";
+import { useParams } from "next/navigation";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useSession } from "@/components/session-provider";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import { canEditExpedientes } from "@/lib/domain/expedientes";
@@ -38,7 +39,6 @@ type FacturaDoc = {
 export function ExpedienteDetailView() {
   const params = useParams();
   const id = String(params.id ?? "");
-  const router = useRouter();
   const { user } = useSession();
   const { showSuccess, showError } = useFeedback();
   const [exp, setExp] = useState<ExpedienteDetailDto | null>(null);
@@ -194,11 +194,14 @@ export function ExpedienteDetailView() {
   if (loading) return <LoadingScreen message="Cargando expediente" />;
   if (!exp) {
     return (
-      <div className="dash-panel p-8">
+      <div className="dash-panel space-y-4 p-8">
         <p>Expediente no encontrado.</p>
-        <Link href="/expedientes" className="mt-4 inline-block text-orange-700 underline">
-          Volver
-        </Link>
+        <PageBreadcrumb
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Expedientes", href: "/expedientes" },
+          ]}
+        />
       </div>
     );
   }
@@ -213,9 +216,16 @@ export function ExpedienteDetailView() {
     <div className="space-y-3 sm:space-y-4">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
-          <Link href="/expedientes" className="text-sm font-medium text-orange-700 hover:underline">
-            ← Expedientes
-          </Link>
+          <PageBreadcrumb
+            items={[
+              { label: "Inicio", href: "/inicio" },
+              { label: "Expedientes", href: "/expedientes" },
+              ...(exp.obraId && exp.obraName
+                ? [{ label: exp.obraName, href: `/obras/${exp.obraId}` }]
+                : []),
+              { label: exp.folio },
+            ]}
+          />
           <div className="mt-1 flex flex-wrap items-center gap-2">
             <h1 className="dash-page-title text-xl sm:text-2xl">{exp.folio}</h1>
             <span className="rounded-full bg-sky-50 px-2.5 py-0.5 text-xs font-semibold text-sky-800 ring-1 ring-sky-100">
@@ -464,11 +474,6 @@ export function ExpedienteDetailView() {
         </aside>
       </div>
 
-      <div className="pb-4">
-        <button type="button" className="btn-secondary" onClick={() => router.push("/expedientes")}>
-          Volver a la lista
-        </button>
-      </div>
     </div>
   );
 }

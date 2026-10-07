@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useSession } from "@/components/session-provider";
 import { OcLink } from "@/components/ui/oc-link";
 import { LoadingScreen } from "@/components/ui/loading-screen";
+import { PageBreadcrumb } from "@/components/ui/page-breadcrumb";
 import { useFeedback } from "@/components/ui/feedback-provider";
 import {
   materialRequestCode,
@@ -190,9 +191,13 @@ export default function NuevaSolicitudPage() {
           </Link>
           .
         </p>
-        <Link href="/inicio" className="mt-4 inline-block text-orange-700 underline">
-          Volver
-        </Link>
+        <PageBreadcrumb
+          className="mt-4"
+          items={[
+            { label: "Inicio", href: "/inicio" },
+            { label: "Solicitudes Ingeniería", href: "/solicitudes-ingenieria" },
+          ]}
+        />
       </div>
     );
   }
@@ -201,6 +206,12 @@ export default function NuevaSolicitudPage() {
 
   return (
     <div className="mx-auto max-w-3xl space-y-6 pb-8">
+      <PageBreadcrumb
+        items={[
+          { label: "Inicio", href: "/inicio" },
+          { label: "Solicitudes" },
+        ]}
+      />
       <header>
         <h1 className="text-2xl font-bold text-zinc-900">Solicitudes</h1>
         <p className="mt-1 text-sm text-zinc-500">
