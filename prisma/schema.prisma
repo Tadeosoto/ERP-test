@@ -43,6 +43,7 @@ model User {
   vehiclesResponsible             Vehicle[]                 @relation("VehicleResponsible")
   fuelLoadsCreated                FuelLoad[]
   fuelLoadFiles                   FuelLoadFile[]
+  scheduledPayments               ScheduledPayment[]
 }
 
 model Session {
@@ -71,6 +72,8 @@ model Supplier {
   country         String          @default("México")
   primaryContact  String          @default("")
   notes           String          @default("")
+  /// Días naturales de crédito para calcular vencimiento desde la fecha de factura.
+  paymentTermsDays Int            @default(30)
   active          Boolean         @default(true)
   createdAt       DateTime        @default(now())
   orders          PurchaseOrder[]
@@ -148,6 +151,10 @@ model PurchaseOrder {
   paymentType            String?
   suggestedPaymentType   String?
   paymentDueDate         DateTime?
+  /// Fecha de la factura del proveedor (independiente de la entrega).
+  invoiceDate            DateTime?
+  /// Estado de surtido: pedido | en_camino | entrega_parcial | surtido_completo
+  deliveryStatus         String          @default("pedido")
   status                 String          @default("draft")
   /// Variante de flujo: a = OC con Ingeniería; c = OC a Administración (sin Ingeniería).
   processKind            String          @default("a")
@@ -164,8 +171,27 @@ model PurchaseOrder {
   files                  StoredFile[]
   notifications          Notification[]
   paymentRecords         PaymentRecord[]
+  scheduledPayments      ScheduledPayment[]
   expedienteId           String?
   expediente             Expediente?     @relation(fields: [expedienteId], references: [id], onDelete: SetNull)
+}
+
+/// Pago programado (intención). No reduce saldo hasta PaymentRecord + comprobante.
+model ScheduledPayment {
+  id               String        @id @default(cuid())
+  orderId          String
+  order            PurchaseOrder @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  amount           Float
+  plannedDate      DateTime
+  reference        String        @default("")
+  /// scheduled | cancelled | completed
+  status           String        @default("scheduled")
+  createdByUserId  String
+  createdBy        User          @relation(fields: [createdByUserId], references: [id])
+  createdAt        DateTime      @default(now())
+
+  @@index([orderId, status])
+  @@index([plannedDate, status])
 }
 
 model PaymentRecord {

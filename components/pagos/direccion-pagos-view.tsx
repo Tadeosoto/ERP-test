@@ -351,11 +351,21 @@ export function DireccionPagosView({ onRegisterRefresh }: { onRegisterRefresh?: 
 
   return (
     <div className="space-y-5 lg:space-y-6">
-      <div>
-        <h1 className="dash-page-title">Pagos</h1>
-        <p className="dash-body mt-1 text-zinc-600">
-          Seguimiento de pagos del consorcio. Primero el resumen, luego la cola de OC.
-        </p>
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <h1 className="dash-page-title">Pagos</h1>
+          <p className="dash-body mt-1 text-zinc-600">
+            Seguimiento de pagos del consorcio. Primero el resumen, luego la cola de OC.
+          </p>
+        </div>
+        {(user?.role === "pagos" || user?.role === "direccion") && (
+          <Link
+            href="/pagos/pendientes-semanales"
+            className="btn-primary shrink-0 self-start text-sm"
+          >
+            Pendientes semanales
+          </Link>
+        )}
       </div>
 
       {/* 1) KPIs — etiqueta legible arriba, monto grande abajo */}

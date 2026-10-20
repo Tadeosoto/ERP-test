@@ -314,6 +314,12 @@ export async function POST(request: Request, ctx: Ctx) {
         include: orderInclude,
       });
 
+      // Un pago real cierra las programaciones activas (no descuentan saldo por sí solas).
+      await prisma.scheduledPayment.updateMany({
+        where: { orderId: id, status: "scheduled" },
+        data: { status: "completed" },
+      });
+
       const evt = NotificationEvents.paymentRegistered(updated.title, result.fullyPaid);
       await notifyByRoles(id, evt.type, evt.message, evt.roles);
       if (nextStatus === "invoiceReceived") {

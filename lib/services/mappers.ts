@@ -11,6 +11,7 @@ import type {
   OrderProcessKind,
   PurchaseOrderDto,
   Role,
+  ScheduledPaymentDto,
   StoredFileDto,
 } from "@/lib/domain/types";
 import type {
@@ -19,11 +20,13 @@ import type {
   OrderComment,
   PaymentRecord,
   PurchaseOrder,
+  ScheduledPayment,
   StoredFile,
   User,
 } from "@prisma/client";
 import { amountRemaining } from "@/lib/domain/transitions";
 import { paymentBasisTotal } from "@/lib/domain/order-fx";
+import { asDeliveryStatus } from "@/lib/pagos/friday-review";
 
 export function asRole(value: string): Role {
   return value as Role;
@@ -69,7 +72,25 @@ type OrderWithRelations = PurchaseOrder & {
   comments: (OrderComment & { author: User })[];
   files: StoredFile[];
   paymentRecords: (PaymentRecord & { recordedBy: User })[];
+  scheduledPayments?: (ScheduledPayment & { createdBy?: User | null })[];
 };
+
+export function mapScheduledPayment(
+  r: ScheduledPayment & { createdBy?: User | null }
+): ScheduledPaymentDto {
+  const status =
+    r.status === "cancelled" || r.status === "completed" ? r.status : "scheduled";
+  return {
+    id: r.id,
+    orderId: r.orderId,
+    amount: r.amount,
+    plannedDate: r.plannedDate.toISOString(),
+    reference: r.reference,
+    status,
+    createdByName: r.createdBy?.name ?? "",
+    createdAt: r.createdAt.toISOString(),
+  };
+}
 
 export function mapPaymentRecord(r: PaymentRecord & { recordedBy: User }): PaymentRecordDto {
   return {
@@ -126,6 +147,8 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     paymentType: asPaymentType(order.paymentType),
     suggestedPaymentType: asPaymentType(order.suggestedPaymentType),
     paymentDueDate: order.paymentDueDate?.toISOString() ?? null,
+    invoiceDate: order.invoiceDate?.toISOString() ?? null,
+    deliveryStatus: asDeliveryStatus(order.deliveryStatus),
     status: asOrderStatus(order.status),
     sentToEngineerAt: order.sentToEngineerAt?.toISOString() ?? null,
     createdAt: order.createdAt.toISOString(),
@@ -134,6 +157,7 @@ export function mapOrder(order: OrderWithRelations): PurchaseOrderDto {
     comments: order.comments.map(mapComment),
     files: order.files.map(mapFile),
     paymentRecords: order.paymentRecords.map(mapPaymentRecord),
+    scheduledPayments: (order.scheduledPayments ?? []).map(mapScheduledPayment),
   };
 }
 
@@ -208,6 +232,7 @@ export function mapSupplier(s: {
   country: string;
   primaryContact: string;
   notes: string;
+  paymentTermsDays?: number;
   active: boolean;
   createdAt: Date;
 }): import("@/lib/domain/types").SupplierDto {
@@ -229,6 +254,7 @@ export function mapSupplier(s: {
     country: s.country,
     primaryContact: s.primaryContact,
     notes: s.notes,
+    paymentTermsDays: s.paymentTermsDays ?? 30,
     displayName,
     active: s.active,
     createdAt: s.createdAt.toISOString(),
@@ -274,6 +300,10 @@ export const orderInclude = {
   files: { orderBy: { createdAt: "desc" as const } },
   paymentRecords: {
     include: { recordedBy: true },
+    orderBy: { createdAt: "desc" as const },
+  },
+  scheduledPayments: {
+    include: { createdBy: true },
     orderBy: { createdAt: "desc" as const },
   },
 };

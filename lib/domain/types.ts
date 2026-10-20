@@ -95,6 +95,8 @@ export interface PurchaseOrderDto {
   paymentType: PaymentType | null;
   suggestedPaymentType: PaymentType | null;
   paymentDueDate: string | null;
+  invoiceDate: string | null;
+  deliveryStatus: string;
   status: OrderStatus;
   sentToEngineerAt: string | null;
   createdAt: string;
@@ -103,6 +105,18 @@ export interface PurchaseOrderDto {
   comments: OrderCommentDto[];
   files: StoredFileDto[];
   paymentRecords: PaymentRecordDto[];
+  scheduledPayments?: ScheduledPaymentDto[];
+}
+
+export interface ScheduledPaymentDto {
+  id: string;
+  orderId: string;
+  amount: number;
+  plannedDate: string;
+  reference: string;
+  status: "scheduled" | "cancelled" | "completed";
+  createdByName: string;
+  createdAt: string;
 }
 
 export interface SupplierDto {
@@ -122,6 +136,7 @@ export interface SupplierDto {
   country: string;
   primaryContact: string;
   notes: string;
+  paymentTermsDays: number;
   displayName: string;
   active: boolean;
   createdAt: string;
